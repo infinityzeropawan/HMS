@@ -1,0 +1,470 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. SUPER ADMIN / TENANT DOMAIN
+model Tenant {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String      @db.VarChar(200)
+  legalName        String?     @map("legal_name") @db.VarChar(200)
+  subdomain        String      @unique @db.VarChar(100)
+  tenantType       String?     @map("tenant_type") @db.VarChar(30)
+  isolationMode    String      @default("shared_rls") @map("isolation_mode") @db.VarChar(20)
+  dbConnectionRef  String?     @map("db_connection_ref") @db.VarChar(200)
+  status           String      @default("active") @db.VarChar(20)
+  country          String?     @default("IN") @db.VarChar(2)
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt        DateTime?   @map("deleted_at") @db.Timestamptz
+
+  hospitals        Hospital[]
+  users            User[]
+  patients         Patient[]
+  appointments     Appointment[]
+  encounters       Encounter[]
+  invoices         Invoice[]
+
+  @@map("tenants")
+}
+
+// 2. HOSPITAL ADMIN DOMAIN
+model Hospital {
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String        @map("tenant_id") @db.Uuid
+  name                 String        @db.VarChar(200)
+  facilityType         String?       @map("facility_type") @db.VarChar(30)
+  gstin                String?       @db.VarChar(15)
+  pan                  String?       @db.VarChar(10)
+  address              Json?         @db.JsonB
+  phone                String?       @db.VarChar(15)
+  email                String?       @db.VarChar(150)
+  logoUrl              String?       @map("logo_url")
+  nabhAccredited       Boolean?      @default(false) @map("nabh_accredited")
+  nablAccredited       Boolean?      @default(false) @map("nabl_accredited")
+  accreditationExpiry  DateTime?     @map("accreditation_expiry") @db.Date
+  hfrId                String?       @map("hfr_id") @db.VarChar(50)
+  timezone             String?       @default("Asia/Kolkata") @db.VarChar(50)
+  isActive             Boolean?      @default(true) @map("is_active")
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant               Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  departments          Department[]
+  wards                Ward[]
+  beds                 Bed[]
+  users                User[]
+  patients             Patient[]
+  appointments         Appointment[]
+  encounters           Encounter[]
+  invoices             Invoice[]
+
+  @@map("hospitals")
+}
+
+model Department {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String       @map("tenant_id") @db.Uuid
+  hospitalId     String       @map("hospital_id") @db.Uuid
+  name           String       @db.VarChar(100)
+  departmentType String?      @map("department_type") @db.VarChar(50)
+  isActive       Boolean?     @default(true) @map("is_active")
+
+  hospital       Hospital     @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  wards          Ward[]
+  users          User[]
+
+  @@map("departments")
+}
+
+model Ward {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  hospitalId   String       @map("hospital_id") @db.Uuid
+  departmentId String?      @map("department_id") @db.Uuid
+  name         String       @db.VarChar(100)
+  wardType     String?      @map("ward_type") @db.VarChar(30)
+  floor        String?      @db.VarChar(20)
+
+  hospital     Hospital     @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id])
+  beds         Bed[]
+
+  @@map("wards")
+}
+
+model Bed {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  hospitalId String   @map("hospital_id") @db.Uuid
+  wardId     String   @map("ward_id") @db.Uuid
+  bedNumber  String   @map("bed_number") @db.VarChar(20)
+  bedType    String?  @map("bed_type") @db.VarChar(30)
+  status     String?  @default("available") @db.VarChar(20)
+  dailyRate  Decimal? @map("daily_rate") @db.Decimal(10, 2)
+
+  hospital   Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  ward       Ward     @relation(fields: [wardId], references: [id])
+
+  @@unique([wardId, bedNumber])
+  @@map("beds")
+}
+
+// 3. USERS & RBAC
+model User {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String       @map("tenant_id") @db.Uuid
+  hospitalId        String       @map("hospital_id") @db.Uuid
+  employeeCode      String?      @map("employee_code") @db.VarChar(30)
+  fullName          String       @map("full_name") @db.VarChar(150)
+  mobile            String?      @unique @db.VarChar(15)
+  email             String?      @db.VarChar(150)
+  passwordHash      String?      @map("password_hash")
+  userType          String?      @map("user_type") @db.VarChar(30)
+  nmcRegistrationNo String?      @map("nmc_registration_no") @db.VarChar(50)
+  specialization    String?      @db.VarChar(100)
+  departmentId      String?      @map("department_id") @db.Uuid
+  mfaEnabled        Boolean?     @default(false) @map("mfa_enabled")
+  mfaSecret         String?      @map("mfa_secret")
+  isActive          Boolean?     @default(true) @map("is_active")
+  lastLoginAt       DateTime?    @map("last_login_at") @db.Timestamptz
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  tenant            Tenant       @relation(fields: [tenantId], references: [id])
+  hospital          Hospital     @relation(fields: [hospitalId], references: [id])
+  department        Department?  @relation(fields: [departmentId], references: [id])
+  userRoleAssignments UserRoleAssignment[]
+  doctorAppointments  Appointment[] @relation("DoctorAppointments")
+  doctorEncounters    Encounter[]   @relation("DoctorEncounters")
+
+  @@map("users")
+}
+
+model Role {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  hospitalId   String?   @map("hospital_id") @db.Uuid
+  roleName     String    @map("role_name") @db.VarChar(80)
+  isSystemRole Boolean?  @default(false) @map("is_system_role")
+
+  rolePermissions    RolePermission[]
+  userRoleAssignments UserRoleAssignment[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  permissionKey String    @unique @map("permission_key") @db.VarChar(100)
+  module        String?   @db.VarChar(50)
+  description   String?
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+
+  role         Role       @relation(fields: [roleId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRoleAssignment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  hospitalId String   @map("hospital_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+
+  user       User     @relation(fields: [userId], references: [id])
+  role       Role     @relation(fields: [roleId], references: [id])
+
+  @@map("user_role_assignments")
+}
+
+// 4. PATIENT REGISTRATION
+model Patient {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String      @map("tenant_id") @db.Uuid
+  hospitalId      String      @map("hospital_id") @db.Uuid
+  uhid            String      @db.VarChar(30)
+  firstName       String      @map("first_name") @db.VarChar(100)
+  lastName        String?     @map("last_name") @db.VarChar(100)
+  gender          String?     @db.VarChar(10)
+  dateOfBirth     DateTime?   @map("date_of_birth") @db.Date
+  ageYears        Int?        @map("age_years")
+  mobile          String?     @db.VarChar(15)
+  alternateMobile String?     @map("alternate_mobile") @db.VarChar(15)
+  email           String?     @db.VarChar(150)
+  address         Json?       @db.JsonB
+  bloodGroup      String?     @map("blood_group") @db.VarChar(5)
+  abhaNumber      String?     @map("abha_number") @db.VarChar(20)
+  abhaAddress     String?     @map("abha_address") @db.VarChar(100)
+  aadhaarMasked   String?     @map("aadhaar_masked") @db.VarChar(20)
+  maritalStatus   String?     @map("marital_status") @db.VarChar(20)
+  occupation      String?     @db.VarChar(100)
+  photoUrl        String?     @map("photo_url")
+  isVip           Boolean?    @default(false) @map("is_vip")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?   @map("deleted_at") @db.Timestamptz
+
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  hospital        Hospital    @relation(fields: [hospitalId], references: [id])
+  identifiers     PatientIdentifier[]
+  appointments    Appointment[]
+  encounters      Encounter[]
+  invoices        Invoice[]
+
+  @@unique([hospitalId, uhid])
+  @@map("patients")
+}
+
+model PatientIdentifier {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  hospitalId      String   @map("hospital_id") @db.Uuid
+  patientId       String   @map("patient_id") @db.Uuid
+  identifierType  String   @map("identifier_type") @db.VarChar(30)
+  identifierValue String   @map("identifier_value")
+  verified        Boolean? @default(false)
+
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("patient_identifiers")
+}
+
+// 5. APPOINTMENTS & QUEUES
+model Appointment {
+  id                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String       @map("tenant_id") @db.Uuid
+  hospitalId          String       @map("hospital_id") @db.Uuid
+  patientId           String       @map("patient_id") @db.Uuid
+  doctorId            String       @map("doctor_id") @db.Uuid
+  departmentId        String?      @map("department_id") @db.Uuid
+  appointmentDate     DateTime     @map("appointment_date") @db.Date
+  slotTime            DateTime?    @map("slot_time") @db.Time
+  bookingChannel      String?      @default("walk_in") @map("booking_channel") @db.VarChar(20)
+  status              String?      @default("booked") @db.VarChar(20)
+  isTeleconsultation  Boolean?     @default(false) @map("is_teleconsultation")
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant              Tenant       @relation(fields: [tenantId], references: [id])
+  hospital            Hospital     @relation(fields: [hospitalId], references: [id])
+  patient             Patient      @relation(fields: [patientId], references: [id])
+  doctor              User         @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  queueTokens         QueueToken[]
+  encounters          Encounter[]
+
+  @@map("appointments")
+}
+
+model QueueToken {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String       @map("tenant_id") @db.Uuid
+  hospitalId    String       @map("hospital_id") @db.Uuid
+  appointmentId String?      @map("appointment_id") @db.Uuid
+  tokenNumber   Int?         @map("token_number")
+  counter       String?      @db.VarChar(20)
+  status        String?      @default("waiting") @db.VarChar(20)
+  calledAt      DateTime?    @map("called_at") @db.Timestamptz
+
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+
+  @@map("queue_tokens")
+}
+
+// 6. CLINICAL ENCOUNTERS & EMR
+model Encounter {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String         @map("tenant_id") @db.Uuid
+  hospitalId      String         @map("hospital_id") @db.Uuid
+  patientId       String         @map("patient_id") @db.Uuid
+  doctorId        String         @map("doctor_id") @db.Uuid
+  appointmentId   String?        @map("appointment_id") @db.Uuid
+  encounterType   String?        @map("encounter_type") @db.VarChar(20)
+  encounterStatus String?        @default("open") @map("encounter_status") @db.VarChar(20)
+  chiefComplaint  String?        @map("chief_complaint")
+  startedAt       DateTime?      @default(now()) @map("started_at") @db.Timestamptz
+  endedAt         DateTime?      @map("ended_at") @db.Timestamptz
+
+  tenant          Tenant         @relation(fields: [tenantId], references: [id])
+  hospital        Hospital       @relation(fields: [hospitalId], references: [id])
+  patient         Patient        @relation(fields: [patientId], references: [id])
+  doctor          User           @relation("DoctorEncounters", fields: [doctorId], references: [id])
+  appointment     Appointment?   @relation(fields: [appointmentId], references: [id])
+  vitals          Vitals[]
+  clinicalNotes   ClinicalNote[]
+  diagnoses       Diagnosis[]
+  prescriptions   Prescription[]
+  invoices        Invoice[]
+
+  @@map("encounters")
+}
+
+model Vitals {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String     @map("tenant_id") @db.Uuid
+  hospitalId   String     @map("hospital_id") @db.Uuid
+  encounterId  String?    @map("encounter_id") @db.Uuid
+  admissionId  String?    @map("admission_id") @db.Uuid
+  patientId    String     @map("patient_id") @db.Uuid
+  recordedBy   String?    @map("recorded_by") @db.Uuid
+  heightCm     Decimal?   @map("height_cm") @db.Decimal(5, 1)
+  weightKg     Decimal?   @map("weight_kg") @db.Decimal(5, 1)
+  bmi          Decimal?   @db.Decimal(5, 2)
+  temperatureC Decimal?   @map("temperature_c") @db.Decimal(4, 1)
+  pulseBpm     Int?       @map("pulse_bpm")
+  respRate     Int?       @map("resp_rate")
+  bpSystolic   Int?       @map("bp_systolic")
+  bpDiastolic  Int?       @map("bp_diastolic")
+  spo2         Int?
+  painScore    Int?       @map("pain_score")
+  recordedAt   DateTime?  @default(now()) @map("recorded_at") @db.Timestamptz
+
+  encounter    Encounter? @relation(fields: [encounterId], references: [id])
+
+  @@map("vitals")
+}
+
+model ClinicalNote {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  hospitalId    String    @map("hospital_id") @db.Uuid
+  encounterId   String    @map("encounter_id") @db.Uuid
+  noteType      String?   @default("soap") @map("note_type") @db.VarChar(20)
+  subjective    String?
+  objective     String?
+  assessment    String?
+  plan          String?
+  isAiGenerated Boolean?  @default(false) @map("is_ai_generated")
+  signedBy      String?   @map("signed_by") @db.Uuid
+  signedAt      DateTime? @map("signed_at") @db.Timestamptz
+  version       Int?      @default(1)
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz
+
+  encounter     Encounter @relation(fields: [encounterId], references: [id])
+
+  @@map("clinical_notes")
+}
+
+model Diagnosis {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  hospitalId    String    @map("hospital_id") @db.Uuid
+  encounterId   String    @map("encounter_id") @db.Uuid
+  icd10Code     String?   @map("icd10_code") @db.VarChar(10)
+  snomedCode    String?   @map("snomed_code") @db.VarChar(20)
+  diagnosisType String?   @map("diagnosis_type") @db.VarChar(20)
+  notes         String?
+  diagnosedBy   String?   @map("diagnosed_by") @db.Uuid
+
+  encounter     Encounter @relation(fields: [encounterId], references: [id])
+
+  @@map("diagnoses")
+}
+
+model Prescription {
+  id           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String             @map("tenant_id") @db.Uuid
+  hospitalId   String             @map("hospital_id") @db.Uuid
+  encounterId  String             @map("encounter_id") @db.Uuid
+  patientId    String             @map("patient_id") @db.Uuid
+  doctorId     String             @map("doctor_id") @db.Uuid
+  status       String?            @default("active") @db.VarChar(20)
+  isTeleconsult Boolean?          @default(false) @map("is_teleconsult")
+  signedAt     DateTime?          @map("signed_at") @db.Timestamptz
+  createdAt    DateTime?          @default(now()) @map("created_at") @db.Timestamptz
+
+  encounter    Encounter          @relation(fields: [encounterId], references: [id])
+  items        PrescriptionItem[]
+
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String       @map("tenant_id") @db.Uuid
+  hospitalId     String       @map("hospital_id") @db.Uuid
+  prescriptionId String       @map("prescription_id") @db.Uuid
+  drugName       String       @map("drug_name") @db.VarChar(200)
+  dosage         String?      @db.VarChar(50)
+  frequency      String?      @db.VarChar(50)
+  route          String?      @db.VarChar(30)
+  durationDays   Int?         @map("duration_days")
+  instructions   String?
+
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+
+  @@map("prescription_items")
+}
+
+// 7. BILLING & GST INVOICING
+model Invoice {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  hospitalId    String        @map("hospital_id") @db.Uuid
+  patientId     String        @map("patient_id") @db.Uuid
+  encounterId   String?       @map("encounter_id") @db.Uuid
+  admissionId   String?       @map("admission_id") @db.Uuid
+  invoiceNumber String        @unique @map("invoice_number") @db.VarChar(50)
+  invoiceType   String?       @map("invoice_type") @db.VarChar(20)
+  grossAmount   Decimal?      @map("gross_amount") @db.Decimal(12, 2)
+  discountAmount Decimal?     @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  taxAmount     Decimal?      @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  netAmount     Decimal?      @map("net_amount") @db.Decimal(12, 2)
+  paymentStatus String?       @default("unpaid") @map("payment_status") @db.VarChar(20)
+  gstin         String?       @db.VarChar(15)
+  createdAt     DateTime?     @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id])
+  hospital      Hospital      @relation(fields: [hospitalId], references: [id])
+  patient       Patient       @relation(fields: [patientId], references: [id])
+  encounter     Encounter?    @relation(fields: [encounterId], references: [id])
+  lines         InvoiceLine[]
+  payments      Payment[]
+
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoiceId   String   @map("invoice_id") @db.Uuid
+  description String?  @db.VarChar(200)
+  quantity    Int?     @default(1)
+  unitPrice   Decimal? @map("unit_price") @db.Decimal(10, 2)
+  hsnSacCode  String?  @map("hsn_sac_code") @db.VarChar(20)
+  gstRate     Decimal? @map("gst_rate") @db.Decimal(4, 2)
+  lineTotal   Decimal? @map("line_total") @db.Decimal(12, 2)
+
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_lines")
+}
+
+model Payment {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  hospitalId     String    @map("hospital_id") @db.Uuid
+  invoiceId      String    @map("invoice_id") @db.Uuid
+  amount         Decimal?  @db.Decimal(12, 2)
+  paymentMethod  String?   @map("payment_method") @db.VarChar(20)
+  transactionRef String?   @map("transaction_ref") @db.VarChar(100)
+  paidAt         DateTime? @default(now()) @map("paid_at") @db.Timestamptz
+
+  invoice        Invoice   @relation(fields: [invoiceId], references: [id])
+
+  @@map("payments")
+}

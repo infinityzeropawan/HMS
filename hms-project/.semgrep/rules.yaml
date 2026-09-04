@@ -1,0 +1,21 @@
+rules:
+  - id: no-raw-sql-unsafe
+    languages: [typescript]
+    message: "$executeRawUnsafe found — use parameterized $executeRaw instead to prevent SQL injection."
+    severity: ERROR
+    pattern: $PRISMA.$executeRawUnsafe(...)
+
+  - id: no-req-user-in-middleware
+    languages: [typescript]
+    message: "req.user accessed inside a Middleware class — user is only set by Guards, which run after Middleware. Move this logic to a Guard."
+    severity: ERROR
+    patterns:
+      - pattern: class $NAME implements NestMiddleware { ... }
+      - pattern-inside: class $NAME implements NestMiddleware { ... }
+      - pattern: $REQ.user
+
+  - id: prisma-query-missing-tenant-filter
+    languages: [typescript]
+    message: "Prisma query on a tenant-scoped model missing tenantId in where clause — verify against .agents/skills/backend-security.md Rule 2."
+    severity: WARNING
+    pattern: prisma.$MODEL.findMany({ where: { ... } })

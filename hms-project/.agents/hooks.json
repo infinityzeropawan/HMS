@@ -1,0 +1,15 @@
+{
+  "name": "HMS Pre-Tool Safety Hooks",
+  "version": "1.0.0",
+  "description": "Pre-tool execution guardrails to block SQL or migration commits missing tenant_id or hospital_id.",
+  "hooks": [
+    {
+      "id": "block-sql-missing-tenant-id",
+      "event": "PreToolUse",
+      "match_files": ["**/*.sql", "**/*.repository.ts", "**/*.service.ts"],
+      "rule": "SQL queries and schema definitions on tenant tables MUST include tenant_id and hospital_id.",
+      "severity": "ERROR",
+      "pattern": "(?i)CREATE\\s+TABLE\\s+(?!tenants|subscription_plans|subscriptions|global_masters_)\\w+\\s*\\((?![\\s\\S]*?tenant_id\\s+UUID)"
+    }
+  ]
+}
