@@ -15,6 +15,7 @@ export type UserRole =
   | "BILLING"
   | "NURSE"
   | "ADMIN"
+  | "HOSPITAL_ADMIN"
   | "SUPER_ADMIN";
 
 export interface UserSession {

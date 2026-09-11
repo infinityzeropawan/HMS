@@ -1,16 +1,16 @@
 "use client";
 
 import React from "react";
-import { Tabs, Typography } from "antd";
-import { DrugMasterTable, Icd10BrowserTable } from "@/app/(super-admin)/_super_admin_components/GlobalMasters/DrugMasterTable";
+import { Tabs } from "antd";
+import { DrugMasterTable, Icd10BrowserTable, TerminologyBrowserTable } from "@/app/(super-admin)/_super_admin_components/GlobalMasters/DrugMasterTable";
 import { Database } from "lucide-react";
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 
 const TABS = [
   { key: "drugs", label: "💊 Drug Catalog", children: <DrugMasterTable /> },
   { key: "icd10", label: "🩺 ICD-10 Browser", children: <Icd10BrowserTable /> },
-  { key: "snomed", label: "🔬 SNOMED-CT", children: <Typography.Paragraph type="secondary" style={{ padding: 24 }}>SNOMED-CT browser coming in Phase 6.</Typography.Paragraph> },
-  { key: "loinc", label: "🧪 LOINC Codes", children: <Typography.Paragraph type="secondary" style={{ padding: 24 }}>LOINC code browser coming in Phase 6.</Typography.Paragraph> },
+  { key: "snomed", label: "🔬 SNOMED-CT", children: <TerminologyBrowserTable vocabulary="SNOMED-CT" entries={[{ id: "sct-1", code: "44054006", description: "Diabetes mellitus type 2" }, { id: "sct-2", code: "38341003", description: "Hypertensive disorder" }, { id: "sct-3", code: "195967001", description: "Asthma" }]} /> },
+  { key: "loinc", label: "🧪 LOINC Codes", children: <TerminologyBrowserTable vocabulary="LOINC" entries={[{ id: "loinc-1", code: "718-7", description: "Hemoglobin [Mass/volume] in Blood" }, { id: "loinc-2", code: "6690-2", description: "Leukocytes [#/volume] in Blood" }, { id: "loinc-3", code: "4548-4", description: "Hemoglobin A1c/Hemoglobin.total in Blood" }]} /> },
 ];
 
 export default function GlobalMastersPage() {

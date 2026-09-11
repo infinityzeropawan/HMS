@@ -8,7 +8,6 @@ import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { AppointmentBookingDrawer } from "../_reception_components/AppointmentBooking/AppointmentBookingDrawer";
 import { useI18n } from "@/i18n/_i18n_context/I18nContext";
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
-import Link from "next/link";
 
 export default function ReceptionDashboard() {
   const [bookingDrawerOpen, setBookingDrawerOpen] = useState(false);
@@ -45,11 +44,9 @@ export default function ReceptionDashboard() {
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Real-time OPD Registrations, Token Queue & Appointments</p>
           </div>
           <div className="flex flex-wrap gap-2.5 items-center">
-            <Link href="/patients/register">
-              <HmsButton variant="emerald" size="md" icon={<UserPlus className="w-4 h-4" />}>
-                {t.registerPatient}
-              </HmsButton>
-            </Link>
+            <HmsButton href="/patients/register" variant="emerald" size="md" icon={<UserPlus className="w-4 h-4" />}>
+              {t.registerPatient}
+            </HmsButton>
             <HmsButton
               variant="primary"
               size="md"

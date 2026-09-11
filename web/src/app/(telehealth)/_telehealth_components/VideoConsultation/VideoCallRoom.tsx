@@ -12,11 +12,11 @@ export const VideoCallRoom: React.FC<{ sessionNo: string }> = ({ sessionNo }) =>
   const [videoOn, setVideoOn] = useState(true);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-140px)]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:h-[calc(100dvh-140px)]">
       {/* Left 2 Columns: Video Feed & WebRTC Call Controls */}
-      <div className="lg:col-span-2 bg-slate-900 rounded-xl p-4 flex flex-col justify-between relative shadow-lg">
-        <div className="flex justify-between items-center z-10">
-          <div className="flex items-center gap-2">
+      <div className="min-h-[32rem] lg:min-h-0 lg:col-span-2 bg-slate-900 rounded-xl p-3 sm:p-4 flex flex-col justify-between relative shadow-lg">
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center z-10">
+          <div className="flex flex-wrap items-center gap-2">
             <Tag color="emerald" icon={<Video className="w-3.5 h-3.5 inline mr-1" />}>
               LIVE TELE-CONSULTATION
             </Tag>
@@ -42,7 +42,7 @@ export const VideoCallRoom: React.FC<{ sessionNo: string }> = ({ sessionNo }) =>
         </div>
 
         {/* Call Action Bar */}
-        <div className="flex justify-center items-center gap-4 z-10">
+        <div className="grid grid-cols-3 gap-2 z-10 sm:flex sm:justify-center sm:items-center sm:gap-4">
           <HmsButton
             variant="secondary"
             onClick={() => setMicOn(!micOn)}
@@ -70,7 +70,7 @@ export const VideoCallRoom: React.FC<{ sessionNo: string }> = ({ sessionNo }) =>
       </div>
 
       {/* Right Column: Remote Telemetry & Live Telehealth Notes */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between overflow-y-auto">
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between lg:overflow-y-auto">
         <RemoteTelemetryPanel />
 
         <div className="mt-4 pt-4 border-t border-slate-100">

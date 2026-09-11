@@ -25,11 +25,11 @@ export const HmsButton: React.FC<HmsButtonProps> = ({
 }) => {
   // Size mapping
   const sizeClasses = {
-    xs: "h-8 px-3 text-xs min-w-[80px]",
-    sm: "h-10 px-4 text-sm min-w-[96px]",
-    md: "h-12 px-5 text-base min-w-[112px]",
-    lg: "h-14 px-6 text-lg min-w-[128px]",
-    xl: "h-16 px-7 text-xl min-w-[144px]",
+    xs: "h-8 px-2.5 text-xs min-w-0",
+    sm: "h-10 px-3 text-sm min-w-0",
+    md: "h-11 px-4 text-sm sm:h-12 sm:px-5 sm:text-base min-w-0",
+    lg: "h-12 px-4 text-base sm:h-14 sm:px-6 sm:text-lg min-w-0",
+    xl: "h-14 px-5 text-lg sm:h-16 sm:px-7 sm:text-xl min-w-0",
   };
 
   // Variant mapping with premium styling

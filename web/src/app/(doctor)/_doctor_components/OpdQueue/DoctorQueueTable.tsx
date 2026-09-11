@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { Table, Tag, Badge, message } from "antd";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { Stethoscope, PhoneCall, CheckCircle, XCircle, Clock, User } from "lucide-react";
-import Link from "next/link";
 
 export type QueueStatus = "WAITING" | "CALLING" | "CONSULTING" | "COMPLETED" | "NO_SHOW";
 
@@ -155,12 +154,10 @@ export const DoctorQueueTable: React.FC<DoctorQueueTableProps> = ({ onQueueChang
         if (record.status === "CALLING") {
           return (
             <div className="flex gap-1.5 flex-wrap">
-              <Link href={`/encounter/${record.uhid}`}>
-                <HmsButton size="sm" variant="primary" icon={<Stethoscope className="w-3.5 h-3.5" />}
-                  onClick={() => updateStatus(record.key, "CONSULTING")}>
-                  Start
-                </HmsButton>
-              </Link>
+              <HmsButton href={`/encounter/${record.uhid}`} size="sm" variant="primary" icon={<Stethoscope className="w-3.5 h-3.5" />}
+                onClick={() => updateStatus(record.key, "CONSULTING")}>
+                Start
+              </HmsButton>
               <HmsButton size="sm" variant="danger" icon={<XCircle className="w-3.5 h-3.5" />} onClick={() => handleNoShow(record)}>
                 No-Show
               </HmsButton>
@@ -212,11 +209,9 @@ export const DoctorQueueTable: React.FC<DoctorQueueTableProps> = ({ onQueueChang
               )}
               {patient.status === "CALLING" && (
                 <>
-                  <Link href={`/encounter/${patient.uhid}`} className="flex-1">
-                    <HmsButton size="lg" fullWidth variant="primary" icon={<Stethoscope className="w-4 h-4" />} onClick={() => updateStatus(patient.key, "CONSULTING")}>
-                      Start
-                    </HmsButton>
-                  </Link>
+                  <HmsButton href={`/encounter/${patient.uhid}`} className="flex-1" size="lg" fullWidth variant="primary" icon={<Stethoscope className="w-4 h-4" />} onClick={() => updateStatus(patient.key, "CONSULTING")}>
+                    Start
+                  </HmsButton>
                   <HmsButton size="lg" variant="danger" icon={<XCircle className="w-4 h-4" />} onClick={() => handleNoShow(patient)}>
                     No-Show
                   </HmsButton>
@@ -269,4 +264,3 @@ export const DoctorQueueTable: React.FC<DoctorQueueTableProps> = ({ onQueueChang
     </div>
   );
 };
-

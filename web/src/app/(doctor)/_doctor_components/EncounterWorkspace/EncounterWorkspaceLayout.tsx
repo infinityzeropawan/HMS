@@ -6,7 +6,6 @@ import { DiagnosisPane } from "./Panes/DiagnosisPane";
 import { PrescriptionPane } from "./Panes/PrescriptionPane";
 import { Activity, ArrowLeft } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
-import Link from "next/link";
 
 interface EncounterWorkspaceLayoutProps {
   patientUhid: string;
@@ -20,11 +19,9 @@ export const EncounterWorkspaceLayout: React.FC<EncounterWorkspaceLayoutProps> =
       {/* Top Patient Info Header Bar */}
       <header className="bg-slate-900 text-white px-4 sm:px-6 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 shadow-md">
         <div className="flex items-center gap-3 sm:gap-4">
-          <Link href="/queue">
-            <HmsButton icon={<ArrowLeft className="w-4 h-4" />} variant="secondary" size="sm">
-              Queue
-            </HmsButton>
-          </Link>
+          <HmsButton href="/queue" icon={<ArrowLeft className="w-4 h-4" />} variant="secondary" size="sm">
+            Queue
+          </HmsButton>
           <div className="flex items-center gap-2 border-l border-slate-700 pl-3 sm:pl-4">
             <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center font-bold text-white text-sm">
               SV

@@ -4,7 +4,6 @@ import React from "react";
 import { Tag } from "antd";
 import { FileText } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
-import Link from "next/link";
 
 export const IpdPatientCardGrid: React.FC = () => {
   const ipdPatients = [
@@ -38,11 +37,9 @@ export const IpdPatientCardGrid: React.FC = () => {
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex gap-2">
-            <Link href={`/discharge/${p.ipdNo}`} className="w-full">
-              <HmsButton block size="sm" type="primary" icon={<FileText className="w-3.5 h-3.5" />}>
-                Discharge Summary
-              </HmsButton>
-            </Link>
+            <HmsButton href={`/discharge/${p.ipdNo}`} block size="sm" type="primary" icon={<FileText className="w-3.5 h-3.5" />}>
+              Discharge Summary
+            </HmsButton>
           </div>
         </div>
       ))}

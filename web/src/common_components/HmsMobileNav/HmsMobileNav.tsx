@@ -25,7 +25,8 @@ import {
   BedDouble,
   SlidersHorizontal,
   Package,
-  Video
+  Video,
+  Database
 } from "lucide-react";
 import { HmsButton } from "../HmsButton/HmsButton";
 
@@ -122,6 +123,13 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
     ],
     ADMIN: [
       { id: "users", label: "Staff & RBAC Users", icon: Users, path: "/users", role: ["ADMIN"] },
+      { id: "departments", label: "Departments", icon: Building2, path: "/departments", role: ["ADMIN"] },
+      { id: "beds", label: "Wards & Beds", icon: BedDouble, path: "/beds", role: ["ADMIN"] },
+      { id: "settings", label: "Hospital Settings", icon: Settings, path: "/hospital-settings", role: ["ADMIN"] },
+      { id: "templates", label: "Print Templates", icon: FileText, path: "/print-templates", role: ["ADMIN"] },
+      { id: "accreditations", label: "Accreditations", icon: ShieldCheck, path: "/accreditations", role: ["ADMIN"] },
+      { id: "tariffs", label: "Service Tariffs", icon: SlidersHorizontal, path: "/tariffs", role: ["ADMIN"] },
+      { id: "notifications", label: "Notifications", icon: Bell, path: "/notifications", role: ["ADMIN"], badge: notificationCount },
       { id: "audit", label: "Audit Logs (DPDP)", icon: ShieldCheck, path: "/audit-logs", role: ["ADMIN"] },
       { id: "roster", label: "Staff Duty Roster", icon: Calendar, path: "/roster", role: ["ADMIN"] },
       { id: "payouts", label: "Doctor Payouts", icon: Receipt, path: "/payouts", role: ["ADMIN"] },
@@ -131,14 +139,35 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
     ],
     SUPER_ADMIN: [
       { id: "tenants", label: "Tenant Onboarding", icon: Building2, path: "/tenants", role: ["SUPER_ADMIN"] },
+      { id: "plans", label: "Subscription Plans", icon: Receipt, path: "/subscription-plans", role: ["SUPER_ADMIN"] },
+      { id: "flags", label: "Feature Flags", icon: SlidersHorizontal, path: "/feature-flags", role: ["SUPER_ADMIN"] },
+      { id: "masters", label: "Global Masters", icon: Database, path: "/global-masters", role: ["SUPER_ADMIN"] },
+      { id: "platform-audit", label: "Platform Audit", icon: ShieldCheck, path: "/platform-audit", role: ["SUPER_ADMIN"] },
+      { id: "support", label: "Support Tickets", icon: FileText, path: "/support-tickets", role: ["SUPER_ADMIN"] },
       { id: "users", label: "Staff & RBAC Users", icon: Users, path: "/users", role: ["SUPER_ADMIN"] },
       { id: "audit", label: "Audit Logs", icon: ShieldCheck, path: "/audit-logs", role: ["SUPER_ADMIN"] },
       { id: "revenue", label: "Revenue Analytics", icon: Activity, path: "/revenue", role: ["SUPER_ADMIN"] },
     ],
   };
 
+  roleNavItems.HOSPITAL_ADMIN = roleNavItems.ADMIN.map((item) => ({
+    ...item,
+    role: ["HOSPITAL_ADMIN"],
+  }));
+
   const navItems = roleNavItems[normalizedRole] || roleNavItems.DOCTOR;
-  const currentNavItem = navItems.find(item => item.path === currentPath) || navItems[0];
+  // Dynamic routes (for example /encounter/[id]) should keep their parent
+  // navigation item selected instead of falling back to the first item.
+  const isCurrentPath = (path: string) => {
+    if (currentPath === path || currentPath.startsWith(`${path}/`)) return true;
+
+    // The menu uses representative IDs for dynamic pages. Match their stable
+    // top-level route so /encounter/P-2026-1049 still selects Encounter.
+    const currentSection = currentPath.split("/").filter(Boolean)[0];
+    const itemSection = path.split("/").filter(Boolean)[0];
+    return Boolean(currentSection && itemSection && currentSection === itemSection);
+  };
+  const currentNavItem = navItems.find((item) => isCurrentPath(item.path)) || navItems[0];
 
   const handleNavClick = (item: NavItem) => {
     onNavigate(item.path);
@@ -157,6 +186,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
     LAB: "bg-purple-accent",
     LAB_TECH: "bg-purple-accent",
     ADMIN: "bg-dark-slate",
+    HOSPITAL_ADMIN: "bg-dark-slate",
     SUPER_ADMIN: "bg-dark-slate",
   };
 
@@ -205,7 +235,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-lg safe-area-bottom">
         <div className="grid grid-cols-5">
           {navItems.slice(0, 5).map((item) => {
-            const isActive = currentPath === item.path;
+            const isActive = isCurrentPath(item.path);
             return (
               <button
                 key={item.id}
@@ -275,7 +305,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
                 Module Navigation
               </div>
               {navItems.map((item) => {
-                const isActive = currentPath === item.path;
+                const isActive = isCurrentPath(item.path);
                 return (
                   <button
                     key={item.id}
@@ -352,7 +382,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
             Navigation
           </div>
           {navItems.map((item) => {
-            const isActive = currentPath === item.path;
+            const isActive = isCurrentPath(item.path);
             return (
               <button
                 key={item.id}

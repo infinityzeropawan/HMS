@@ -62,7 +62,7 @@ export const HmsAppShell: React.FC<HmsAppShellProps> = ({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 pb-16 lg:pb-0 pt-16 lg:pt-0">
         {/* Top Header Bar for Desktop & Tablet */}
-        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-3 shadow-xs">
+        <header className="hidden lg:block sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-3 shadow-xs">
           <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto w-full">
             {/* Left: Hospital Info & Breadcrumb */}
             <div className="flex items-center gap-3">

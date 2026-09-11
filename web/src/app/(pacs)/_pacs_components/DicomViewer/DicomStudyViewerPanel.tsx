@@ -10,7 +10,7 @@ export const DicomStudyViewerPanel: React.FC<{ studyId: string }> = ({ studyId }
   const [inverted, setInverted] = useState(false);
 
   return (
-    <div className="bg-slate-900 rounded-xl p-4 flex flex-col h-[calc(100vh-140px)] border border-slate-800 text-white">
+    <div className="bg-slate-900 rounded-xl p-3 sm:p-4 flex flex-col min-h-[34rem] lg:h-[calc(100dvh-140px)] border border-slate-800 text-white">
       {/* DICOM Header Bar */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 pb-3 border-b border-slate-800">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -21,15 +21,15 @@ export const DicomStudyViewerPanel: React.FC<{ studyId: string }> = ({ studyId }
           <span className="text-xs text-slate-400 hidden sm:inline">&bull; Patient: Sunil Verma (P-2026-1049) &bull; Modality: Chest X-Ray PA</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <HmsButton size="sm" variant="secondary" onClick={() => setZoomLevel((z) => Math.min(z + 20, 200))} icon={<ZoomIn className="w-3.5 h-3.5" />}>
-            Zoom In ({zoomLevel}%)
+            <span className="hidden sm:inline">Zoom In </span>({zoomLevel}%)
           </HmsButton>
           <HmsButton size="sm" variant="secondary" onClick={() => setZoomLevel((z) => Math.max(z - 20, 60))} icon={<ZoomOut className="w-3.5 h-3.5" />}>
-            Zoom Out
+            <span className="hidden sm:inline">Zoom </span>Out
           </HmsButton>
           <HmsButton size="sm" variant="secondary" onClick={() => setInverted(!inverted)} icon={<Contrast className="w-3.5 h-3.5" />}>
-            Invert ({inverted ? "On" : "Off"})
+            <span className="hidden sm:inline">Invert </span>({inverted ? "On" : "Off"})
           </HmsButton>
         </div>
       </div>

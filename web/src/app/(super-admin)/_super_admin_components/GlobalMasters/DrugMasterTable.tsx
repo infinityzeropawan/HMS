@@ -23,6 +23,12 @@ interface Icd10Entry {
   description: string;
 }
 
+interface TerminologyEntry {
+  id: string;
+  code: string;
+  description: string;
+}
+
 const MOCK_DRUGS: DrugMaster[] = [
   { id: "d-1", drugCode: "MET-500", genericName: "Metformin Hydrochloride", brandName: "Glycomet", composition: "Metformin HCl 500mg", scheduleClass: "H", isControlled: false, hsnCode: "30042019", gstRate: 5, cdscoApproved: true },
   { id: "d-2", drugCode: "AMX-500", genericName: "Amoxicillin", brandName: "Mox", composition: "Amoxicillin 500mg", scheduleClass: "H", isControlled: false, hsnCode: "30041090", gstRate: 5, cdscoApproved: true },
@@ -127,6 +133,39 @@ export function Icd10BrowserTable() {
       />
       <Table<Icd10Entry>
         id="icd10-browser-table"
+        rowKey="id"
+        columns={getIcd10Cols()}
+        dataSource={data}
+        pagination={{ pageSize: 15 }}
+      />
+    </Space>
+  );
+}
+
+export function TerminologyBrowserTable({
+  vocabulary,
+  entries,
+}: {
+  vocabulary: string;
+  entries: TerminologyEntry[];
+}) {
+  const [search, setSearch] = useState("");
+  const data = entries.filter((entry) =>
+    entry.code.toLowerCase().includes(search.toLowerCase()) ||
+    entry.description.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  return (
+    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+      <Input
+        prefix={<SearchOutlined />}
+        placeholder={`Search ${vocabulary} code or description…`}
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        allowClear
+        style={{ maxWidth: 420 }}
+      />
+      <Table<TerminologyEntry>
         rowKey="id"
         columns={getIcd10Cols()}
         dataSource={data}

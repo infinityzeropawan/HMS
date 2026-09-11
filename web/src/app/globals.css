@@ -168,6 +168,40 @@ body {
     radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.03) 0%, transparent 20%);
 }
 
+/* Keep controls usable on narrow touch screens and prevent a single long
+ * label, table cell, or flex child from widening an entire page. */
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+button,
+[role="button"] {
+  max-width: 100%;
+}
+
+.ant-form-item,
+.ant-form-item-control,
+.ant-input-affix-wrapper,
+.ant-picker,
+.ant-select {
+  min-width: 0;
+}
+
+@media (max-width: 639px) {
+  .ant-drawer-content-wrapper {
+    max-width: min(100vw, 100%) !important;
+  }
+
+  .ant-modal {
+    max-width: calc(100vw - 2rem) !important;
+    margin: 0 auto;
+  }
+}
+
 /* Premium Typography System */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;

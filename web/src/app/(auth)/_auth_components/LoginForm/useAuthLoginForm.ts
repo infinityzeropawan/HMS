@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AuthLoginInput } from "../../_auth_schemas/auth_login_schema";
 import { authApiService } from "../../_auth_services/auth_api_service";
 import { useAuthUserStore } from "../../_auth_stores/auth_user_store";
+import { getRoleHomePath } from "../../_auth_constants/auth_redirect";
 
 export function useAuthLoginForm() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -20,10 +23,12 @@ export function useAuthLoginForm() {
       if (response.mfaRequired && response.mfaSessionToken) {
         setMfaChallenge(response.mfaSessionToken);
       } else if (response.user && response.token) {
-        setUserSession({
+        const session = {
           ...response.user,
           token: response.token,
-        });
+        };
+        setUserSession(session);
+        router.replace(getRoleHomePath(session.role));
       }
     } catch (err: unknown) {
       const error = err as Error;

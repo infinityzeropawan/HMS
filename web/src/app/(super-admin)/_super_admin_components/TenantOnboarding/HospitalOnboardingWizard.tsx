@@ -6,7 +6,12 @@ import { Building2, Globe, Mail, Shield } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { TenantOnboardingSchema } from "../../_super_admin_schemas/tenant_schema";
 
-export const HospitalOnboardingWizard: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+interface HospitalOnboardingWizardProps {
+  onClose: () => void;
+  onProvisioned?: (tenant: { hospitalName: string; subdomain: string; licenseTier: string; maxUserSeats: number }) => void;
+}
+
+export const HospitalOnboardingWizard: React.FC<HospitalOnboardingWizardProps> = ({ onClose, onProvisioned }) => {
   const [form] = Form.useForm();
 
   const handleFinish = (values: Record<string, unknown>) => {
@@ -21,6 +26,7 @@ export const HospitalOnboardingWizard: React.FC<{ onClose: () => void }> = ({ on
         isMultiBranch: Boolean(values.isMultiBranch),
       };
       TenantOnboardingSchema.parse(payload);
+      onProvisioned?.(payload);
       message.success(`Hospital Tenant ${payload.hospitalName} (${payload.subdomain}.hms.com) provisioned successfully!`);
       onClose();
     } catch {

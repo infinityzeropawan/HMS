@@ -1,13 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { Table, Tag, Modal } from "antd";
+import { Table, Tag, Modal, message } from "antd";
 import { Plus } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HospitalOnboardingWizard } from "../TenantOnboarding/HospitalOnboardingWizard";
 
 export const SubscriptionManagerTable: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
+  const [tenants, setTenants] = useState([
+    { key: "1", tenantId: "TENANT-001", name: "Apollo Super Speciality Hospital", domain: "apollo.hms.com", tier: "ENTERPRISE", seats: "85 / 100", status: "ACTIVE" },
+    { key: "2", tenantId: "TENANT-002", name: "Fortis Care Heart Institute", domain: "fortis.hms.com", tier: "SUPER_SPECIALTY", seats: "140 / 200", status: "ACTIVE" },
+    { key: "3", tenantId: "TENANT-003", name: "City Diagnostics & OPD Clinic", domain: "citydiag.hms.com", tier: "BASIC", seats: "12 / 15", status: "ACTIVE" },
+  ]);
 
   const columns = [
     { title: "Tenant ID", dataIndex: "tenantId", key: "tenantId" },
@@ -24,18 +29,12 @@ export const SubscriptionManagerTable: React.FC = () => {
     {
       title: "Action",
       key: "action",
-      render: () => (
-        <HmsButton size="sm" variant="secondary">
+      render: (_: unknown, record: { name: string }) => (
+        <HmsButton size="sm" variant="secondary" onClick={() => message.info(`SLA controls opened for ${record.name}.`)}>
           Manage SLA
         </HmsButton>
       ),
     },
-  ];
-
-  const data = [
-    { key: "1", tenantId: "TENANT-001", name: "Apollo Super Speciality Hospital", domain: "apollo.hms.com", tier: "ENTERPRISE", seats: "85 / 100", status: "ACTIVE" },
-    { key: "2", tenantId: "TENANT-002", name: "Fortis Care Heart Institute", domain: "fortis.hms.com", tier: "SUPER_SPECIALTY", seats: "140 / 200", status: "ACTIVE" },
-    { key: "3", tenantId: "TENANT-003", name: "City Diagnostics & OPD Clinic", domain: "citydiag.hms.com", tier: "BASIC", seats: "12 / 15", status: "ACTIVE" },
   ];
 
   return (
@@ -46,10 +45,21 @@ export const SubscriptionManagerTable: React.FC = () => {
         </HmsButton>
       </div>
 
-      <Table columns={columns} dataSource={data} pagination={false} />
+      <Table columns={columns} dataSource={tenants} pagination={false} />
 
       <Modal title="Onboard New Hospital Tenant" open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={640}>
-        <HospitalOnboardingWizard onClose={() => setModalOpen(false)} />
+        <HospitalOnboardingWizard
+          onClose={() => setModalOpen(false)}
+          onProvisioned={(tenant) => setTenants((current) => [{
+            key: `tenant-${Date.now()}`,
+            tenantId: `TENANT-${String(current.length + 1).padStart(3, "0")}`,
+            name: tenant.hospitalName,
+            domain: `${tenant.subdomain}.hms.com`,
+            tier: tenant.licenseTier,
+            seats: `0 / ${tenant.maxUserSeats}`,
+            status: "ACTIVE",
+          }, ...current])}
+        />
       </Modal>
     </>
   );

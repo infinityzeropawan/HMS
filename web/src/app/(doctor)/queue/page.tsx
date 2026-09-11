@@ -143,10 +143,8 @@ export default function DoctorQueuePage() {
             </div>
 
             <div className="mt-5 pt-4 border-t border-slate-100">
-              <Link href="/encounter/ENC-2026-8801">
-                <button className="w-full h-11 bg-primary-teal hover:bg-dark-teal text-white rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs">
-                  <Stethoscope className="w-4 h-4" /> Open Active Encounter
-                </button>
+              <Link href="/encounter/ENC-2026-8801" className="w-full h-11 bg-primary-teal hover:bg-primary-dark-teal text-white rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs">
+                <Stethoscope className="w-4 h-4" /> Open Active Encounter
               </Link>
             </div>
           </div>
