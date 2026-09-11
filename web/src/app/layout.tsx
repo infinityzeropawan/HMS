@@ -47,7 +47,7 @@ export default function RootLayout({
               {/* Global notification bell — visible on every page via portal */}
               <div
                 id="hms-global-notification-anchor"
-                className="fixed top-3 right-3 sm:top-4 sm:right-4 md:top-14 md:right-20 z-1050 flex items-center gap-2"
+                className="fixed top-3 right-3 sm:top-4 sm:right-4 md:top-14 md:right-20 z-[1050] flex items-center gap-2"
               >
                 <HmsNotificationBell />
               </div>

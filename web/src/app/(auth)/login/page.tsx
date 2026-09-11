@@ -27,7 +27,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-primary-light-teal flex flex-col justify-between items-center relative overflow-hidden safe-area-padding safe-area-bottom">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-primary-light-teal flex flex-col justify-between relative overflow-hidden safe-area-padding safe-area-bottom">
       {/* Premium Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Animated gradient orbs */}
@@ -45,8 +45,8 @@ export default function LoginPage() {
       <HmsOfflineBanner />
 
       {/* Main Content - Premium Centering */}
-      <div className="flex-1 flex items-center justify-center w-full px-4 xs:px-5 sm:px-6 z-10 py-10 sm:py-12 md:py-16">
-        <div className="w-full max-w-md xs:max-w-sm sm:max-w-md md:max-w-lg animate-fade-in">
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-full px-4 sm:px-6 z-10 py-8 sm:py-12 md:py-16">
+        <div className="w-full min-w-[280px] max-w-md sm:max-w-md md:max-w-lg animate-fade-in">
           {mfaRequired ? <AuthMfaOtpForm /> : <AuthLoginForm />}
         </div>
       </div>

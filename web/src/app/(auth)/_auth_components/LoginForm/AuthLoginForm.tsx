@@ -13,7 +13,7 @@ export const AuthLoginForm: React.FC = () => {
   const { loading, errorMessage, handleLoginSubmit } = useAuthLoginForm();
 
   return (
-    <div className="w-full bg-white p-5 xs:p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border-0 hover-card animate-fade-in">
+    <div className="w-full min-w-[280px] bg-white p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 hover-card animate-fade-in">
       {/* Premium Header */}
       <div className="text-center mb-6 sm:mb-8">
         <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-primary-teal to-emerald-green mb-4 shadow-lg">

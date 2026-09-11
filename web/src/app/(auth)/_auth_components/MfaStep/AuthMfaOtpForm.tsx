@@ -32,7 +32,7 @@ export const AuthMfaOtpForm: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg border border-slate-100">
+    <div className="w-full min-w-[280px] max-w-md bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-slate-100 animate-fade-in">
       <div className="text-center mb-6">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 mb-3">
           <ShieldCheck className="w-6 h-6" />
