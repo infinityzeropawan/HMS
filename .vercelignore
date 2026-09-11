@@ -1,0 +1,5 @@
+# Vercel Ignore Rules - Ignore Backend, Mobile, and Project Docs
+hms-backend/
+hms_flutter/
+hms-project/
+.agents/
