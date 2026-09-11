@@ -1,7 +1,7 @@
 {
   "name": "HMS Pre-Tool Safety Hooks",
-  "version": "1.0.0",
-  "description": "Pre-tool execution guardrails to block SQL or migration commits missing tenant_id or hospital_id.",
+  "version": "2.0.0",
+  "description": "Pre-tool execution guardrails for backend SQL/migration safety and frontend architecture rule enforcement.",
   "hooks": [
     {
       "id": "block-sql-missing-tenant-id",
@@ -10,6 +10,83 @@
       "rule": "SQL queries and schema definitions on tenant tables MUST include tenant_id and hospital_id.",
       "severity": "ERROR",
       "pattern": "(?i)CREATE\\s+TABLE\\s+(?!tenants|subscription_plans|subscriptions|global_masters_)\\w+\\s*\\((?![\\s\\S]*?tenant_id\\s+UUID)"
+    },
+    {
+      "id": "block-tsx-any-type",
+      "event": "PreToolUse",
+      "match_files": ["**/*.tsx", "**/*.ts"],
+      "rule": "TypeScript `any` type is strictly forbidden. Use `unknown` and narrow with Zod.",
+      "severity": "ERROR",
+      "pattern": ":\\s*any[\\s;,\\)\\[]",
+      "exclude_patterns": ["**/*.api.generated.ts", "**/node_modules/**", "**/*.d.ts"]
+    },
+    {
+      "id": "block-ts-ignore",
+      "event": "PreToolUse",
+      "match_files": ["**/*.tsx", "**/*.ts"],
+      "rule": "@ts-ignore and @ts-nocheck are forbidden. Fix the type error instead.",
+      "severity": "ERROR",
+      "pattern": "@ts-ignore|@ts-nocheck",
+      "exclude_patterns": ["**/node_modules/**", "**/*.d.ts"]
+    },
+    {
+      "id": "block-inline-hex-colors",
+      "event": "PreToolUse",
+      "match_files": ["**/*.tsx", "**/*.jsx"],
+      "rule": "Inline hex colors in JSX are forbidden. Use Tailwind token class names mapped from CSS variables (e.g., `bg-primary-teal` not `bg-[#0D9488]`).",
+      "severity": "ERROR",
+      "pattern": "(className|style)=[\"'{][^\"']*#[0-9A-Fa-f]{3,6}[^\"']*[\"'}]|bg-\\[#[0-9A-Fa-f]{3,6}\\]|text-\\[#[0-9A-Fa-f]{3,6}\\]|border-\\[#[0-9A-Fa-f]{3,6}\\]",
+      "exclude_patterns": ["**/node_modules/**", "**/*.config.*", "**/globals.css"]
+    },
+    {
+      "id": "enforce-use-client-directive",
+      "event": "PreToolUse",
+      "match_files": ["**/app/**/*.tsx"],
+      "rule": "Any .tsx file inside app/ that uses useState, useEffect, useCallback, useMemo, or event handlers MUST have 'use client'; on line 1.",
+      "severity": "WARNING",
+      "pattern": "(useState|useEffect|useCallback|useMemo|useRef|useContext|onClick|onChange|onSubmit)",
+      "require_prefix": "\"use client\";"
+    },
+    {
+      "id": "block-generic-folder-names",
+      "event": "PreToolUse",
+      "match_files": ["**/app/**"],
+      "rule": "Generic folder names `components/`, `helpers/`, `utils/`, `misc/`, `common/` are forbidden inside role-specific route groups. Use module-prefixed names like `reception_components/`, `doctor_utils/`.",
+      "severity": "WARNING",
+      "pattern": "/(components|helpers|utils|misc|common)/",
+      "exclude_patterns": ["**/src/components/ui/**", "**/node_modules/**"]
+    },
+    {
+      "id": "block-api-response-without-zod",
+      "event": "PreToolUse",
+      "match_files": ["**/*.api.ts", "**/api-client.ts"],
+      "rule": "All API response data must be parsed with a Zod schema before returning. Raw `res.data` direct usage without `.parse()` or `.safeParse()` is forbidden.",
+      "severity": "WARNING",
+      "pattern": "return\\s+res\\.data(?!\\s*\\.)|setData\\(res\\.data\\)|setState\\(res\\.data\\)"
+    },
+    {
+      "id": "block-unmasked-aadhaar-render",
+      "event": "PreToolUse",
+      "match_files": ["**/*.tsx", "**/*.jsx"],
+      "rule": "DPDP Act 2023: Aadhaar must never be rendered unmasked. Only `aadhaar_masked` (last 4 digits) may appear in UI. Alert if `aadhaar` field (non-masked) appears in JSX interpolation.",
+      "severity": "ERROR",
+      "pattern": "\\{[^}]*\\.aadhaar(?!_masked)[^}]*\\}|aadhaar_number|aadhaar_full"
+    },
+    {
+      "id": "block-tenant-id-from-url-params",
+      "event": "PreToolUse",
+      "match_files": ["**/*.tsx", "**/*.ts"],
+      "rule": "tenant_id and hospital_id must NEVER be read from URL params or request body for security operations. Extract only from verified JWT claims.",
+      "severity": "ERROR",
+      "pattern": "params\\.(tenant_id|hospital_id)|searchParams\\.(tenant_id|hospital_id)|req\\.body\\.(tenant_id|hospital_id)"
+    },
+    {
+      "id": "block-api-data-in-context",
+      "event": "PreToolUse",
+      "match_files": ["**/*_context/**", "**/*Context.tsx", "**/*Context.ts"],
+      "rule": "React Context must NEVER hold API data, loading states, or error states. Those belong exclusively to TanStack Query. Context is only for theme, sidebar, and locale.",
+      "severity": "WARNING",
+      "pattern": "(isLoading|isError|isFetching|data|error).*useState|useQuery.*Context"
     }
   ]
 }

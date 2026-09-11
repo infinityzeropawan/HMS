@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <title>HMS Responsive Design Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #F8FAFC;
+            color: #0F172A;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            background: #0D9488;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .test-card {
+            background: white;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .test-button {
+            background: #0D9488;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            min-height: 44px;
+            min-width: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .test-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .test-status {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .test-status.pass {
+            background: #F0FDFA;
+            border: 1px solid #059669;
+            color: #065F46;
+        }
+        
+        .test-status.fail {
+            background: #FEF2F2;
+            border: 1px solid #DC2626;
+            color: #991B1B;
+        }
+        
+        @media (max-width: 768px) {
+            .test-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .test-header {
+                padding: 16px;
+            }
+            
+            .test-card {
+                padding: 16px;
+            }
+        }
+        
+        @media (max-width: 375px) {
+            body {
+                padding: 12px;
+            }
+            
+            .test-button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🏥 HMS Responsive Design Test</h1>
+            <p>Test responsive design implementation on different screen sizes</p>
+        </div>
+        
+        <div class="test-grid">
+            <div class="test-card">
+                <h2>Viewport Test</h2>
+                <div class="test-status pass" id="viewport-test">
+                    Checking viewport configuration...
+                </div>
+                <p>Verify viewport meta tag is properly configured for mobile devices.</p>
+            </div>
+            
+            <div class="test-card">
+                <h2>Touch Target Test</h2>
+                <div class="test-status" id="touch-test">
+                    Testing touch targets...
+                </div>
+                <p>All buttons should be at least 44×44px for touch accessibility.</p>
+                <button class="test-button" onclick="testTouch()">Test Button</button>
+                <button class="test-button" style="min-height: 44px; min-width: 44px;">✓ 44px Target</button>
+            </div>
+            
+            <div class="test-card">
+                <h2>Form Input Test</h2>
+                <div class="test-status" id="form-test">
+                    Testing form inputs...
+                </div>
+                <p>Inputs should have proper sizing and font size for mobile.</p>
+                <input type="text" class="test-input" placeholder="Test input field">
+                <input type="password" class="test-input" placeholder="Password field">
+            </div>
+        </div>
+        
+        <div class="test-grid">
+            <div class="test-card">
+                <h2>Responsive Grid Test</h2>
+                <div class="test-status" id="grid-test">
+                    Testing responsive grid...
+                </div>
+                <p>This grid should rearrange based on screen size.</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 15px;">
+                    <div style="background: #F0FDFA; padding: 10px; border-radius: 4px; text-align: center;">Item 1</div>
+                    <div style="background: #F0FDFA; padding: 10px; border-radius: 4px; text-align: center;">Item 2</div>
+                    <div style="background: #F0FDFA; padding: 10px; border-radius: 4px; text-align: center;">Item 3</div>
+                    <div style="background: #F0FDFA; padding: 10px; border-radius: 4px; text-align: center;">Item 4</div>
+                </div>
+            </div>
+            
+            <div class="test-card">
+                <h2>Screen Size Detection</h2>
+                <div class="test-status" id="screen-test">
+                    Detecting screen size...
+                </div>
+                <p>Current viewport width: <span id="screen-width">--</span>px</p>
+                <p>Breakpoint: <span id="breakpoint">--</span></p>
+            </div>
+            
+            <div class="test-card">
+                <h2>Mobile Features Test</h2>
+                <div class="test-status" id="mobile-test">
+                    Testing mobile features...
+                </div>
+                <p>Check for mobile-specific features and compatibility.</p>
+                <div style="margin-top: 15px;">
+                    <div id="touch-support">Touch events: Testing...</div>
+                    <div id="safe-area">Safe area: Testing...</div>
+                    <div id="font-size">Font size: Testing...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test viewport configuration
+        function testViewport() {
+            const viewport = document.querySelector('meta[name="viewport"]');
+            if (viewport) {
+                const content = viewport.getAttribute('content');
+                const hasDeviceWidth = content.includes('device-width');
+                const hasInitialScale = content.includes('initial-scale=1');
+                const hasUserScalable = content.includes('user-scalable');
+                
+                if (hasDeviceWidth && hasInitialScale && hasUserScalable) {
+                    document.getElementById('viewport-test').innerHTML = '✅ Viewport properly configured';
+                    document.getElementById('viewport-test').className = 'test-status pass';
+                    return true;
+                }
+            }
+            document.getElementById('viewport-test').innerHTML = '❌ Viewport configuration issues';
+            document.getElementById('viewport-test').className = 'test-status fail';
+            return false;
+        }
+        
+        // Test touch targets
+        function testTouch() {
+            const buttons = document.querySelectorAll('.test-button');
+            let allPass = true;
+            
+            buttons.forEach(button => {
+                const rect = button.getBoundingClientRect();
+                const height = rect.height;
+                const width = rect.width;
+                
+                if (height < 44 || width < 44) {
+                    allPass = false;
+                }
+            });
+            
+            if (allPass) {
+                document.getElementById('touch-test').innerHTML = '✅ All touch targets ≥44×44px';
+                document.getElementById('touch-test').className = 'test-status pass';
+            } else {
+                document.getElementById('touch-test').innerHTML = '❌ Some touch targets too small';
+                document.getElementById('touch-test').className = 'test-status fail';
+            }
+        }
+        
+        // Test form inputs
+        function testForms() {
+            const inputs = document.querySelectorAll('.test-input');
+            let allPass = true;
+            
+            inputs.forEach(input => {
+                const fontSize = window.getComputedStyle(input).fontSize;
+                const fontSizeNum = parseInt(fontSize);
+                
+                if (fontSizeNum < 16) {
+                    allPass = false;
+                }
+            });
+            
+            if (allPass) {
+                document.getElementById('form-test').innerHTML = '✅ Form inputs properly sized';
+                document.getElementById('form-test').className = 'test-status pass';
+            } else {
+                document.getElementById('form-test').innerHTML = '❌ Form input font size too small';
+                document.getElementById('form-test').className = 'test-status fail';
+            }
+        }
+        
+        // Test responsive grid
+        function testGrid() {
+            const container = document.querySelector('.test-grid');
+            const style = window.getComputedStyle(container);
+            const gridTemplate = style.gridTemplateColumns;
+            
+            if (gridTemplate.includes('repeat(auto-fit') || gridTemplate.includes('minmax')) {
+                document.getElementById('grid-test').innerHTML = '✅ Responsive grid working';
+                document.getElementById('grid-test').className = 'test-status pass';
+                return true;
+            } else {
+                document.getElementById('grid-test').innerHTML = '❌ Grid may not be responsive';
+                document.getElementById('grid-test').className = 'test-status fail';
+                return false;
+            }
+        }
+        
+        // Update screen size info
+        function updateScreenInfo() {
+            const width = window.innerWidth;
+            document.getElementById('screen-width').textContent = width;
+            
+            let breakpoint = 'xs';
+            if (width >= 1440) breakpoint = '2xl';
+            else if (width >= 1280) breakpoint = 'xl';
+            else if (width >= 1024) breakpoint = 'lg';
+            else if (width >= 768) breakpoint = 'md';
+            else if (width >= 640) breakpoint = 'sm';
+            
+            document.getElementById('breakpoint').textContent = breakpoint;
+            document.getElementById('screen-test').innerHTML = `✅ Screen: ${width}px (${breakpoint})`;
+            document.getElementById('screen-test').className = 'test-status pass';
+        }
+        
+        // Test mobile features
+        function testMobileFeatures() {
+            // Touch support
+            const touchSupport = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            document.getElementById('touch-support').textContent = `Touch events: ${touchSupport ? '✅ Supported' : '❌ Not supported'}`;
+            
+            // Safe area support
+            const safeAreaSupport = CSS.supports('padding-top', 'env(safe-area-inset-top)');
+            document.getElementById('safe-area').textContent = `Safe area: ${safeAreaSupport ? '✅ Supported' : '❌ Not supported'}`;
+            
+            // Font size test
+            const bodyFontSize = window.getComputedStyle(document.body).fontSize;
+            document.getElementById('font-size').textContent = `Body font size: ${bodyFontSize}`;
+            
+            if (parseInt(bodyFontSize) >= 16) {
+                document.getElementById('mobile-test').innerHTML = '✅ Mobile features properly configured';
+                document.getElementById('mobile-test').className = 'test-status pass';
+            } else {
+                document.getElementById('mobile-test').innerHTML = '⚠️ Check mobile configuration';
+                document.getElementById('mobile-test').className = 'test-status';
+            }
+        }
+        
+        // Run all tests
+        function runAllTests() {
+            testViewport();
+            testTouch();
+            testForms();
+            testGrid();
+            updateScreenInfo();
+            testMobileFeatures();
+        }
+        
+        // Initialize
+        window.addEventListener('load', runAllTests);
+        window.addEventListener('resize', updateScreenInfo);
+        
+        // Initial run
+        runAllTests();
+    </script>
+</body>
+</html>
