@@ -1,30 +1,29 @@
 "use client";
 
-import React from "react";
-import { Form, Input, Alert, Typography } from "antd";
-import { Lock, User, Building2, Shield, Smartphone } from "lucide-react";
+import React, { useState } from "react";
+import { Form, Input, Alert } from "antd";
+import { Lock, User, Building2, Shield, Info, Key } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { useAuthLoginForm } from "./useAuthLoginForm";
 import { AuthLoginInput } from "../../_auth_schemas/auth_login_schema";
 
-const { Text } = Typography;
-
 export const AuthLoginForm: React.FC = () => {
   const { loading, errorMessage, handleLoginSubmit } = useAuthLoginForm();
+  const [showDemo, setShowDemo] = useState(false);
 
   return (
-    <div className="w-full min-w-[280px] bg-white p-6 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-200 animate-fade-in">
-      {/* Header */}
-      <div className="text-center mb-6 sm:mb-8">
-        <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary-teal mb-4 shadow-md text-white">
-          <Building2 className="w-7 h-7 sm:w-8 sm:h-8" />
+    <div className="w-full bg-white p-5 sm:p-7 rounded-2xl shadow-xl border border-slate-200 animate-fade-in my-auto">
+      {/* Sleek Compact Header */}
+      <div className="text-center mb-5">
+        <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-primary-teal text-white mb-2 shadow-sm">
+          <Building2 className="w-6 h-6" />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 tracking-tight">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">
           Hospital Management System
         </h2>
-        <Text type="secondary" className="text-sm sm:text-base text-slate-600">
-          Secure login for healthcare professionals
-        </Text>
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          Enterprise Portal Sign In
+        </p>
       </div>
 
       {/* Error Alert */}
@@ -34,7 +33,7 @@ export const AuthLoginForm: React.FC = () => {
           description={errorMessage}
           type="error"
           showIcon
-          className="mb-5 sm:mb-6 rounded-xl border border-rose-200 bg-rose-50 text-rose-900"
+          className="mb-4 rounded-lg border border-rose-200 bg-rose-50 text-rose-900 text-xs"
           icon={<Shield className="w-4 h-4 text-rose-600" />}
         />
       )}
@@ -45,15 +44,11 @@ export const AuthLoginForm: React.FC = () => {
         onFinish={handleLoginSubmit}
         initialValues={{ tenantId: "TENANT-001" }}
         size="large"
-        className="space-y-4 sm:space-y-5"
+        className="space-y-3.5"
       >
         {/* Hospital ID Field */}
         <Form.Item
-          label={
-            <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-slate-500" /> Hospital / Tenant ID
-            </span>
-          }
+          label={<span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Hospital / Tenant ID</span>}
           name="tenantId"
           rules={[{ required: true, message: "Hospital ID is required" }]}
           className="mb-0"
@@ -62,52 +57,44 @@ export const AuthLoginForm: React.FC = () => {
             prefix={<Building2 className="w-4 h-4 text-slate-400 mr-1" />}
             placeholder="e.g., TENANT-001"
             size="large"
-            className="rounded-lg"
+            className="rounded-lg text-sm"
             allowClear
           />
         </Form.Item>
 
         {/* Username Field */}
         <Form.Item
-          label={
-            <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <User className="w-4 h-4 text-slate-500" /> Staff ID / Email
-            </span>
-          }
+          label={<span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Staff ID / Email</span>}
           name="username"
           rules={[{ required: true, message: "Username is required" }]}
           className="mb-0"
         >
           <Input
             prefix={<User className="w-4 h-4 text-slate-400 mr-1" />}
-            placeholder="username@hospital.com"
+            placeholder="doctor, reception, admin, etc."
             size="large"
-            className="rounded-lg"
+            className="rounded-lg text-sm"
             allowClear
           />
         </Form.Item>
 
         {/* Password Field */}
         <Form.Item
-          label={
-            <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <Lock className="w-4 h-4 text-slate-500" /> Password
-            </span>
-          }
+          label={<span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</span>}
           name="password"
           rules={[{ required: true, message: "Password is required" }]}
           className="mb-0"
         >
           <Input.Password
             prefix={<Lock className="w-4 h-4 text-slate-400 mr-1" />}
-            placeholder="Enter your password"
+            placeholder="Enter password"
             size="large"
-            className="rounded-lg"
+            className="rounded-lg text-sm"
           />
         </Form.Item>
 
         {/* Submit Button */}
-        <Form.Item className="pt-2 mb-0">
+        <Form.Item className="pt-1 mb-0">
           <HmsButton
             variant="primary"
             htmlType="submit"
@@ -115,49 +102,51 @@ export const AuthLoginForm: React.FC = () => {
             fullWidth
             loading={loading}
             loadingText="Authenticating..."
-            className="h-12 text-base font-semibold rounded-xl shadow-md hover:shadow-lg transition-all"
+            className="h-11 text-sm font-bold rounded-lg shadow-sm hover:shadow-md transition-all"
           >
-            Sign In to Dashboard
+            Sign In to Workspace
           </HmsButton>
         </Form.Item>
       </Form>
 
-      {/* Demo Credentials Section */}
-      <div className="mt-6 pt-5 border-t border-slate-200">
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <Smartphone className="w-4 h-4 text-slate-500" />
-          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Demo Credentials</span>
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-center">
-          <div className="p-3 bg-primary-light-teal rounded-xl border border-primary-teal/20">
-            <span className="text-xs font-semibold text-primary-teal mb-1 block">Doctor Role</span>
-            <div className="font-mono text-xs text-slate-800 font-semibold">
-              doctor / doctor123
+      {/* Toggle Demo Credentials Bar */}
+      <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => setShowDemo(!showDemo)}
+          className="flex items-center justify-between w-full text-xs font-semibold text-slate-600 hover:text-primary-teal transition-colors py-1 cursor-pointer"
+        >
+          <span className="flex items-center gap-1.5">
+            <Key className="w-3.5 h-3.5 text-primary-teal" /> Demo Accounts Quick Reference
+          </span>
+          <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-mono">
+            {showDemo ? "Hide ▲" : "Show Demo Logins ▼"}
+          </span>
+        </button>
+
+        {showDemo && (
+          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2 animate-fade-in">
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="p-2 bg-white rounded border border-slate-200">
+                <span className="font-semibold text-primary-teal block text-[11px]">Doctor</span>
+                <code className="text-[10px] text-slate-700 font-mono">doctor / doctor123</code>
+              </div>
+              <div className="p-2 bg-white rounded border border-slate-200">
+                <span className="font-semibold text-blue-600 block text-[11px]">Reception</span>
+                <code className="text-[10px] text-slate-700 font-mono">reception / rec123</code>
+              </div>
+            </div>
+            <div className="text-[10px] text-slate-500 text-center pt-1 border-t border-slate-200/60">
+              Other logins: <code className="font-mono text-slate-700">nurse/nurse123</code> &bull; <code className="font-mono text-slate-700">billing/bill123</code> &bull; <code className="font-mono text-slate-700">admin/admin123</code>
             </div>
           </div>
-          
-          <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-            <span className="text-xs font-semibold text-blue-700 mb-1 block">Reception Role</span>
-            <div className="font-mono text-xs text-slate-800 font-semibold">
-              reception / rec123
-            </div>
-          </div>
-        </div>
-        
-        <p className="text-xs text-slate-500 text-center mt-3 leading-relaxed">
-          Other demo logins: <code className="font-mono text-slate-700 font-bold">nurse/nurse123</code> &bull; <code className="font-mono text-slate-700 font-bold">billing/bill123</code> &bull; <code className="font-mono text-slate-700 font-bold">pharmacy/pharma123</code> &bull; <code className="font-mono text-slate-700 font-bold">admin/admin123</code>
-        </p>
+        )}
       </div>
 
       {/* Security Note */}
-      <div className="mt-5 p-3 bg-slate-50 rounded-xl border border-slate-200">
-        <div className="flex items-start gap-2">
-          <Shield className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
-          <span className="text-xs text-slate-600 leading-snug">
-            <strong>HIPAA & DPDP Compliant:</strong> Multi-tenant isolation active. All authentication attempts are logged.
-          </span>
-        </div>
+      <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
+        <Info className="w-3.5 h-3.5 text-slate-400" />
+        <span>DPDP 2023 & ABDM Compliant &bull; Multi-Tenant</span>
       </div>
     </div>
   );
