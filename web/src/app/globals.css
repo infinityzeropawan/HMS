@@ -69,13 +69,16 @@
   --text-5xl: 3rem;        /* 48px - display */
 
   /* Premium Spacing Scale */
-  --spacing-xs: 0.25rem;   /* 4px */
-  --spacing-sm: 0.5rem;    /* 8px */
-  --spacing-md: 1rem;      /* 16px */
-  --spacing-lg: 1.5rem;    /* 24px */
-  --spacing-xl: 2rem;      /* 32px */
-  --spacing-2xl: 3rem;     /* 48px */
-  --spacing-3xl: 4rem;     /* 64px */
+  /* `--spacing-*` is a reserved Tailwind namespace.  Defining semantic
+   * names there makes utilities such as `max-w-md` resolve to 1rem instead
+   * of Tailwind's 28rem container width. */
+  --hms-space-xs: 0.25rem;   /* 4px */
+  --hms-space-sm: 0.5rem;    /* 8px */
+  --hms-space-md: 1rem;      /* 16px */
+  --hms-space-lg: 1.5rem;    /* 24px */
+  --hms-space-xl: 2rem;      /* 32px */
+  --hms-space-2xl: 3rem;     /* 48px */
+  --hms-space-3xl: 4rem;     /* 64px */
 
   /* Touch-friendly Sizing (WCAG 2.1) */
   --size-touch-min: 44px;     /* Minimum touch target */
@@ -252,21 +255,21 @@ h3 {
   width: 100%;
   margin-left: auto;
   margin-right: auto;
-  padding-left: var(--spacing-md);
-  padding-right: var(--spacing-md);
+  padding-left: var(--hms-space-md);
+  padding-right: var(--hms-space-md);
 }
 
 @media (min-width: 480px) {
   .container {
-    padding-left: var(--spacing-lg);
-    padding-right: var(--spacing-lg);
+    padding-left: var(--hms-space-lg);
+    padding-right: var(--hms-space-lg);
   }
 }
 
 @media (min-width: 768px) {
   .container {
-    padding-left: var(--spacing-xl);
-    padding-right: var(--spacing-xl);
+    padding-left: var(--hms-space-xl);
+    padding-right: var(--hms-space-xl);
   }
 }
 
@@ -397,16 +400,16 @@ section {
 /* Premium Safe Area Utility Classes */
 @supports (padding: max(0px)) {
   .safe-area-padding {
-    padding-left: max(var(--spacing-md), env(safe-area-inset-left));
-    padding-right: max(var(--spacing-md), env(safe-area-inset-right));
+    padding-left: max(var(--hms-space-md), env(safe-area-inset-left));
+    padding-right: max(var(--hms-space-md), env(safe-area-inset-right));
   }
   
   .safe-area-bottom {
-    padding-bottom: max(var(--spacing-md), env(safe-area-inset-bottom));
+    padding-bottom: max(var(--hms-space-md), env(safe-area-inset-bottom));
   }
   
   .safe-area-top {
-    padding-top: max(var(--spacing-md), env(safe-area-inset-top));
+    padding-top: max(var(--hms-space-md), env(safe-area-inset-top));
   }
 }
 
@@ -565,11 +568,11 @@ img {
 
 /* Premium List Styling */
 ul, ol {
-  padding-left: var(--spacing-lg);
+  padding-left: var(--hms-space-lg);
 }
 
 li {
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--hms-space-sm);
 }
 
 /* Premium HR Styling */
@@ -577,5 +580,5 @@ hr {
   border: 0;
   height: 1px;
   background: var(--color-slate-200);
-  margin: var(--spacing-xl) 0;
+  margin: var(--hms-space-xl) 0;
 }
