@@ -52,12 +52,21 @@ export const useAuthUserStore = create<AuthState>()(
           mfaRequired: true,
           mfaSessionToken: sessionToken,
         }),
-      logout: () =>
+      logout: () => {
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.removeItem("hms_user_auth_session");
+            sessionStorage.clear();
+          } catch {
+            /* ignore storage errors */
+          }
+        }
         set({
           user: null,
           mfaRequired: false,
           mfaSessionToken: null,
-        }),
+        });
+      },
     }),
     {
       name: "hms_user_auth_session",

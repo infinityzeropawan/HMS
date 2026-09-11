@@ -37,21 +37,22 @@ export default function ReceptionDashboard() {
   ];
 
   return (
-    <HmsAppShell title="Reception OPD Dashboard">
+    <HmsAppShell title="Reception Desk Console">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t.appTitle}</h1>
-            <p className="text-sm text-slate-500 mt-1">Patient Check-in, OPD Registration & Queue Dispatch</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">OPD Patient Dispatch & Check-in</h1>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Real-time OPD Registrations, Token Queue & Appointments</p>
           </div>
-          <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex flex-wrap gap-2.5 items-center">
             <Link href="/patients/register">
-              <HmsButton variant="emerald" icon={<UserPlus className="w-4 h-4" />}>
+              <HmsButton variant="emerald" size="md" icon={<UserPlus className="w-4 h-4" />}>
                 {t.registerPatient}
               </HmsButton>
             </Link>
             <HmsButton
               variant="primary"
+              size="md"
               icon={<Calendar className="w-4 h-4" />}
               onClick={() => setBookingDrawerOpen(true)}
             >
@@ -60,7 +61,7 @@ export default function ReceptionDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <HmsCard elevated>
             <div className="flex items-center justify-between">
               <div>
@@ -94,7 +95,7 @@ export default function ReceptionDashboard() {
 
         <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs overflow-x-auto">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-            <h2 className="text-lg font-bold text-slate-800">OPD Live Queue</h2>
+            <h2 className="text-base sm:text-lg font-bold text-slate-800">OPD Live Queue</h2>
             <Input
               prefix={<Search className="w-4 h-4 text-slate-400" />}
               placeholder={t.searchPatient}
