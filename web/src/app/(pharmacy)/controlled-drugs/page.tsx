@@ -1,18 +1,24 @@
 "use client";
-import { Alert, Space, Typography } from "antd";
+
+import React from "react";
+import { Alert } from "antd";
 import { ControlledDrugRegisterTable } from "@/app/(pharmacy)/_pharmacy_components/ControlledDrugRegister/ControlledDrugRegisterTable";
+import { ShieldCheck } from "lucide-react";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 
 export default function ControlledDrugsPage() {
   return (
-    <main style={{ padding: 24 }}>
-      <Space direction="vertical" size={16} style={{ width: "100%" }}>
-        <div>
-          <Typography.Title level={3} style={{ margin: 0 }}>
-            Controlled Drug Register
-          </Typography.Title>
-          <Typography.Paragraph type="secondary" style={{ margin: "4px 0 0" }}>
-            Schedule H / H1 / X dispensing log — CDSCO Regulatory Compliance
-          </Typography.Paragraph>
+    <HmsAppShell title="Controlled Drug Register (Schedule H/H1/X)">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="w-6 h-6 text-rose-600" /> Controlled Drug Register
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Schedule H / H1 / X dispensing log — CDSCO Regulatory Compliance
+            </p>
+          </div>
         </div>
 
         <Alert
@@ -20,11 +26,13 @@ export default function ControlledDrugsPage() {
           showIcon
           message="Regulatory Notice"
           description="This register is governed by the Drugs and Cosmetics Act, 1940 (Schedule H, H1 & X). All entries are immutable. Tampering with this register is a criminal offence under Section 27 of the Act."
-          style={{ borderRadius: 8 }}
+          className="rounded-xl border-rose-200"
         />
 
-        <ControlledDrugRegisterTable />
-      </Space>
-    </main>
+        <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs">
+          <ControlledDrugRegisterTable />
+        </div>
+      </div>
+    </HmsAppShell>
   );
 }

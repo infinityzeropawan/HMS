@@ -5,10 +5,9 @@ import { Table, Tag, Input } from "antd";
 import { UserPlus, Calendar, Search, Users, Activity, Clock } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
-import { HmsLanguageSwitcher } from "@/common_components/HmsLanguageSwitcher/HmsLanguageSwitcher";
-import { HmsHighContrastToggle } from "@/common_components/HmsHighContrastToggle/HmsHighContrastToggle";
 import { AppointmentBookingDrawer } from "../_reception_components/AppointmentBooking/AppointmentBookingDrawer";
 import { useI18n } from "@/i18n/_i18n_context/I18nContext";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import Link from "next/link";
 
 export default function ReceptionDashboard() {
@@ -38,78 +37,78 @@ export default function ReceptionDashboard() {
   ];
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t.appTitle}</h1>
-          <p className="text-sm text-slate-500">Patient Check-in, OPD Registration & Queue Dispatch</p>
-        </div>
-        <div className="flex gap-3 items-center">
-          <HmsLanguageSwitcher />
-          <HmsHighContrastToggle />
-          <Link href="/patients/register">
-            <HmsButton type="primary" variant="emerald" icon={<UserPlus className="w-4 h-4" />}>
-              {t.registerPatient}
+    <HmsAppShell title="Reception OPD Dashboard">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t.appTitle}</h1>
+            <p className="text-sm text-slate-500 mt-1">Patient Check-in, OPD Registration & Queue Dispatch</p>
+          </div>
+          <div className="flex flex-wrap gap-3 items-center">
+            <Link href="/patients/register">
+              <HmsButton variant="emerald" icon={<UserPlus className="w-4 h-4" />}>
+                {t.registerPatient}
+              </HmsButton>
+            </Link>
+            <HmsButton
+              variant="primary"
+              icon={<Calendar className="w-4 h-4" />}
+              onClick={() => setBookingDrawerOpen(true)}
+            >
+              Book Appointment
             </HmsButton>
-          </Link>
-          <HmsButton
-            type="primary"
-            icon={<Calendar className="w-4 h-4" />}
-            onClick={() => setBookingDrawerOpen(true)}
-          >
-            Book Appointment
-          </HmsButton>
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <HmsCard elevated>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-500 uppercase font-semibold">Today&apos;s Registrations</p>
-              <h3 className="text-2xl font-bold text-teal-700 mt-1">24</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <HmsCard elevated>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-500 uppercase font-semibold">Today&apos;s Registrations</p>
+                <h3 className="text-2xl font-bold text-teal-700 mt-1">24</h3>
+              </div>
+              <Users className="w-8 h-8 text-teal-500" />
             </div>
-            <Users className="w-8 h-8 text-teal-500" />
-          </div>
-        </HmsCard>
+          </HmsCard>
 
-        <HmsCard elevated>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-500 uppercase font-semibold">OPD Waiting Queue</p>
-              <h3 className="text-2xl font-bold text-amber-600 mt-1">12</h3>
+          <HmsCard elevated>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-500 uppercase font-semibold">OPD Waiting Queue</p>
+                <h3 className="text-2xl font-bold text-amber-600 mt-1">12</h3>
+              </div>
+              <Clock className="w-8 h-8 text-amber-500" />
             </div>
-            <Clock className="w-8 h-8 text-amber-500" />
-          </div>
-        </HmsCard>
+          </HmsCard>
 
-        <HmsCard elevated>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-500 uppercase font-semibold">In Consultation</p>
-              <h3 className="text-2xl font-bold text-emerald-600 mt-1">5</h3>
+          <HmsCard elevated>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-500 uppercase font-semibold">In Consultation</p>
+                <h3 className="text-2xl font-bold text-emerald-600 mt-1">5</h3>
+              </div>
+              <Activity className="w-8 h-8 text-emerald-500" />
             </div>
-            <Activity className="w-8 h-8 text-emerald-500" />
-          </div>
-        </HmsCard>
-      </div>
-
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold text-slate-800">OPD Live Queue</h2>
-          <Input
-            prefix={<Search className="w-4 h-4 text-slate-400" />}
-            placeholder={t.searchPatient}
-            className="w-72"
-          />
+          </HmsCard>
         </div>
-        <Table columns={columns} dataSource={data} pagination={false} />
-      </div>
 
-      <AppointmentBookingDrawer
-        open={bookingDrawerOpen}
-        onClose={() => setBookingDrawerOpen(false)}
-      />
-    </div>
+        <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs overflow-x-auto">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+            <h2 className="text-lg font-bold text-slate-800">OPD Live Queue</h2>
+            <Input
+              prefix={<Search className="w-4 h-4 text-slate-400" />}
+              placeholder={t.searchPatient}
+              className="w-full sm:w-72"
+            />
+          </div>
+          <Table columns={columns} dataSource={data} pagination={false} />
+        </div>
+
+        <AppointmentBookingDrawer
+          open={bookingDrawerOpen}
+          onClose={() => setBookingDrawerOpen(false)}
+        />
+      </div>
+    </HmsAppShell>
   );
 }

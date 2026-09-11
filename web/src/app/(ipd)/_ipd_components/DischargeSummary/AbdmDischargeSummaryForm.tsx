@@ -48,7 +48,7 @@ export const AbdmDischargeSummaryForm: React.FC<{ ipdNo: string }> = ({ ipdNo })
 
   return (
     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-6 pb-4 border-b border-slate-100">
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <FileCheck className="w-5 h-5 text-teal-600" /> ABDM M3 Discharge Summary Builder

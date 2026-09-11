@@ -19,7 +19,7 @@ const SEED_NOTIFICATIONS: HmsNotification[] = [
     title: "Critical Lab Value — Hb 5.8 g/dL",
     body: "Patient Ramesh Kumar has a critically low haemoglobin. Immediate review required.",
     status: "unread",
-    createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    createdAt: '2026-09-11T23:55:00.000Z',
   },
   {
     id: "n-002",
@@ -33,7 +33,7 @@ const SEED_NOTIFICATIONS: HmsNotification[] = [
     title: "MAR Due — Ward B, Bed 12",
     body: "Amoxicillin 500mg dose due in 10 minutes for Priya Sharma.",
     status: "unread",
-    createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+    createdAt: '2026-09-11T23:50:00.000Z',
   },
   {
     id: "n-003",
@@ -47,8 +47,8 @@ const SEED_NOTIFICATIONS: HmsNotification[] = [
     title: "Appointment Confirmed — Dr. Nair",
     body: "SMS sent to Arjun Mehta confirming OPD appointment at 11:00 AM.",
     status: "delivered",
-    sentAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    sentAt: '2026-09-11T23:30:00.000Z',
+    createdAt: '2026-09-11T23:30:00.000Z',
   },
   {
     id: "n-004",
@@ -60,7 +60,7 @@ const SEED_NOTIFICATIONS: HmsNotification[] = [
     title: "Reorder Alert — Metformin 500mg",
     body: "Stock level below reorder threshold (12 strips remaining). Raise PO immediately.",
     status: "unread",
-    createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+    createdAt: '2026-09-11T23:15:00.000Z',
   },
   {
     id: "n-005",
@@ -72,8 +72,8 @@ const SEED_NOTIFICATIONS: HmsNotification[] = [
     title: "Discharge Summary — Bed 7, Ward A",
     body: "Dr. Verma has signed the discharge summary for IPD patient Sunita Patel.",
     status: "read",
-    readAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    createdAt: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+    readAt: '2026-09-11T23:00:00.000Z',
+    createdAt: '2026-09-11T22:30:00.000Z',
   },
   {
     id: "n-006",
@@ -85,8 +85,8 @@ const SEED_NOTIFICATIONS: HmsNotification[] = [
     title: "WhatsApp Reminder Sent",
     body: "Appointment reminder sent via WhatsApp to Deepak Singh for tomorrow's follow-up.",
     status: "sent",
-    sentAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    sentAt: '2026-09-11T22:00:00.000Z',
+    createdAt: '2026-09-11T22:00:00.000Z',
   },
   {
     id: "n-007",
@@ -98,7 +98,7 @@ const SEED_NOTIFICATIONS: HmsNotification[] = [
     title: "OT-2 Starting in 15 mins",
     body: "Appendectomy for patient Kavita Rao is scheduled in OT-2 at 14:00. Pre-op checklist pending.",
     status: "unread",
-    createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    createdAt: '2026-09-11T23:55:00.000Z',
   },
   {
     id: "n-008",
@@ -110,7 +110,7 @@ const SEED_NOTIFICATIONS: HmsNotification[] = [
     title: "TPA Query Raised — Claim #TPA-2024-0891",
     body: "Star Health Insurance raised a query on claim #TPA-2024-0891. Documents required within 48 hours.",
     status: "unread",
-    createdAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+    createdAt: '2026-09-11T23:40:00.000Z',
   },
 ];
 

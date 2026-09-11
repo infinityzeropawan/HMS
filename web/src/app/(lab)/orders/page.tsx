@@ -2,11 +2,14 @@
 
 import React from "react";
 import { LabResultForm } from "../_lab_components/ResultEntry/LabResultForm";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 
 export default function LabOrdersPage() {
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
-      <LabResultForm />
-    </div>
+    <HmsAppShell title="Laboratory Orders & Results Desk">
+      <div className="max-w-7xl mx-auto">
+        <LabResultForm />
+      </div>
+    </HmsAppShell>
   );
 }

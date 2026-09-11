@@ -12,16 +12,16 @@ export const DicomStudyViewerPanel: React.FC<{ studyId: string }> = ({ studyId }
   return (
     <div className="bg-slate-900 rounded-xl p-4 flex flex-col h-[calc(100vh-140px)] border border-slate-800 text-white">
       {/* DICOM Header Bar */}
-      <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 pb-3 border-b border-slate-800">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <Tag color="purple" icon={<Layers className="w-3.5 h-3.5 inline mr-1" />}>
             PACS DICOM WEB VIEWER
           </Tag>
           <span className="text-xs text-slate-300 font-mono">Study ID: {studyId}</span>
-          <span className="text-xs text-slate-400">&bull; Patient: Sunil Verma (P-2026-1049) &bull; Modality: Chest X-Ray PA</span>
+          <span className="text-xs text-slate-400 hidden sm:inline">&bull; Patient: Sunil Verma (P-2026-1049) &bull; Modality: Chest X-Ray PA</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <HmsButton size="sm" variant="secondary" onClick={() => setZoomLevel((z) => Math.min(z + 20, 200))} icon={<ZoomIn className="w-3.5 h-3.5" />}>
             Zoom In ({zoomLevel}%)
           </HmsButton>

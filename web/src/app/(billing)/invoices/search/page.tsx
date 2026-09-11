@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Input, Select, Table, Tag, Modal, message } from "antd";
 import { Search, Receipt, Printer, User, Calendar } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 
 interface InvoiceRecord {
   invoiceNumber: string;
@@ -38,11 +39,11 @@ const MOCK_INVOICES: InvoiceRecord[] = [
     cgstAmount: 210,
     sgstAmount: 210,
     totalAmount: 3920,
-    createdAt: "2026-09-11T11:45:00Z",
+    createdAt: "2026-09-11T11:15:00Z",
   },
   {
     invoiceNumber: "INV-2026-01003",
-    patientUhid: "P-2026-1058",
+    patientUhid: "P-2026-1055",
     patientName: "Ramesh Kumar",
     paymentMode: "INSURANCE_TPA",
     subtotal: 8200,
@@ -52,6 +53,19 @@ const MOCK_INVOICES: InvoiceRecord[] = [
     createdAt: "2026-09-10T16:15:00Z",
   },
 ];
+
+const getTagColor = (mode: string) => {
+  switch (mode) {
+    case "UPI":
+      return "cyan";
+    case "CARD":
+      return "blue";
+    case "INSURANCE_TPA":
+      return "purple";
+    default:
+      return "gold";
+  }
+};
 
 export default function InvoiceSearchPage() {
   const [invoices, setInvoices] = useState<InvoiceRecord[]>(MOCK_INVOICES);
@@ -112,9 +126,7 @@ export default function InvoiceSearchPage() {
       dataIndex: "paymentMode",
       key: "paymentMode",
       render: (mode: string) => (
-        <Tag color={mode === "UPI" ? "cyan" : mode === "CARD" ? "blue" : mode === "INSURANCE_TPA" ? "purple" : "gold"}>
-          {mode}
-        </Tag>
+        <Tag color={getTagColor(mode)}>{mode}</Tag>
       ),
     },
     {
@@ -124,15 +136,21 @@ export default function InvoiceSearchPage() {
       render: (amt: number) => <span className="font-bold text-slate-900">₹{amt.toFixed(2)}</span>,
     },
     {
-      title: "Action",
-      key: "action",
-      render: (_: unknown, rec: InvoiceRecord) => (
+      title: "Date",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      render: (dt: string) => <span className="text-xs text-slate-500">{new Date(dt).toLocaleDateString()}</span>,
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_: unknown, record: InvoiceRecord) => (
         <div className="flex gap-2">
-          <HmsButton size="sm" variant="secondary" onClick={() => setSelectedInvoice(rec)}>
+          <HmsButton size="sm" variant="secondary" onClick={() => setSelectedInvoice(record)}>
             View
           </HmsButton>
-          <HmsButton size="sm" variant="emerald" icon={<Printer className="w-3.5 h-3.5" />} onClick={() => handlePrint(rec)}>
-            Reprint
+          <HmsButton size="sm" variant="emerald" icon={<Printer className="w-3.5 h-3.5" />} onClick={() => handlePrint(record)}>
+            Print
           </HmsButton>
         </div>
       ),
@@ -140,38 +158,37 @@ export default function InvoiceSearchPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white p-4 sm:p-6 safe-area-padding safe-area-bottom">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-inner shrink-0">
-              <Receipt className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">
-                Tax Invoice Search & Reprint
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500">
-                GSTIN: 27AAAAA0000A1Z5 &bull; Historical Invoices & Receipts
-              </p>
-            </div>
+    <HmsAppShell title="GST Invoice Search & Tax Register">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <Receipt className="w-6 h-6 text-emerald-600" /> GST Tax Invoice Registry
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">Search, print, and audit CGST/SGST healthcare tax invoices</p>
           </div>
-        </header>
+        </div>
 
-        {/* Filter Controls */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Input
-            placeholder="Search by Invoice #, UHID, Name..."
-            prefix={<Search className="w-4 h-4 text-slate-400 mr-1" />}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        {/* Search & Filter Controls */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <Input
+              prefix={<Search className="w-4 h-4 text-slate-400 mr-1" />}
+              placeholder="Search by Invoice #, Patient Name, or UHID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              size="large"
+              allowClear
+            />
+          </div>
+          <Select
+            value={paymentModeFilter}
+            onChange={setPaymentModeFilter}
             size="large"
-            className="sm:col-span-2"
-          />
-          <Select value={paymentModeFilter} onChange={setPaymentModeFilter} size="large" className="w-full">
+            className="w-full sm:w-48"
+          >
             <Select.Option value="ALL">All Payment Modes</Select.Option>
-            <Select.Option value="UPI">UPI / QR Code</Select.Option>
+            <Select.Option value="UPI">UPI / QR</Select.Option>
             <Select.Option value="CASH">Cash</Select.Option>
             <Select.Option value="CARD">Credit/Debit Card</Select.Option>
             <Select.Option value="INSURANCE_TPA">TPA Insurance Claim</Select.Option>
@@ -181,10 +198,10 @@ export default function InvoiceSearchPage() {
         {/* Mobile Smartphone Card View */}
         <div className="block sm:hidden space-y-3">
           {filteredInvoices.map((inv) => (
-            <div key={inv.invoiceNumber} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2">
+            <div key={inv.invoiceNumber} className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-mono font-bold text-emerald-700 text-sm">{inv.invoiceNumber}</span>
-                <Tag color={inv.paymentMode === "UPI" ? "cyan" : "blue"}>{inv.paymentMode}</Tag>
+                <Tag color={getTagColor(inv.paymentMode)}>{inv.paymentMode}</Tag>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-slate-800 flex items-center gap-1">
@@ -198,10 +215,10 @@ export default function InvoiceSearchPage() {
                 <span className="text-sm font-bold text-slate-900">₹{inv.totalAmount.toFixed(2)}</span>
               </div>
               <div className="flex gap-2 pt-2">
-                <HmsButton size="lg" fullWidth variant="secondary" onClick={() => setSelectedInvoice(inv)}>
+                <HmsButton size="sm" fullWidth variant="secondary" onClick={() => setSelectedInvoice(inv)}>
                   Details
                 </HmsButton>
-                <HmsButton size="lg" fullWidth variant="emerald" icon={<Printer className="w-4 h-4" />} onClick={() => handlePrint(inv)}>
+                <HmsButton size="sm" fullWidth variant="emerald" icon={<Printer className="w-4 h-4" />} onClick={() => handlePrint(inv)}>
                   Reprint
                 </HmsButton>
               </div>
@@ -215,7 +232,7 @@ export default function InvoiceSearchPage() {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden sm:block bg-white p-4 rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+        <div className="hidden sm:block bg-white p-4 rounded-xl border border-slate-200 shadow-xs overflow-x-auto">
           <Table columns={columns} dataSource={filteredInvoices} rowKey="invoiceNumber" pagination={{ pageSize: 10 }} />
         </div>
       </div>
@@ -250,6 +267,6 @@ export default function InvoiceSearchPage() {
           </div>
         </Modal>
       )}
-    </div>
+    </HmsAppShell>
   );
 }

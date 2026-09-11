@@ -6,7 +6,6 @@ import { QueryProvider } from "@/lib/react_query/QueryProvider";
 import { I18nProvider } from "@/i18n/_i18n_context/I18nContext";
 import { HmsOfflineBanner } from "@/common_components/HmsOfflineBanner/HmsOfflineBanner";
 import { HmsKeyboardShortcutsListener } from "@/common_components/HmsKeyboardShortcuts/HmsKeyboardShortcutsListener";
-import { HmsNotificationBell } from "@/common_components/HmsNotificationBell/HmsNotificationBell";
 import { HmsNotificationDrawer } from "@/common_components/HmsNotificationDrawer/HmsNotificationDrawer";
 import "./globals.css";
 
@@ -44,15 +43,9 @@ export default function RootLayout({
             <I18nProvider>
               <HmsKeyboardShortcutsListener />
               <HmsOfflineBanner />
-              {/* Global notification bell — visible on every page via portal */}
-              <div
-                id="hms-global-notification-anchor"
-                className="fixed top-3 right-3 sm:top-4 sm:right-4 md:top-14 md:right-20 z-[1050] flex items-center gap-2"
-              >
-                <HmsNotificationBell />
-              </div>
               {/* Global notification drawer — rendered once, shared across all pages */}
               <HmsNotificationDrawer />
+              <div id="hms-global-notification-anchor" className="hidden" />
               {children}
             </I18nProvider>
           </QueryProvider>

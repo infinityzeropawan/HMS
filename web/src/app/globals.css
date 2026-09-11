@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -147,9 +148,6 @@ html.high-contrast {
 }
 
 /* === PREMIUM MOBILE-FIRST BASE STYLES === */
-
-/* Import Inter font for premium typography */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 body {
   background-color: var(--color-slate-50);
@@ -306,6 +304,60 @@ html {
   textarea {
     font-size: 16px !important; /* Prevents iOS zoom */
   }
+}
+
+/* === RESPONSIVE ANT DESIGN COMPONENTS === */
+/*
+ * Antd <Table> renders at its intrinsic width (often 700–1000px+ because of
+ * many columns). Without a scroll container the whole page blows out of the
+ * viewport ("meshed up" mobile layout) and content on the right is clipped
+ * by `body { overflow-x: hidden }`. These rules constrain every table/tab
+ * strip to its container and enable smooth horizontal scrolling instead.
+ */
+.ant-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
+}
+
+.ant-table-wrapper .ant-table {
+  min-width: 100%;
+}
+
+/* Prevent cells from wrapping into unreadable multi-line mush on small screens */
+.ant-table-wrapper .ant-table-cell {
+  white-space: nowrap;
+}
+
+/* Responsive antd Tabs — allow the tab strip to scroll horizontally */
+.ant-tabs-nav-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ant-tabs-nav-list {
+  min-width: max-content;
+}
+
+/* Responsive antd Select/Input inside narrow containers */
+.ant-select-in-form-item,
+.ant-picker {
+  max-width: 100%;
+}
+
+/* Page level safe max width for wide static content (e.g. code/pre) */
+pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Ensure flex/grid children can shrink so they never blow out the viewport */
+#__next,
+main,
+section {
+  min-width: 0;
 }
 
 /* Premium Safe Area Utility Classes */

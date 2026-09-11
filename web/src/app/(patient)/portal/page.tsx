@@ -5,14 +5,19 @@ import { Tabs } from "antd";
 import { PatientReportViewer } from "../_patient_components/HealthRecords/PatientReportViewer";
 import { AbhaConsentManager } from "../_patient_components/AbhaLinkage/AbhaConsentManager";
 import { UserCheck, FileText, ShieldCheck } from "lucide-react";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 
 export default function PatientPortalPage() {
+  const user = useAuthUserStore((s) => s.user);
+  const patientName = user?.username || "Sunil Verma";
+
   const items = [
     {
       key: "records",
       label: (
         <span className="flex items-center gap-1.5 font-medium">
-          <FileText className="w-4 h-4" /> My Health Records & e-Prescriptions
+          <FileText className="w-4 h-4 text-teal-600" /> My Health Records & e-Prescriptions
         </span>
       ),
       children: <PatientReportViewer />,
@@ -21,7 +26,7 @@ export default function PatientPortalPage() {
       key: "abha",
       label: (
         <span className="flex items-center gap-1.5 font-medium">
-          <ShieldCheck className="w-4 h-4" /> ABHA Linkage & Data Consents
+          <ShieldCheck className="w-4 h-4 text-teal-600" /> ABHA Linkage & Data Consents
         </span>
       ),
       children: <AbhaConsentManager />,
@@ -29,21 +34,21 @@ export default function PatientPortalPage() {
   ];
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
-      <div className="max-w-5xl mx-auto mb-6">
-        <div className="flex justify-between items-center mb-6">
+    <HmsAppShell title="Patient Self-Service Portal">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
               <UserCheck className="w-6 h-6 text-teal-600" /> Patient Self-Service Portal
             </h1>
-            <p className="text-sm text-slate-500">Welcome, Sunil Verma &bull; UHID: P-2026-1049</p>
+            <p className="text-sm text-slate-500 mt-1">Welcome, {patientName} &bull; UHID: P-2026-1049</p>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs">
           <Tabs defaultActiveKey="records" items={items} />
         </div>
       </div>
-    </div>
+    </HmsAppShell>
   );
 }

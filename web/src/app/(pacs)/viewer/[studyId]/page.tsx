@@ -13,14 +13,14 @@ export default function PacsViewerPage() {
 
   return (
     <div className="p-6 bg-slate-950 min-h-screen">
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         <Link href="/queue">
           <HmsButton icon={<ArrowLeft className="w-4 h-4" />} variant="secondary" size="sm">
             Doctor Queue
           </HmsButton>
         </Link>
-        <div>
-          <h1 className="text-xl font-bold text-white">RIS / PACS Diagnostic Web Viewer</h1>
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold text-white">RIS / PACS Diagnostic Web Viewer</h1>
         </div>
       </div>
 
