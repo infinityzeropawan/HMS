@@ -276,15 +276,11 @@ html {
   }
 }
 
-/* Premium Touch-Friendly Components */
-button,
-[role="button"],
-input[type="submit"],
-input[type="button"],
-a:not([class*="text-"]) {
+/* Premium Touch-Friendly Helper Class */
+.touch-target {
   min-height: var(--size-touch-ideal);
   min-width: var(--size-touch-ideal);
-  touch-action: manipulation; /* Disable double-tap zoom */
+  touch-action: manipulation;
 }
 
 /* Premium Focus States (WCAG 2.1 compliant) */
@@ -307,21 +303,16 @@ a:not([class*="text-"]) {
   input[type="tel"],
   input[type="number"],
   input[type="search"],
-  textarea,
-  select {
+  textarea {
     font-size: 16px !important; /* Prevents iOS zoom */
-    -webkit-appearance: none;
-    appearance: none;
   }
 }
 
-/* Premium Safe Area Support */
+/* Premium Safe Area Utility Classes */
 @supports (padding: max(0px)) {
-  body {
+  .safe-area-padding {
     padding-left: max(var(--spacing-md), env(safe-area-inset-left));
     padding-right: max(var(--spacing-md), env(safe-area-inset-right));
-    padding-top: max(0px, env(safe-area-inset-top));
-    padding-bottom: max(var(--spacing-md), env(safe-area-inset-bottom));
   }
   
   .safe-area-bottom {
