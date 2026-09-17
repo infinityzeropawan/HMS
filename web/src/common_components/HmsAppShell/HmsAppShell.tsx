@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 import { useNotificationStore } from "@/lib/notification_store/notification.store";
@@ -9,7 +10,7 @@ import { HmsNotificationBell } from "../HmsNotificationBell/HmsNotificationBell"
 import { HmsLanguageSwitcher } from "../HmsLanguageSwitcher/HmsLanguageSwitcher";
 import { HmsHighContrastToggle } from "../HmsHighContrastToggle/HmsHighContrastToggle";
 import { HmsButton } from "../HmsButton/HmsButton";
-import { LogOut, Building2, ChevronRight } from "lucide-react";
+import { LogOut, Building2, ChevronRight, Database } from "lucide-react";
 
 interface HmsAppShellProps {
   children: React.ReactNode;
@@ -83,6 +84,12 @@ export const HmsAppShell: React.FC<HmsAppShellProps> = ({
             {/* Right: Actions (Language, Contrast, Notifications, Profile, Logout) */}
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="hidden md:flex items-center gap-2">
+                <Link
+                  href="/demo-seed"
+                  className="px-2.5 py-1 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg border border-teal-200 transition-colors flex items-center gap-1"
+                >
+                  <Database className="w-3.5 h-3.5 text-teal-600" /> Demo Seeder
+                </Link>
                 <HmsLanguageSwitcher />
                 <HmsHighContrastToggle />
               </div>

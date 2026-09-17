@@ -30,6 +30,14 @@
 | `GET` | `/api/v1/appointments/queue` | Fetch real-time token queue for doctor | Receptionist / Doctor |
 | `POST` | `/api/v1/encounters` | Start new clinical consultation | Doctor |
 | `POST` | `/api/v1/encounters/{id}/prescriptions` | Create e-Prescription (FHIR format) | Doctor |
+| `POST` | `/api/v1/admissions` | Admit a patient and atomically assign an available bed | Admission desk / Nursing supervisor |
+| `GET` | `/api/v1/wards/{wardId}/occupancies` | Active ward/room/bed placements for authorised rounds and nursing | Doctor / Nurse |
+| `POST` | `/api/v1/admissions/{id}/transfers` | Atomically transfer an admission between beds | Admission desk / Nursing supervisor |
+| `POST` | `/api/v1/admissions/{id}/round-notes` | Record and sign a doctor ward-round note | Doctor |
+| `POST` | `/api/v1/admissions/{id}/orders` | Create or amend a signed inpatient clinical order | Doctor |
+| `GET` | `/api/v1/admissions/{id}/mar` | Fetch dose tasks and administration history | Nurse / Doctor |
+| `POST` | `/api/v1/mar-tasks/{id}/administrations` | Record given/held/refused/missed medication administration | Nurse |
+| `POST` | `/api/v1/admissions/{id}/vitals` | Record a nurse-observed vitals set | Nurse |
 | `POST` | `/api/v1/billing/invoices` | Generate GST tax invoice for OPD/IPD | Billing Admin |
 | `POST` | `/api/v1/pharmacy/dispense` | Dispense medicine stock against eRx | Pharmacist |
 | `POST` | `/api/v1/lab/orders` | Place diagnostic lab test order | Doctor |

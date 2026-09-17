@@ -23,6 +23,14 @@ The system encompasses ~110 database tables organized across 14 primary domains:
 6. **Pharmacy & Diagnostics**: Inventory, Stock Batches, Dispenses, Lab/Radiology Orders & Reports, PACS.
 7. **Billing & Compliance**: Invoices, Payments, GST Engine, TPA Claims, Consent Artefacts, Audit Logs.
 
+### Inpatient workflow status
+
+The IPD/nursing routes currently demonstrate the intended UI but are **not a shared clinical workflow**: their ward occupancy, vitals, MAR, and prescription hand-offs are fixture or browser-storage based. Production implementation must follow the authoritative placement, orders, MAR, ward-round, event, and RBAC design in [inpatient_workflow_architecture.md](inpatient_workflow_architecture.md). In particular, a bed transfer is an atomic server transaction and a signed inpatient order creates nurse-visible MAR tasks for the patient's current ward/bed.
+
+### Hospital-wide paperless operating model
+
+The system's target scope is an end-to-end Indian hospital operating model: patient access and OPD, emergency, ADT/capacity, wards/ICU, medication/pharmacy, diagnostics, OT, blood bank where in scope, billing/TPA, discharge, quality, facilities, HR and compliance. The evidence-based module boundaries, ownership rules, India-specific integration baseline, data invariants, frontend requirements and release gates are defined in [india_paperless_hospital_blueprint.md](india_paperless_hospital_blueprint.md). This blueprint supersedes any interpretation of the existing role pages as production-ready workflows.
+
 ---
 
 ## 3. High-Level System Topology

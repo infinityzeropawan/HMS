@@ -2,17 +2,25 @@
 
 import React, { useState } from "react";
 import { Table, Tag, Modal, message } from "antd";
-import { Plus } from "lucide-react";
+import { Plus, SlidersHorizontal } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HospitalOnboardingWizard } from "../TenantOnboarding/HospitalOnboardingWizard";
+import { HospitalFacilityControlManager } from "../FacilityControl/HospitalFacilityControlManager";
 
 export const SubscriptionManagerTable: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
+  const [facilityModalOpen, setFacilityModalOpen] = useState(false);
+  const [activeFacilityTenantId, setActiveFacilityTenantId] = useState<string>("TENANT-001");
   const [tenants, setTenants] = useState([
     { key: "1", tenantId: "TENANT-001", name: "Apollo Super Speciality Hospital", domain: "apollo.hms.com", tier: "ENTERPRISE", seats: "85 / 100", status: "ACTIVE" },
     { key: "2", tenantId: "TENANT-002", name: "Fortis Care Heart Institute", domain: "fortis.hms.com", tier: "SUPER_SPECIALTY", seats: "140 / 200", status: "ACTIVE" },
     { key: "3", tenantId: "TENANT-003", name: "City Diagnostics & OPD Clinic", domain: "citydiag.hms.com", tier: "BASIC", seats: "12 / 15", status: "ACTIVE" },
   ]);
+
+  const openFacilityControl = (tenantId: string) => {
+    setActiveFacilityTenantId(tenantId);
+    setFacilityModalOpen(true);
+  };
 
   const columns = [
     { title: "Tenant ID", dataIndex: "tenantId", key: "tenantId" },
@@ -27,11 +35,16 @@ export const SubscriptionManagerTable: React.FC = () => {
       render: (s: string) => <Tag color={s === "ACTIVE" ? "emerald" : "orange"}>{s}</Tag>,
     },
     {
-      title: "Action",
+      title: "Facility Controls",
       key: "action",
-      render: (_: unknown, record: { name: string }) => (
-        <HmsButton size="sm" variant="secondary" onClick={() => message.info(`SLA controls opened for ${record.name}.`)}>
-          Manage SLA
+      render: (_: unknown, record: { tenantId: string; name: string }) => (
+        <HmsButton
+          size="sm"
+          variant="secondary"
+          icon={<SlidersHorizontal className="w-3.5 h-3.5" />}
+          onClick={() => openFacilityControl(record.tenantId)}
+        >
+          Manage Facilities
         </HmsButton>
       ),
     },
@@ -61,6 +74,21 @@ export const SubscriptionManagerTable: React.FC = () => {
           }, ...current])}
         />
       </Modal>
+
+      <Modal
+        open={facilityModalOpen}
+        onCancel={() => setFacilityModalOpen(false)}
+        footer={null}
+        width={1040}
+        destroyOnClose
+        style={{ top: 20 }}
+      >
+        <HospitalFacilityControlManager
+          initialTenantId={activeFacilityTenantId}
+          onClose={() => setFacilityModalOpen(false)}
+        />
+      </Modal>
     </>
   );
 };
+

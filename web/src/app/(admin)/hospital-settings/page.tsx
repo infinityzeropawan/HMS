@@ -1,5 +1,25 @@
-import { HmsResourceConsole } from "@/common_components/HmsResourceConsole/HmsResourceConsole";
+"use client";
+
+import React from "react";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
+import { HospitalSettingsWorkspace } from "../_admin_components/HospitalSettings/HospitalSettingsWorkspace";
+import { SlidersHorizontal } from "lucide-react";
 
 export default function HospitalSettingsPage() {
-  return <HmsResourceConsole title="Hospital Settings" subtitle="Manage facility-level operational settings, policies and contact details." storageKey="hms_admin_settings" addLabel="Add setting" fields={[{ key: "setting", label: "Setting" }, { key: "value", label: "Value" }, { key: "scope", label: "Scope", options: ["Facility", "Clinical", "Billing", "Security"] }]} seedRecords={[{ id: "set-1", setting: "Default consultation duration", value: "15 minutes", scope: "Clinical" }, { id: "set-2", setting: "GSTIN", value: "27AAACA1234A1Z5", scope: "Billing" }]} />;
+  return (
+    <HmsAppShell title="Hospital Settings & Clinical Policies">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <SlidersHorizontal className="w-6 h-6 text-teal-600" /> Hospital Master Settings & Clinical Rules
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Manage hospital registration details, branding logos, OPD slot durations, GST rates, and ABDM health stack credentials.
+          </p>
+        </div>
+
+        <HospitalSettingsWorkspace />
+      </div>
+    </HmsAppShell>
+  );
 }

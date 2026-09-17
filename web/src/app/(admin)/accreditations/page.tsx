@@ -1,5 +1,25 @@
-import { HmsResourceConsole } from "@/common_components/HmsResourceConsole/HmsResourceConsole";
+"use client";
+
+import React from "react";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
+import { AccreditationComplianceManager } from "../_admin_components/Accreditations/AccreditationComplianceManager";
+import { Award } from "lucide-react";
 
 export default function AccreditationsPage() {
-  return <HmsResourceConsole title="Facility Accreditations" subtitle="Maintain NABH, NABL, ISO and other facility accreditation records." storageKey="hms_admin_accreditations" addLabel="Add accreditation" fields={[{ key: "type", label: "Accreditation", options: ["NABH", "NABL", "ISO", "JCI", "Other"] }, { key: "certificate", label: "Certificate number" }, { key: "expires", label: "Expiry date" }]} seedRecords={[{ id: "acc-1", type: "NABH", certificate: "NABH-HOSP-2026-018", expires: "2028-03-31" }]} />;
+  return (
+    <HmsAppShell title="Accreditations & Quality Compliance">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Award className="w-6 h-6 text-teal-600" /> NABH, NABL & Quality Compliance Matrix
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Track National Accreditation Board for Hospitals (NABH), NABL lab compliance, ISO certificates, and fire safety NOCs.
+          </p>
+        </div>
+
+        <AccreditationComplianceManager />
+      </div>
+    </HmsAppShell>
+  );
 }
