@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AuthLoginInput } from "../../_auth_schemas/auth_login_schema";
 import { authApiService } from "../../_auth_services/auth_api_service";
 import { useAuthUserStore } from "../../_auth_stores/auth_user_store";
-import { getRoleHomePath } from "../../_auth_constants/auth_redirect";
+import { getPostLoginPath } from "../../_auth_constants/auth_redirect";
 
 export function useAuthLoginForm() {
   const router = useRouter();
@@ -14,6 +14,11 @@ export function useAuthLoginForm() {
 
   const setUserSession = useAuthUserStore((s) => s.setUserSession);
   const setMfaChallenge = useAuthUserStore((s) => s.setMfaChallenge);
+
+  const getRequestedPath = () =>
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("redirect")
+      : null;
 
   const handleLoginSubmit = async (values: AuthLoginInput) => {
     setLoading(true);
@@ -28,7 +33,7 @@ export function useAuthLoginForm() {
           token: response.token,
         };
         setUserSession(session);
-        router.replace(getRoleHomePath(session.role));
+        router.replace(getPostLoginPath(session.role, getRequestedPath()));
       }
     } catch (err: unknown) {
       const error = err as Error;
