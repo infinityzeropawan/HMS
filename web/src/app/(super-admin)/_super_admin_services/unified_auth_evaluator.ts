@@ -61,6 +61,25 @@ export class UnifiedAuthEvaluator {
     const claim = PERMISSION_CLAIMS.find((c) => c.id === context.permissionId);
     const requiredFeatureId = claim?.requiredFeatureId;
 
+    if (!claim) {
+      const permissionResult: EvaluationStepResult = {
+        stepKey: "STEP_4_ROLE_PERMISSION",
+        stepName: "4. User Role Permission",
+        passed: false,
+        reason: `Permission claim '${context.permissionId}' does not exist in the platform catalog. Access blocked.`,
+      };
+      trace.push(permissionResult);
+      return {
+        allowed: false,
+        permission: undefined,
+        requiredFeatureId: undefined,
+        featureState: "Disabled",
+        featureSource: "Restricted",
+        failingStep: permissionResult,
+        stepTrace: trace,
+      };
+    }
+
     // Fetch Tenant Context
     const tenant = getTenantById(context.tenantId);
     const tenantStatus = tenant?.status;
@@ -126,6 +145,24 @@ export class UnifiedAuthEvaluator {
     let featureSource: FeatureSource = "Included By Plan";
 
     if (requiredFeatureId) {
+      if (!subscriptionPlan) {
+        const step3Result: EvaluationStepResult = {
+          stepKey: "STEP_3_FEATURE_ENABLED",
+          stepName: "3. Feature Enabled",
+          passed: false,
+          reason: "Feature evaluation cannot proceed without a valid subscription plan. Access blocked.",
+        };
+        trace.push(step3Result);
+        return {
+          allowed: false,
+          permission: claim,
+          requiredFeatureId,
+          featureState: "Disabled",
+          featureSource: "Restricted",
+          failingStep: step3Result,
+          stepTrace: trace,
+        };
+      }
       const catalogId = FEATURE_ID_ALIAS_MAP[requiredFeatureId] || requiredFeatureId;
       const isRestrictedByPlan = subscriptionPlan?.restrictedFeatures?.includes(catalogId) ?? false;
       const isOptionalAddon = subscriptionPlan?.optionalAddons?.includes(catalogId) ?? false;
@@ -239,9 +276,18 @@ export class UnifiedAuthEvaluator {
   public static getFeatureStateForClaim(tenantId: string, requiredFeatureId?: string): { state: LicenseState; source: FeatureSource } {
     if (!requiredFeatureId) return { state: "Enabled", source: "Included By Plan" };
     const plan = getPlanByTenant(tenantId);
+    const tenant = getTenantById(tenantId);
     const catalogId = FEATURE_ID_ALIAS_MAP[requiredFeatureId] || requiredFeatureId;
 
-    if (plan?.restrictedFeatures?.includes(catalogId)) {
+    if (!tenant) {
+      return { state: "Disabled", source: "Restricted" };
+    }
+
+    if (!plan) {
+      return { state: "Disabled", source: "Restricted" };
+    }
+
+    if (plan.restrictedFeatures?.includes(catalogId)) {
       return { state: "Restricted", source: "Restricted" };
     }
     if (plan?.optionalAddons?.includes(catalogId)) {
