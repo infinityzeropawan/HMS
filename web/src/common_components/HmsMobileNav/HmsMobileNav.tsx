@@ -154,9 +154,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
       { id: "masters", label: "Global Masters", icon: Database, path: "/global-masters", role: ["SUPER_ADMIN"] },
       { id: "platform-audit", label: "Platform Audit", icon: ShieldCheck, path: "/platform-audit", role: ["SUPER_ADMIN"] },
       { id: "support", label: "Support Tickets", icon: FileText, path: "/support-tickets", role: ["SUPER_ADMIN"] },
-      { id: "users", label: "Hospital Staff & RBAC", icon: Users, path: "/users", role: ["SUPER_ADMIN"] },
-      { id: "audit", label: "Hospital Audit Logs", icon: ShieldCheck, path: "/audit-logs", role: ["SUPER_ADMIN"] },
-      { id: "revenue", label: "Hospital Revenue Analytics", icon: Activity, path: "/revenue", role: ["SUPER_ADMIN"] },
+      { id: "tenant-audit", label: "Tenant Audit & Governance", icon: FileText, path: "/platform-audit", role: ["SUPER_ADMIN"] },
     ],
   };
 
