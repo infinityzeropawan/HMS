@@ -10,6 +10,7 @@ import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 
 import { SupportTicketService, SupportTicket } from "../_super_admin_services/support_ticket_service";
+import { TenantApiService } from "../_super_admin_services/tenant_api_service";
 
 const PRIORITY_COLOR: Record<string, string> = {
   CRITICAL: "red",
@@ -27,6 +28,13 @@ export default function SupportTicketsPage() {
   const [activeTicket, setActiveTicket] = useState<SupportTicket | null>(null);
   const [replyText, setReplyText] = useState("");
   const [form] = Form.useForm();
+  const [tenantOptions, setTenantOptions] = useState<{ value: string; label: string }[]>([]);
+
+  React.useEffect(() => {
+    TenantApiService.fetchTenants({}, { field: "hospitalName", order: "asc" }, 1, 100)
+      .then((response) => setTenantOptions(response.tenants.map((tenant) => ({ value: tenant.id, label: `${tenant.hospitalName} (${tenant.id})` }))))
+      .catch(() => setTenantOptions([]));
+  }, []);
 
   React.useEffect(() => {
     return SupportTicketService.subscribe(() => {
@@ -56,9 +64,15 @@ export default function SupportTicketsPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCreateTicket = (values: Record<string, any>) => {
+    const selectedTenant = tenantOptions.find((tenant) => tenant.value === values.tenantId);
+    if (!selectedTenant) {
+      message.error("Please select a valid hospital tenant.");
+      return;
+    }
+
     SupportTicketService.createTicket({
-      tenantName: values.tenantName,
-      tenantId: `TENANT-00${tickets.length + 1}`,
+      tenantName: selectedTenant.label.replace(/ \(.+\)$/, ""),
+      tenantId: selectedTenant.value,
       subject: values.subject,
       category: values.category,
       priority: values.priority,
@@ -364,8 +378,14 @@ export default function SupportTicketsPage() {
           width={520}
         >
           <Form form={form} layout="vertical" onFinish={handleCreateTicket} className="mt-3 space-y-3">
-            <Form.Item label="Target Hospital / Tenant" name="tenantName" rules={[{ required: true }]} initialValue="Apollo Super Speciality Hospital">
-              <Input size="large" />
+            <Form.Item label="Target Hospital / Tenant" name="tenantId" rules={[{ required: true }]}>
+              <Select
+                showSearch
+                optionFilterProp="label"
+                options={tenantOptions}
+                placeholder="Select an existing hospital tenant"
+                size="large"
+              />
             </Form.Item>
 
             <div className="grid grid-cols-2 gap-3">
