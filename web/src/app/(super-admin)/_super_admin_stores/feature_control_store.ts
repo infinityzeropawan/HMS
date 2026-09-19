@@ -396,7 +396,7 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
         if (!feature) return false;
 
         const planCode = state.getTenantSubscriptionPlan(tenantId);
-        const planDef = SubscriptionPlanService.getPlan(planCode);
+        const planDef = planCode ? SubscriptionPlanService.getPlan(planCode) : undefined;
 
         // Prevent enabling restricted features
         if ((newState === "Enabled" || newState === "Trial") && (planDef?.restrictedFeatures?.includes(featureId) ?? false)) {
@@ -639,7 +639,7 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
 
         const catalog = FeatureCatalogService.getCatalog();
         const planCode = state.getTenantSubscriptionPlan(tenantId);
-        const planDef = SubscriptionPlanService.getPlan(planCode);
+        const planDef = planCode ? SubscriptionPlanService.getPlan(planCode) : undefined;
         const newStates: Record<string, LicenseState> = {};
 
         catalog.forEach((f) => {
