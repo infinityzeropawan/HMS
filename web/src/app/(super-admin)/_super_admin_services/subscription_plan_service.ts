@@ -129,7 +129,7 @@ export class SubscriptionPlanService {
     if (sub) {
       return this.getPlan(sub.planCode);
     }
-    return plansStore.find((p) => p.code === "ENTERPRISE");
+    return undefined;
   }
 
   public static getFeatureSource(planCode: string, featureId: string): FeatureSource {
