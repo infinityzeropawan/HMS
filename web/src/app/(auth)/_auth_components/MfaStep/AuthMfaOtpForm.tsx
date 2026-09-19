@@ -7,7 +7,7 @@ import { ShieldCheck } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { useAuthUserStore } from "../../_auth_stores/auth_user_store";
 import { authApiService } from "../../_auth_services/auth_api_service";
-import { getRoleHomePath } from "../../_auth_constants/auth_redirect";
+import { getPostLoginPath } from "../../_auth_constants/auth_redirect";
 
 export const AuthMfaOtpForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -17,8 +17,16 @@ export const AuthMfaOtpForm: React.FC = () => {
   const setUserSession = useAuthUserStore((s) => s.setUserSession);
   const router = useRouter();
 
+  const requestedPath =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("redirect")
+      : null;
+
   const onVerifyOtp = async (values: { otpCode: string }) => {
-    if (!mfaSessionToken) return;
+    if (!mfaSessionToken) {
+      setError("MFA session is missing. Please sign in again.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -27,9 +35,9 @@ export const AuthMfaOtpForm: React.FC = () => {
         mfaSessionToken,
       });
       setUserSession(session);
-      router.replace(getRoleHomePath(session.role));
-    } catch {
-      setError("Invalid OTP code. Please try again.");
+      router.replace(getPostLoginPath(session.role, requestedPath));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Invalid OTP code. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -62,6 +70,7 @@ export const AuthMfaOtpForm: React.FC = () => {
             placeholder="000000"
             maxLength={6}
             size="large"
+            inputMode="numeric"
             className="text-center font-mono text-xl tracking-widest"
           />
         </Form.Item>
