@@ -1,3 +1,5 @@
+import { PlatformAuditService } from "./platform_audit_service";
+
 export interface SupportTicket {
   key: string;
   ticketId: string;
@@ -154,20 +156,54 @@ export class SupportTicketService {
 
     ticketsStore = [newTicket, ...ticketsStore];
     listeners.forEach((l) => l());
+    PlatformAuditService.recordAuditEvent({
+      actor: ticket.assignedAgent || "Super Admin Console",
+      actorRole: "SUPER_ADMIN",
+      action: "Support ticket created",
+      category: "GOVERNANCE_EVENT",
+      entity: ticket.tenantName + " (" + ticket.tenantId + ")",
+      ipAddress: "N/A",
+      riskLevel: ticket.priority === "CRITICAL" ? "CRITICAL" : "INFO",
+      details: JSON.stringify({ ticketId: newId, subject: ticket.subject, category: ticket.category, priority: ticket.priority }),
+    });
     return newTicket;
   }
 
   public static updateTicketStatus(ticketId: string, status: SupportTicket["status"]): void {
+    const existing = ticketsStore.find((t) => t.ticketId === ticketId);
+    if (!existing) return;
     ticketsStore = ticketsStore.map((t) => (t.ticketId === ticketId ? { ...t, status } : t));
     listeners.forEach((l) => l());
+    PlatformAuditService.recordAuditEvent({
+      actor: "Super Admin Support",
+      actorRole: "SUPER_ADMIN",
+      action: "Support ticket status changed",
+      category: "GOVERNANCE_EVENT",
+      entity: existing.tenantName + " (" + existing.tenantId + ")",
+      ipAddress: "N/A",
+      riskLevel: status === "RESOLVED" || status === "CLOSED" ? "INFO" : "WARNING",
+      details: JSON.stringify({ ticketId, previousStatus: existing.status, newStatus: status }),
+    });
   }
 
   public static addReply(ticketId: string, sender: string, text: string): void {
+    const existing = ticketsStore.find((t) => t.ticketId === ticketId);
+    if (!existing) return;
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     ticketsStore = ticketsStore.map((t) =>
       t.ticketId === ticketId ? { ...t, conversation: [...t.conversation, { sender, text, time }] } : t
     );
     listeners.forEach((l) => l());
+    PlatformAuditService.recordAuditEvent({
+      actor: sender,
+      actorRole: "SUPER_ADMIN",
+      action: "Support ticket reply added",
+      category: "GOVERNANCE_EVENT",
+      entity: existing.tenantName + " (" + existing.tenantId + ")",
+      ipAddress: "N/A",
+      riskLevel: "INFO",
+      details: JSON.stringify({ ticketId, messageLength: text.trim().length }),
+    });
   }
 
   public static subscribe(listener: () => void): () => void {
