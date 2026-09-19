@@ -33,6 +33,7 @@ interface AuthState {
   mfaSessionToken: string | null;
   /** True after persisted auth state has finished rehydrating in the browser. */
   hasHydrated: boolean;
+  setHasHydrated: (hydrated: boolean) => void;
   setUserSession: (session: UserSession) => void;
   setMfaChallenge: (sessionToken: string) => void;
   logout: () => void;
@@ -45,6 +46,7 @@ export const useAuthUserStore = create<AuthState>()(
       mfaRequired: false,
       mfaSessionToken: null,
       hasHydrated: false,
+      setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
       setUserSession: (session) =>
         set({
           user: session,
@@ -74,6 +76,9 @@ export const useAuthUserStore = create<AuthState>()(
     }),
     {
       name: "hms_user_auth_session",
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );
