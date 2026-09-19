@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { AuthLoginForm } from "../_auth_components/LoginForm/AuthLoginForm";
 import { AuthMfaOtpForm } from "../_auth_components/MfaStep/AuthMfaOtpForm";
 import { useAuthUserStore } from "../_auth_stores/auth_user_store";
@@ -11,23 +11,25 @@ import { Shield, Heart, Smartphone, LogOut, ArrowRight, UserCheck } from "lucide
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const user = useAuthUserStore((s) => s.user);
   const logout = useAuthUserStore((s) => s.logout);
   const mfaRequired = useAuthUserStore((s) => s.mfaRequired);
   const hasHydrated = useAuthUserStore((s) => s.hasHydrated);
 
-  const requestedPath = searchParams.get("redirect");
+  const getRequestedPath = () =>
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("redirect")
+      : null;
 
   useEffect(() => {
     if (hasHydrated && user && !mfaRequired) {
-      router.replace(getPostLoginPath(user.role, requestedPath));
+      router.replace(getPostLoginPath(user.role, getRequestedPath()));
     }
-  }, [hasHydrated, mfaRequired, requestedPath, router, user]);
+  }, [hasHydrated, mfaRequired, router, user]);
 
   const handleContinueToDashboard = () => {
     if (user) {
-      router.push(getPostLoginPath(user.role, requestedPath));
+      router.push(getPostLoginPath(user.role, getRequestedPath()));
     }
   };
 
