@@ -12,6 +12,7 @@ import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { SubscriptionPlanService, PlanConfig, TenantSubscription } from "../_super_admin_services/subscription_plan_service";
 import { TenantApiService } from "../_super_admin_services/tenant_api_service";
 import { useFeatureControlStore } from "../_super_admin_stores/feature_control_store";
+import { PlatformAuditService } from "../_super_admin_services/platform_audit_service";
 
 export default function SubscriptionPlansPage() {
   const [plans, setPlans] = useState<PlanConfig[]>(() => SubscriptionPlanService.getPlans());
@@ -106,6 +107,21 @@ export default function SubscriptionPlansPage() {
     });
 
     updateTenantSubscriptionPlan(selectedTenant.tenantId, mappedPlanName);
+    PlatformAuditService.recordAuditEvent({
+      actor: "Super Admin Console",
+      actorRole: "SUPER_ADMIN",
+      action: "Tenant subscription plan changed",
+      category: "SUBSCRIPTION_CHANGE",
+      entity: selectedTenant.tenantName + " (" + selectedTenant.tenantId + ")",
+      ipAddress: "N/A",
+      riskLevel: "INFO",
+      details: JSON.stringify({
+        previousPlan: selectedTenant.planCode,
+        newPlan: updatedSubscription.planCode,
+        billingCycle: updatedSubscription.billingCycle,
+        renewalDate: updatedSubscription.renewalDate,
+      }),
+    });
     message.success("Subscription plan for " + selectedTenant.tenantName + " updated to " + values.planCode + "!");
     setUpgradeModalOpen(false);
   };
