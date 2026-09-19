@@ -341,6 +341,7 @@ export default function ComplianceGovernancePage() {
                     </p>
 
                     <Table
+                      scroll={{ x: 1000 }}
                       dataSource={governancePolicies.map((p) => ({ ...p, key: p.policyId }))}
                       columns={[
                         { title: "Policy Code", dataIndex: "policyId", key: "policyId", render: (id: string) => <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{id}</span> },
@@ -353,6 +354,7 @@ export default function ComplianceGovernancePage() {
                         { title: "Status", dataIndex: "status", key: "status", render: (st: ComplianceHealthStatus) => getStatusTag(st) },
                       ]}
                       pagination={false}
+                      scroll={{ x: 1000 }}
                       size="small"
                     />
                   </div>
@@ -375,6 +377,7 @@ export default function ComplianceGovernancePage() {
                     </p>
 
                     <Table
+                      scroll={{ x: 1000 }}
                       dataSource={complianceReports.map((r) => ({ ...r, key: r.reportId }))}
                       columns={[
                         { title: "Report Package ID", dataIndex: "reportId", key: "reportId", render: (id: string) => <span className="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">{id}</span> },
