@@ -31,6 +31,8 @@ interface AuthState {
   user: UserSession | null;
   mfaRequired: boolean;
   mfaSessionToken: string | null;
+  /** True after persisted auth state has finished rehydrating in the browser. */
+  hasHydrated: boolean;
   setUserSession: (session: UserSession) => void;
   setMfaChallenge: (sessionToken: string) => void;
   logout: () => void;
@@ -42,6 +44,7 @@ export const useAuthUserStore = create<AuthState>()(
       user: null,
       mfaRequired: false,
       mfaSessionToken: null,
+      hasHydrated: false,
       setUserSession: (session) =>
         set({
           user: session,
