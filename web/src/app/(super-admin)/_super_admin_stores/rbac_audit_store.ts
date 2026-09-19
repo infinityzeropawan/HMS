@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { RbacAuditEntry, RbacEventType, RbacAuditFilterParams } from "../_super_admin_types/rbac_audit_types";
+import { PlatformAuditService } from "../_super_admin_services/platform_audit_service";
 
 interface RbacAuditStoreState {
   logs: RbacAuditEntry[];
@@ -145,6 +146,27 @@ export const useRbacAuditStore = create<RbacAuditStoreState>()(
         set((state) => ({
           logs: [newEntry, ...state.logs],
         }));
+
+        PlatformAuditService.recordAuditEvent({
+          actor: newEntry.actor,
+          actorRole: newEntry.actorRole,
+          action: newEntry.eventType + ": " + newEntry.reason,
+          category: "ROLE_PERMISSION_CHANGE",
+          entity: newEntry.tenantName + " (" + newEntry.tenantId + ")",
+          ipAddress: "N/A",
+          riskLevel:
+            newEntry.eventType.includes("DELETED") || newEntry.eventType.includes("REMOVED")
+              ? "WARNING"
+              : "INFO",
+          details: JSON.stringify({
+            targetRoleId: newEntry.targetRoleId,
+            targetRoleName: newEntry.targetRoleName,
+            previousValue: newEntry.previousValue,
+            newValue: newEntry.newValue,
+            hashSignature: newEntry.hashSignature,
+          }),
+          timestamp,
+        });
 
         return newEntry;
       },
