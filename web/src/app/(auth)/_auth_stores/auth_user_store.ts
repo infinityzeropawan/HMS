@@ -76,6 +76,11 @@ export const useAuthUserStore = create<AuthState>()(
     }),
     {
       name: "hms_user_auth_session",
+      partialize: (state) => ({
+        user: state.user,
+        mfaRequired: state.mfaRequired,
+        mfaSessionToken: state.mfaSessionToken,
+      }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },
