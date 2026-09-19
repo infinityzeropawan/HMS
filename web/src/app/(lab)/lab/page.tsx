@@ -14,6 +14,8 @@ import {
   ArrowRight,
   Plus,
   CheckCircle2,
+  BarChart3,
+  Truck,
 } from "lucide-react";
 import { LabResultForm } from "../_lab_components/ResultEntry/LabResultForm";
 
@@ -105,33 +107,72 @@ export default function LabMainDashboard() {
         {/* Module Quick Link Navigation */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Microscope className="w-5 h-5 text-purple-600" /> Laboratory Workspaces & Tools
+            <Microscope className="w-5 h-5 text-purple-600" /> Laboratory Workspaces & Supply Chain
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link
               href="/lab/specimens"
-              className="p-5 rounded-2xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition-all duration-200 group flex items-start gap-4"
+              className="p-4 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition-all duration-200 group flex items-start gap-3"
             >
-              <div className="p-3 bg-purple-100 text-purple-700 rounded-xl group-hover:scale-105 transition-transform shrink-0">
-                <TestTube className="w-6 h-6" />
+              <div className="p-2.5 bg-purple-100 text-purple-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <TestTube className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Sample Collection & Barcoding</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Phlebotomy collection queue, tube barcode printing (EDTA/Serum), and analyzer dispatch.</p>
+                <h3 className="font-bold text-slate-900 text-sm">Sample Collection & Barcodes</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Phlebotomy tube collection queue & barcode labels.</p>
               </div>
             </Link>
 
             <Link
               href="/lab/orders"
-              className="p-5 rounded-2xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 transition-all duration-200 group flex items-start gap-4"
+              className="p-4 rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 transition-all duration-200 group flex items-start gap-3"
             >
-              <div className="p-3 bg-teal-100 text-teal-700 rounded-xl group-hover:scale-105 transition-transform shrink-0">
-                <Microscope className="w-6 h-6" />
+              <div className="p-2.5 bg-teal-100 text-teal-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <Microscope className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Lab Orders & Report Verification</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Test entry, reference range checking, panic alert triggers, and verified PDF reports.</p>
+                <h3 className="font-bold text-slate-900 text-sm">Lab Orders & Results Entry</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Test verification, panic alerts & pathologist sign-off.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/lab/catalog"
+              className="p-4 rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-indigo-100 text-indigo-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <Plus className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Master Test Catalog</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Reference ranges, container tubes & tariffs.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/lab/outsourced"
+              className="p-4 rounded-xl border border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-amber-100 text-amber-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <Truck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Referral Lab Outsourced</h3>
+                <p className="text-xs text-slate-500 mt-0.5">External reference labs & cold chain dispatch.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/lab/analytics"
+              className="p-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Lab TAT & QC Analytics</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Turnaround time SLAs & sample rejection rate.</p>
               </div>
             </Link>
           </div>

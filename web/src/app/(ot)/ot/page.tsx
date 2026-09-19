@@ -13,11 +13,18 @@ import {
   Clock,
   ArrowRight,
   Activity,
-  Plus,
 } from "lucide-react";
 import { SurgerySchedulerTable } from "../_ot_components/OtSchedule/SurgerySchedulerTable";
+import { useOtStore } from "../_ot_stores/ot_store";
 
 export default function OtMainDashboard() {
+  const surgeries = useOtStore((state) => state.surgeries);
+
+  const totalScheduled = surgeries.length;
+  const activeInProgress = surgeries.filter((s) => s.status === "IN_PROGRESS").length;
+  const clearedPac = surgeries.filter((s) => s.pacClearance === "CLEARED").length;
+  const verifiedChecklists = surgeries.filter((s) => s.safetyChecklistDone).length;
+
   return (
     <HmsAppShell title="Operation Theatre Control Center">
       <div className="max-w-7xl mx-auto space-y-6 pb-8">
@@ -51,14 +58,14 @@ export default function OtMainDashboard() {
           </div>
         </div>
 
-        {/* OT KPI Cards */}
+        {/* Live OT Store KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <HmsCard elevated className="border-l-4 border-l-purple-500">
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Surgeries Today</p>
-                <h3 className="text-2xl font-bold text-purple-800 mt-1">3 Scheduled</h3>
-                <p className="text-3xs text-purple-600 font-semibold mt-0.5">OT-01, OT-02, OT-03</p>
+                <h3 className="text-2xl font-bold text-purple-800 mt-1">{totalScheduled} Scheduled</h3>
+                <p className="text-3xs text-purple-600 font-semibold mt-0.5">Live OT Roster</p>
               </div>
               <Scissors className="w-8 h-8 text-purple-500" />
             </div>
@@ -68,8 +75,8 @@ export default function OtMainDashboard() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Active OT Suites</p>
-                <h3 className="text-2xl font-bold text-teal-800 mt-1">1 In-Progress</h3>
-                <p className="text-3xs text-teal-600 font-semibold mt-0.5">Cath Lab PTCA Active</p>
+                <h3 className="text-2xl font-bold text-teal-800 mt-1">{activeInProgress} In-Progress</h3>
+                <p className="text-3xs text-teal-600 font-semibold mt-0.5">Intraoperative Active</p>
               </div>
               <Activity className="w-8 h-8 text-teal-500" />
             </div>
@@ -79,7 +86,7 @@ export default function OtMainDashboard() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">PAC Clearance</p>
-                <h3 className="text-2xl font-bold text-emerald-700 mt-1">3 / 3 Cleared</h3>
+                <h3 className="text-2xl font-bold text-emerald-700 mt-1">{clearedPac} / {totalScheduled} Cleared</h3>
                 <p className="text-3xs text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Anaesthesia Approved
                 </p>
@@ -92,7 +99,7 @@ export default function OtMainDashboard() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">WHO Safety Verifications</p>
-                <h3 className="text-2xl font-bold text-blue-800 mt-1">100% Verified</h3>
+                <h3 className="text-2xl font-bold text-blue-800 mt-1">{verifiedChecklists} / {totalScheduled} Verified</h3>
                 <p className="text-3xs text-blue-600 font-semibold mt-0.5">Sign-In / Time-Out / Sign-Out</p>
               </div>
               <ShieldCheck className="w-8 h-8 text-blue-500" />
@@ -116,7 +123,7 @@ export default function OtMainDashboard() {
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 text-base">OT Roster & Surgical Schedule</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Multi-theatre booking matrix across OT-1, OT-2, OT-3, surgeon & PAC status.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Multi-theatre booking matrix across OT suites, surgeon & PAC status.</p>
               </div>
             </Link>
 

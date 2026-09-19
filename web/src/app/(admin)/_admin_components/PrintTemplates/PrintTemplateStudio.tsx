@@ -38,13 +38,13 @@ export const PrintTemplateStudio: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <Tooltip title="Trigger browser print preview of live template">
-            <HmsButton size="sm" variant="secondary" icon={<Eye className="w-3.5 h-3.5" />} onClick={() => window.print()}>
+            <HmsButton size="sm" variant="secondary" icon={<Eye className="w-3.5 h-3.5" />} onClick={() => window.print()} className="w-full sm:w-auto">
               Test Print Preview
             </HmsButton>
           </Tooltip>
-          <HmsButton variant="emerald" icon={<CheckCircle2 className="w-4 h-4" />} onClick={handleSaveTemplate}>
+          <HmsButton variant="emerald" icon={<CheckCircle2 className="w-4 h-4" />} onClick={handleSaveTemplate} className="w-full sm:w-auto">
             Save Template Config
           </HmsButton>
         </div>

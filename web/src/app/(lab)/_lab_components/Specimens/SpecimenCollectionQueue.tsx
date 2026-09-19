@@ -6,26 +6,41 @@ import { Microscope, Barcode, CheckCircle2, Plus, AlertTriangle, RefreshCw, Cale
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { useLabStore, SpecimenRecord } from "../../_lab_stores/lab_store";
+import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 
 export const SpecimenCollectionQueue: React.FC = () => {
   const { specimens, updateSpecimenStatus, addSpecimen, resetToDefaults } = useLabStore();
+  const admissions = useIpdStore((state) => state.admissions);
+  const currentUser = useAuthUserStore((state) => state.user);
+  const collectorName = currentUser?.username ? `Phlebotomist ${currentUser.username}` : "Phlebotomist Duty Desk";
 
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
 
+  const handlePatientSelect = (admissionNo: string) => {
+    const found = admissions.find((a) => a.admissionNo === admissionNo || a.id === admissionNo);
+    if (found) {
+      form.setFieldsValue({
+        patientName: found.patientName,
+        uhid: found.uhid,
+      });
+    }
+  };
+
   const handleFinish = (values: Record<string, unknown>) => {
     const payload = {
       patientName: values.patientName as string,
-      uhid: (values.uhid as string) || "P-2026-9900",
+      uhid: (values.uhid as string) || admissions[0]?.uhid || "P-2026-9912",
       testName: values.testName as string,
       containerType: values.containerType as SpecimenRecord["containerType"],
       collectionTime: new Date().toLocaleString(),
-      collectedBy: "Phlebotomist Duty Desk",
+      collectedBy: collectorName,
       status: "COLLECTED_DISPATCHED" as const,
     };
 
     addSpecimen(payload);
-    message.success(`Sample barcode generated and collected for ${payload.patientName}`);
+    message.success(`Sample barcode generated & collected for ${payload.patientName} by ${collectorName}`);
     setModalOpen(false);
   };
 

@@ -9,79 +9,23 @@ import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 
-interface PlanConfig {
-  id: string;
-  code: string;
-  name: string;
-  monthlyFee: number;
-  maxUsers: string;
-  maxBeds: string;
-  modules: string[];
-  sla: string;
-  status: "ACTIVE" | "DEPRECATED";
-}
-
-interface TenantSubscription {
-  key: string;
-  tenantId: string;
-  tenantName: string;
-  planCode: string;
-  billingCycle: "MONTHLY" | "ANNUAL";
-  userSeats: string;
-  renewalDate: string;
-  status: "ACTIVE" | "PAST_DUE" | "TRIAL";
-}
-
-const INITIAL_PLANS: PlanConfig[] = [
-  {
-    id: "plan-1",
-    code: "BASIC",
-    name: "OPD Essentials",
-    monthlyFee: 14999,
-    maxUsers: "15 Users",
-    maxBeds: "10 Beds",
-    modules: ["OPD Queue", "Patient Reg", "e-Prescriptions", "Basic Billing"],
-    sla: "Standard (9x5)",
-    status: "ACTIVE",
-  },
-  {
-    id: "plan-2",
-    code: "PRO",
-    name: "Professional Hospital",
-    monthlyFee: 39999,
-    maxUsers: "100 Users",
-    maxBeds: "100 Beds",
-    modules: ["OPD Queue", "IPD Ward Matrix", "OT Scheduler", "Pharmacy FEFO", "Lab Pathology", "ABDM Gateway"],
-    sla: "Priority 24/7",
-    status: "ACTIVE",
-  },
-  {
-    id: "plan-3",
-    code: "ENTERPRISE",
-    name: "Enterprise Multi-Specialty",
-    monthlyFee: 89999,
-    maxUsers: "Unlimited",
-    maxBeds: "500 Beds",
-    modules: ["All Modules", "PACS DICOM Viewer", "CDSS AI Assist", "Multi-Branch Network", "DPDP Audit Ledger", "Dedicated Account Manager"],
-    sla: "Dedicated 99.99% SLA",
-    status: "ACTIVE",
-  },
-];
-
-const INITIAL_TENANT_SUBSCRIPTIONS: TenantSubscription[] = [
-  { key: "1", tenantId: "TENANT-001", tenantName: "Apollo Super Speciality Hospital", planCode: "ENTERPRISE", billingCycle: "ANNUAL", userSeats: "85 / 500", renewalDate: "2027-04-01", status: "ACTIVE" },
-  { key: "2", tenantId: "TENANT-002", tenantName: "Fortis Care Heart Institute", planCode: "PRO", billingCycle: "MONTHLY", userSeats: "62 / 100", renewalDate: "2026-10-15", status: "ACTIVE" },
-  { key: "3", tenantId: "TENANT-003", tenantName: "City Diagnostics & OPD Clinic", planCode: "BASIC", billingCycle: "ANNUAL", userSeats: "12 / 15", renewalDate: "2026-12-31", status: "ACTIVE" },
-];
+import { SubscriptionPlanService, PlanConfig, TenantSubscription } from "../_super_admin_services/subscription_plan_service";
 
 export default function SubscriptionPlansPage() {
-  const [plans, setPlans] = useState<PlanConfig[]>(INITIAL_PLANS);
-  const [tenantSubs, setTenantSubs] = useState<TenantSubscription[]>(INITIAL_TENANT_SUBSCRIPTIONS);
+  const [plans, setPlans] = useState<PlanConfig[]>(() => SubscriptionPlanService.getPlans());
+  const [tenantSubs, setTenantSubs] = useState<TenantSubscription[]>(() => SubscriptionPlanService.getTenantSubscriptions());
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<TenantSubscription | null>(null);
   const [form] = Form.useForm();
   const [upgradeForm] = Form.useForm();
+
+  useEffect(() => {
+    return SubscriptionPlanService.subscribe(() => {
+      setPlans(SubscriptionPlanService.getPlans());
+      setTenantSubs(SubscriptionPlanService.getTenantSubscriptions());
+    });
+  }, []);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCreatePlan = (values: Record<string, any>) => {
@@ -95,8 +39,11 @@ export default function SubscriptionPlansPage() {
       modules: values.modules || ["OPD Queue", "Billing"],
       sla: values.sla || "Standard 24/7",
       status: "ACTIVE",
+      includedFeatures: values.modules || ["OPD Queue", "Billing"],
+      restrictedFeatures: [],
+      optionalAddons: [],
     };
-    setPlans((prev) => [...prev, newPlan]);
+    SubscriptionPlanService.savePlan(newPlan);
     message.success(`Subscription Plan '${newPlan.name}' created successfully!`);
     setPlanModalOpen(false);
     form.resetFields();
@@ -105,12 +52,12 @@ export default function SubscriptionPlansPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleUpgradeTenantPlan = (values: Record<string, any>) => {
     if (!selectedTenant) return;
-    const updated = tenantSubs.map((t) =>
-      t.tenantId === selectedTenant.tenantId
-        ? { ...t, planCode: values.planCode, billingCycle: values.billingCycle }
-        : t
-    );
-    setTenantSubs(updated);
+    const updated: TenantSubscription = {
+      ...selectedTenant,
+      planCode: values.planCode,
+      billingCycle: values.billingCycle,
+    };
+    SubscriptionPlanService.updateTenantSubscription(updated);
     message.success(`Subscription plan for ${selectedTenant.tenantName} updated to ${values.planCode}!`);
     setUpgradeModalOpen(false);
   };

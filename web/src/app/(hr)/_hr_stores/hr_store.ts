@@ -8,6 +8,8 @@ export interface StaffAttendanceRecord {
   staffId: string;
   staffName: string;
   department: string;
+  departmentId?: string;
+  departmentCode?: string;
   role: string;
   clockInTime: string;
   clockOutTime?: string;
@@ -27,7 +29,9 @@ const DEFAULT_ATTENDANCE: StaffAttendanceRecord[] = [
     id: "att-1",
     staffId: "STF-101",
     staffName: "Dr. Rajesh Sharma",
-    department: "Cardiology",
+    department: "Cardiology & Cardiac Sciences",
+    departmentId: "dept-101",
+    departmentCode: "CARD-01",
     role: "Doctor / Senior Consultant",
     clockInTime: "07:55 AM",
     clockOutTime: "02:15 PM",
@@ -39,7 +43,9 @@ const DEFAULT_ATTENDANCE: StaffAttendanceRecord[] = [
     id: "att-2",
     staffId: "STF-204",
     staffName: "Nurse Sunita Deshmukh",
-    department: "Intensive Care Unit (ICU)",
+    department: "Intensive Care & Coronary Care Unit",
+    departmentId: "dept-103",
+    departmentCode: "ICU-CCU",
     role: "Nurse / Sister In-Charge",
     clockInTime: "06:50 AM",
     clockOutTime: "03:00 PM",

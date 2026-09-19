@@ -76,18 +76,20 @@ export default function PharmacyMainDashboard() {
             </div>
           </HmsCard>
 
-          <HmsCard elevated className="border-l-4 border-l-rose-500">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Low Stock Alerts</p>
-                <h3 className="text-2xl font-bold text-rose-600 mt-1">4 SKUs Low</h3>
-                <p className="text-3xs text-rose-600 font-semibold mt-0.5 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> Reorder Due
-                </p>
+          <Link href="/pharmacy/purchase-orders">
+            <HmsCard elevated className="border-l-4 border-l-rose-500 hover:shadow-md cursor-pointer transition-shadow">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase">Low Stock Alerts</p>
+                  <h3 className="text-2xl font-bold text-rose-600 mt-1">4 SKUs Low</h3>
+                  <p className="text-3xs text-rose-600 font-semibold mt-0.5 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Click to Reorder PO
+                  </p>
+                </div>
+                <AlertTriangle className="w-8 h-8 text-rose-500" />
               </div>
-              <AlertTriangle className="w-8 h-8 text-rose-500" />
-            </div>
-          </HmsCard>
+            </HmsCard>
+          </Link>
 
           <HmsCard elevated className="border-l-4 border-l-purple-500">
             <div className="flex justify-between items-center">
@@ -106,46 +108,111 @@ export default function PharmacyMainDashboard() {
         {/* Module Quick Link Navigation */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Pill className="w-5 h-5 text-teal-600" /> Pharmacy Workspaces & Tools
+            <Pill className="w-5 h-5 text-teal-600" /> Pharmacy Workspaces & Supply Chain Management
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link
               href="/pharmacy/dispense"
-              className="p-5 rounded-2xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all duration-200 group flex items-start gap-4"
+              className="p-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all duration-200 group flex items-start gap-3"
             >
-              <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl group-hover:scale-105 transition-transform shrink-0">
-                <Pill className="w-6 h-6" />
+              <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <Pill className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Dispensing Queue & Cashier</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Dispense OPD/IPD prescriptions, batch selection, and bill generation.</p>
+                <h3 className="font-bold text-slate-900 text-sm">Dispensing & Cashier</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Dispense OPD/IPD e-Rx & issue bill receipt.</p>
               </div>
             </Link>
 
             <Link
               href="/pharmacy/inventory"
-              className="p-5 rounded-2xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 transition-all duration-200 group flex items-start gap-4"
+              className="p-4 rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 transition-all duration-200 group flex items-start gap-3"
             >
-              <div className="p-3 bg-teal-100 text-teal-700 rounded-xl group-hover:scale-105 transition-transform shrink-0">
-                <Package className="w-6 h-6" />
+              <div className="p-2.5 bg-teal-100 text-teal-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <Package className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Drug Stock & FEFO Manager</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Track expiry dates, FEFO picking order, supplier reorders, and stock levels.</p>
+                <h3 className="font-bold text-slate-900 text-sm">Drug Inventory & FEFO</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Expiry tracking, stock batch levels & picking.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/pharmacy/purchase-orders"
+              className="p-4 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-purple-100 text-purple-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Purchase Orders (PO)</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Trigger PO for low stock items & vendor orders.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/pharmacy/grn"
+              className="p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-blue-100 text-blue-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">GRN Inward Entry</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Goods Received Notes, batch & GST invoice stock entry.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/pharmacy/vendors"
+              className="p-4 rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-indigo-100 text-indigo-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <Plus className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Vendor & Supplier Master</h3>
+                <p className="text-xs text-slate-500 mt-0.5">GSTIN vendors, distributor terms & credit days.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/pharmacy/transfers"
+              className="p-4 rounded-xl border border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-amber-100 text-amber-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <Package className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Inter-Dept Stock Transfer</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Transfer stock to OT, ICU, ER & Wards.</p>
               </div>
             </Link>
 
             <Link
               href="/pharmacy/controlled-drugs"
-              className="p-5 rounded-2xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition-all duration-200 group flex items-start gap-4"
+              className="p-4 rounded-xl border border-slate-200 hover:border-rose-500 hover:bg-rose-50/50 transition-all duration-200 group flex items-start gap-3"
             >
-              <div className="p-3 bg-purple-100 text-purple-700 rounded-xl group-hover:scale-105 transition-transform shrink-0">
-                <ShieldCheck className="w-6 h-6" />
+              <div className="p-2.5 bg-rose-100 text-rose-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Schedule H1 Narcotic Vault</h3>
-                <p className="text-xs text-slate-500 mt-0.5">NDPS register for controlled drugs with dual pharmacist sign-off logs.</p>
+                <h3 className="font-bold text-slate-900 text-sm">Schedule H1 Vault</h3>
+                <p className="text-xs text-slate-500 mt-0.5">NDPS register for controlled drugs with sign-off.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/pharmacy/reports"
+              className="p-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Reports & Valuation</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Inventory holding valuation & sales analytics.</p>
               </div>
             </Link>
           </div>

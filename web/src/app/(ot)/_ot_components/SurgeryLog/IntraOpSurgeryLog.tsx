@@ -4,23 +4,26 @@ import React, { useState } from "react";
 import { Table, Tag, Checkbox, Modal, Form, Input, message } from "antd";
 import { ShieldCheck, CheckCircle2, Clock, Activity, AlertTriangle, FileText, User, Scissors } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
-import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { useOtStore, SurgeryRecord } from "../../_ot_stores/ot_store";
 
 export const IntraOpSurgeryLog: React.FC = () => {
-  const { surgeries, toggleSafetyChecklist } = useOtStore();
+  const { surgeries, toggleSafetyChecklist, completeSurgery, reportPostOpComplication } = useOtStore();
 
   const [selectedSurgery, setSelectedSurgery] = useState<SurgeryRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [complicationModalOpen, setComplicationModalOpen] = useState(false);
   const [signInChecked, setSignInChecked] = useState(true);
   const [timeOutChecked, setTimeOutChecked] = useState(true);
   const [signOutChecked, setSignOutChecked] = useState(true);
+  const [procedureNotes, setProcedureNotes] = useState("");
+  const [complicationDetails, setComplicationDetails] = useState("");
 
   const handleOpenChecklist = (surg: SurgeryRecord) => {
     setSelectedSurgery(surg);
     setSignInChecked(surg.safetyChecklistDone);
     setTimeOutChecked(surg.safetyChecklistDone);
     setSignOutChecked(surg.safetyChecklistDone);
+    setProcedureNotes(surg.procedureNotes || "Procedure completed under sterile conditions. Unremarkable course.");
     setModalOpen(true);
   };
 
@@ -29,8 +32,21 @@ export const IntraOpSurgeryLog: React.FC = () => {
     if (!selectedSurgery.safetyChecklistDone) {
       toggleSafetyChecklist(selectedSurgery.id);
     }
-    message.success(`WHO Surgical Safety Checklist verified for ${selectedSurgery.procedureName}`);
+    if (selectedSurgery.status === "IN_PROGRESS" || selectedSurgery.status === "SCHEDULED") {
+      completeSurgery(selectedSurgery.id, {
+        procedureNotes: procedureNotes || "WHO Safety Checklist verified. Procedure completed.",
+      });
+    }
+    message.success(`WHO Surgical Safety Checklist verified & intra-op log saved for ${selectedSurgery.procedureName}`);
     setModalOpen(false);
+  };
+
+  const handleReportComplication = () => {
+    if (!selectedSurgery || !complicationDetails) return;
+    reportPostOpComplication(selectedSurgery.id, complicationDetails);
+    message.error(`Critical Post-Op complication alert dispatched for ${selectedSurgery.patientName}`);
+    setComplicationDetails("");
+    setComplicationModalOpen(false);
   };
 
   const columns = [
@@ -39,7 +55,7 @@ export const IntraOpSurgeryLog: React.FC = () => {
       key: "code",
       render: (_: unknown, record: SurgeryRecord) => (
         <div>
-          <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">
+          <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
             {record.otRoom}
           </span>
           <p className="text-3xs text-slate-400 font-mono mt-1">{record.surgeryCode}</p>
@@ -52,8 +68,8 @@ export const IntraOpSurgeryLog: React.FC = () => {
       render: (_: unknown, record: SurgeryRecord) => (
         <div>
           <span className="font-bold text-slate-900">{record.patientName}</span>
-          <p className="text-xs text-slate-500">UHID: <span className="font-mono">{record.uhid}</span></p>
-          <p className="text-xs font-semibold text-slate-800 mt-0.5">{record.procedureName}</p>
+          <p className="text-xs text-slate-500">UHID: <span className="font-mono text-slate-700">{record.uhid}</span></p>
+          <p className="text-xs font-semibold text-teal-900 mt-0.5">{record.procedureName}</p>
         </div>
       ),
     },
@@ -78,17 +94,40 @@ export const IntraOpSurgeryLog: React.FC = () => {
       ),
     },
     {
-      title: "Action",
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status: SurgeryRecord["status"]) => (
+        <Tag color={status === "COMPLETED" ? "emerald" : status === "IN_PROGRESS" ? "gold" : "blue"} className="font-bold">
+          {status}
+        </Tag>
+      ),
+    },
+    {
+      title: "Actions",
       key: "action",
       render: (_: unknown, record: SurgeryRecord) => (
-        <HmsButton
-          size="sm"
-          variant="secondary"
-          icon={<ShieldCheck className="w-3.5 h-3.5" />}
-          onClick={() => handleOpenChecklist(record)}
-        >
-          WHO Safety Checklist
-        </HmsButton>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <HmsButton
+            size="sm"
+            variant="secondary"
+            icon={<ShieldCheck className="w-3.5 h-3.5" />}
+            onClick={() => handleOpenChecklist(record)}
+          >
+            Checklist & Log
+          </HmsButton>
+          <HmsButton
+            size="sm"
+            variant="danger"
+            icon={<AlertTriangle className="w-3.5 h-3.5" />}
+            onClick={() => {
+              setSelectedSurgery(record);
+              setComplicationModalOpen(true);
+            }}
+          >
+            Complication Alert
+          </HmsButton>
+        </div>
       ),
     },
   ];
@@ -102,7 +141,7 @@ export const IntraOpSurgeryLog: React.FC = () => {
             <Scissors className="w-5 h-5 text-teal-600" /> WHO Surgical Safety Checklist & Intra-Op Log
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Execute 3-stage WHO Surgical Safety Verification (Sign-In, Time-Out, Sign-Out) before and after surgery.
+            Execute 3-stage WHO Surgical Safety Verification (Sign-In, Time-Out, Sign-Out) and log intraoperative notes.
           </p>
         </div>
 
@@ -116,12 +155,12 @@ export const IntraOpSurgeryLog: React.FC = () => {
         <Table columns={columns} dataSource={surgeries} rowKey="id" pagination={false} />
       </div>
 
-      {/* Modal */}
+      {/* WHO Checklist Modal */}
       <Modal
         title={
           <div className="flex items-center gap-2 text-teal-700">
             <ShieldCheck className="w-5 h-5 text-teal-600" />
-            <span>WHO Surgical Safety Checklist: {selectedSurgery?.procedureName}</span>
+            <span>WHO Surgical Safety Checklist & Intra-Op Note: {selectedSurgery?.procedureName}</span>
           </div>
         }
         open={modalOpen}
@@ -135,7 +174,7 @@ export const IntraOpSurgeryLog: React.FC = () => {
               <span>Patient: {selectedSurgery?.patientName}</span>
               <span>UHID: {selectedSurgery?.uhid}</span>
             </div>
-            <div>Surgeon: <strong>{selectedSurgery?.surgeonName}</strong></div>
+            <div>Surgeon: <strong>{selectedSurgery?.surgeonName}</strong> | Anaesthetist: {selectedSurgery?.anaesthetistName}</div>
           </div>
 
           {/* 3-Stage Checklist */}
@@ -168,12 +207,61 @@ export const IntraOpSurgeryLog: React.FC = () => {
             </div>
           </div>
 
+          <div>
+            <label className="font-bold text-slate-800 text-xs block mb-1">Operative Procedure Notes & Findings</label>
+            <Input.TextArea
+              rows={3}
+              value={procedureNotes}
+              onChange={(e) => setProcedureNotes(e.target.value)}
+              placeholder="Enter surgical findings, implants placed, estimated blood loss, etc."
+            />
+          </div>
+
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
             <HmsButton variant="secondary" onClick={() => setModalOpen(false)}>
               Cancel
             </HmsButton>
-            <HmsButton variant="emerald" onClick={handleSaveChecklist}>
-              Confirm & Sign Checklist
+            <HmsButton variant="emerald" onClick={handleSaveChecklist} icon={<ShieldCheck className="w-4 h-4" />}>
+              Confirm & Complete Log
+            </HmsButton>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Complication Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-rose-700">
+            <AlertTriangle className="w-5 h-5 text-rose-600" />
+            <span>Flag Post-Operative Complication Alert</span>
+          </div>
+        }
+        open={complicationModalOpen}
+        onCancel={() => setComplicationModalOpen(false)}
+        footer={null}
+        width={500}
+      >
+        <div className="space-y-4 py-2 text-xs">
+          <p className="text-slate-600">
+            Flagging a post-operative complication for <strong>{selectedSurgery?.patientName}</strong> (UHID: {selectedSurgery?.uhid}) will trigger an urgent critical notification to all clinical duty stations and log an audit event.
+          </p>
+
+          <div>
+            <label className="font-bold text-slate-800 block mb-1">Complication Description</label>
+            <Input.TextArea
+              rows={4}
+              value={complicationDetails}
+              onChange={(e) => setComplicationDetails(e.target.value)}
+              placeholder="e.g. Excessive post-op surgical site bleeding / Anaphylactic reaction / Unstable hemodynamics"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+            <HmsButton variant="secondary" onClick={() => setComplicationModalOpen(false)}>
+              Cancel
+            </HmsButton>
+            <HmsButton variant="danger" onClick={handleReportComplication} icon={<AlertTriangle className="w-4 h-4" />}>
+              Dispatch Critical Alert
             </HmsButton>
           </div>
         </div>

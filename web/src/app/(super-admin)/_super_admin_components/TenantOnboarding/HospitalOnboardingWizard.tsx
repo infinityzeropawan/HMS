@@ -8,7 +8,14 @@ import { TenantOnboardingSchema } from "../../_super_admin_schemas/tenant_schema
 
 interface HospitalOnboardingWizardProps {
   onClose: () => void;
-  onProvisioned?: (tenant: { hospitalName: string; subdomain: string; licenseTier: string; maxUserSeats: number }) => void;
+  onProvisioned?: (tenant: {
+    hospitalName: string;
+    subdomain: string;
+    licenseTier: string;
+    maxUserSeats: number;
+    adminEmail?: string;
+    gstin?: string;
+  }) => void;
 }
 
 export const HospitalOnboardingWizard: React.FC<HospitalOnboardingWizardProps> = ({ onClose, onProvisioned }) => {

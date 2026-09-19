@@ -28,7 +28,9 @@ export const DpdpAuditLogTable: React.FC = () => {
         </span>
         <span className="font-mono text-[10px] text-slate-500">Hash-Chain Validated</span>
       </div>
-      <Table columns={columns} dataSource={data} pagination={false} size="small" />
+      <div className="w-full overflow-x-auto">
+        <Table columns={columns} dataSource={data} pagination={false} size="small" scroll={{ x: "max-content" }} />
+      </div>
     </div>
   );
 };

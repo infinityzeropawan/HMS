@@ -6,18 +6,35 @@ import { HeartPulse, Plus, AlertTriangle, CheckCircle2, Search, Activity, User, 
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { useNurseVitalsStore, NurseVitalsRecord } from "../../_nurse_stores/nurse_vitals_store";
+import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 
 export const NurseVitalsEntryConsole: React.FC = () => {
   const { vitalsLogs, addVitalsRecord } = useNurseVitalsStore();
+  const admissions = useIpdStore((state) => state.admissions);
+  const currentUser = useAuthUserStore((state) => state.user);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
 
+  const handlePatientSelect = (admissionNo: string) => {
+    const found = admissions.find((a) => a.admissionNo === admissionNo || a.id === admissionNo);
+    if (found) {
+      form.setFieldsValue({
+        patientName: found.patientName,
+        bedNumber: found.bedNumber,
+        uhid: found.uhid,
+        ipdId: found.admissionNo,
+      });
+    }
+  };
+
   const handleFinish = (values: Record<string, unknown>) => {
+    const nurseTitle = currentUser?.username ? `Nurse ${currentUser.username}` : "Nurse Duty Station";
     const payload = {
-      ipdId: values.ipdId as string,
-      uhid: values.uhid as string,
+      ipdId: (values.ipdId as string) || "IPD-2026-0881",
+      uhid: (values.uhid as string) || "P-2026-9912",
       patientName: values.patientName as string,
       bedNumber: values.bedNumber as string,
       bpSystolic: Number(values.bpSystolic) || 120,
@@ -28,11 +45,25 @@ export const NurseVitalsEntryConsole: React.FC = () => {
       respirationRate: Number(values.respirationRate) || 16,
       painScore: Number(values.painScore) || 0,
       recordedAt: new Date().toLocaleString(),
-      recordedBy: "Nurse Duty Station",
+      recordedBy: nurseTitle,
     };
 
     addVitalsRecord(payload);
+    
+    // Also sync to IPD Store
+    try {
+      useIpdStore.getState().updateVitals(payload.ipdId, {
+        bp: `${payload.bpSystolic}/${payload.bpDiastolic}`,
+        pulse: payload.pulseRate,
+        spO2: payload.spO2Percent,
+        temp: `${payload.temperatureFahrenheit}°F`,
+      });
+    } catch {
+      /* ignore if admission not matched */
+    }
+
     message.success(`Vitals recorded for ${payload.patientName} (${payload.bedNumber})`);
+    form.resetFields();
     setModalOpen(false);
   };
 
@@ -172,10 +203,12 @@ export const NurseVitalsEntryConsole: React.FC = () => {
         <Form form={form} layout="vertical" onFinish={handleFinish} className="mt-4">
           <div className="grid grid-cols-2 gap-4">
             <Form.Item label="Patient Name" name="patientName" rules={[{ required: true }]}>
-              <Select placeholder="Select Inpatient" size="large">
-                <Select.Option value="Sunil Verma">Sunil Verma (ICU-BED-01)</Select.Option>
-                <Select.Option value="Anita Roy">Anita Roy (WARD-3B-04)</Select.Option>
-                <Select.Option value="Rajesh Kulkarni">Rajesh Kulkarni (DELUXE-402)</Select.Option>
+              <Select placeholder="Select Inpatient" size="large" onChange={handlePatientSelect}>
+                {admissions.map((a) => (
+                  <Select.Option key={a.id} value={a.admissionNo}>
+                    {a.patientName} ({a.bedNumber})
+                  </Select.Option>
+                ))}
               </Select>
             </Form.Item>
 
@@ -185,11 +218,11 @@ export const NurseVitalsEntryConsole: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item label="UHID" name="uhid" initialValue="P-2026-9912">
-              <Input />
+            <Form.Item label="UHID" name="uhid">
+              <Input placeholder="P-2026-XXXX" />
             </Form.Item>
-            <Form.Item label="IPD Admission #" name="ipdId" initialValue="IPD-2026-0881">
-              <Input />
+            <Form.Item label="IPD Admission #" name="ipdId">
+              <Input placeholder="IPD-2026-XXXX" />
             </Form.Item>
           </div>
 

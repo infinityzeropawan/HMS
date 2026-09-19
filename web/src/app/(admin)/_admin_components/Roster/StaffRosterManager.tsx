@@ -1,51 +1,131 @@
 "use client";
 
 import React, { useState } from "react";
-import { Table, Tag, Modal, Form, Input, Select, DatePicker, message, Tooltip } from "antd";
-import { Calendar, Clock, Plus, UserCheck, ShieldAlert, Search, RefreshCw, User, Phone, MapPin } from "lucide-react";
+import { Table, Tag, Modal, Form, Input, Select, DatePicker, message, Tooltip, Alert } from "antd";
+import { Calendar, Clock, Plus, UserCheck, ShieldAlert, Search, RefreshCw, User, Phone, MapPin, AlertTriangle } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
-import {
-  useAdminRosterStore,
-  StaffShiftRoster,
-  ShiftType,
-  StaffRoleCategory,
-} from "../../_admin_stores/admin_roster_store";
+import { useRosterStore } from "../../_admin_stores/admin_roster_store";
+import { RosterService } from "../../_admin_services/roster_service";
+import { useStaffUserStore } from "../../_admin_stores/admin_user_store";
+import { DepartmentService } from "../../_admin_services/department_service";
+import { StaffShiftRoster, StandardShiftType, StaffRoleCategory } from "../../_admin_types/roster_types";
 
 export const StaffRosterManager: React.FC = () => {
-  const { rosters, addShift, updateShiftStatus, resetToDefaults } = useAdminRosterStore();
+  const rosters = useRosterStore((state) => state.rosters);
+  const resetToDefaults = useRosterStore((state) => state.resetToDefaults);
+  const staffUsers = useStaffUserStore((state) => state.users);
+  const departments = DepartmentService.getDepartments();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("ALL");
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [form] = Form.useForm();
 
+  const handleStaffSelect = (userId: string) => {
+    setSelectedUserId(userId);
+    setValidationError(null);
+
+    const user = staffUsers.find((u) => u.id === userId);
+    if (user) {
+      // Pre-fill department, role category, contact details
+      let roleCat: StaffRoleCategory = "DOCTOR";
+      if (user.roleCategory === "DOCTOR") roleCat = "DOCTOR";
+      else if (user.roleCategory === "NURSE") roleCat = "NURSE";
+      else if (user.roleCategory === "PHARMACIST") roleCat = "PHARMACIST";
+      else if (user.roleCategory === "LAB_TECH") roleCat = "LAB_TECH";
+      else if (user.roleCategory === "RECEPTIONIST") roleCat = "RECEPTIONIST";
+
+      form.setFieldsValue({
+        departmentId: user.departmentId,
+        role: roleCat,
+        contactNumber: user.phone || "+91 98200 00000",
+      });
+
+      // Immediate status check notification
+      if (user.status !== "ACTIVE") {
+        setValidationError(`Warning: User ${user.fullName} is currently ${user.status}. Shift assignment will be blocked.`);
+      }
+    }
+  };
+
   const handleFinish = (values: Record<string, unknown>) => {
-    const payload = {
-      staffName: values.staffName as string,
-      role: values.role as StaffRoleCategory,
-      department: values.department as string,
-      shift: values.shift as ShiftType,
-      shiftHours: (values.shiftHours as string) || "08:00 AM - 04:00 PM",
-      assignedWardOrRoom: (values.assignedWardOrRoom as string) || "General Ward",
+    setValidationError(null);
+
+    const user = staffUsers.find((u) => u.id === values.userId);
+    if (!user) {
+      message.error("Selected staff user not found.");
+      return;
+    }
+
+    const dept = departments.find((d) => d.id === values.departmentId) || {
+      id: user.departmentId,
+      code: user.departmentCode,
+      name: user.departmentName,
+    };
+
+    const payload: Omit<StaffShiftRoster, "id"> = {
+      userId: user.id,
+      staffId: user.employeeId,
+      staffName: user.fullName,
+      role: (values.role as StaffRoleCategory) || "DOCTOR",
+      departmentId: dept.id,
+      departmentCode: dept.code,
+      departmentName: dept.name,
+      department: dept.name,
+      shift: (values.shift as StandardShiftType) || "MORNING",
+      shiftHours: (values.shiftHours as string) || "08:00 AM - 02:00 PM",
+      assignedWardOrRoom: (values.assignedWardOrRoom as string) || "OPD Clinic Room 104",
       dutyDate: values.dutyDate
         ? (values.dutyDate as { format: (f: string) => string }).format("YYYY-MM-DD")
         : new Date().toISOString().split("T")[0],
-      status: "ON_DUTY" as const,
-      contactNumber: (values.contactNumber as string) || "+91 98200 00000",
+      status: "ON_DUTY",
+      approvalStatus: "APPROVED",
+      contactNumber: (values.contactNumber as string) || user.phone || "+91 98200 00000",
     };
 
-    addShift(payload);
-    message.success(`Shift assigned for ${payload.staffName} (${payload.shift})`);
-    setModalOpen(false);
+    try {
+      RosterService.assignShift(payload, "Admin Roster Workspace");
+      message.success(`Shift assigned for ${payload.staffName} (${payload.shift})`);
+      setModalOpen(false);
+      form.resetFields();
+      setSelectedUserId("");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to assign shift";
+      setValidationError(errMsg);
+      message.error(errMsg);
+    }
+  };
+
+  const handleStatusChange = (shiftId: string, newStatus: StaffShiftRoster["status"]) => {
+    try {
+      RosterService.modifyShift(shiftId, { status: newStatus }, "Admin Roster Manager");
+      message.success(`Updated shift status to ${newStatus}`);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to update shift status";
+      message.error(errMsg);
+    }
+  };
+
+  const handleCancelShift = (shiftId: string) => {
+    try {
+      RosterService.cancelShift(shiftId, "Cancelled by Admin", "Admin Roster Manager");
+      message.info("Shift cancelled successfully.");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to cancel shift";
+      message.error(errMsg);
+    }
   };
 
   const filteredRosters = rosters.filter((r) => {
     const matchesRole = selectedRole === "ALL" || r.role === selectedRole;
     const matchesSearch =
       r.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.assignedWardOrRoom.toLowerCase().includes(searchTerm.toLowerCase());
+      r.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.assignedWardOrRoom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.staffId.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesRole && matchesSearch;
   });
 
@@ -59,7 +139,12 @@ export const StaffRosterManager: React.FC = () => {
             <span className="font-bold text-slate-900">{record.staffName}</span>
             <Tag color="purple" className="text-3xs">{record.role}</Tag>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">{record.department}</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            <span className="font-mono text-3xs font-semibold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded mr-1">
+              {record.staffId}
+            </span>
+            {record.departmentName}
+          </p>
         </div>
       ),
     },
@@ -71,6 +156,7 @@ export const StaffRosterManager: React.FC = () => {
         if (record.shift === "EVENING") color = "gold";
         if (record.shift === "NIGHT") color = "purple";
         if (record.shift === "ON_CALL") color = "red";
+        if (record.shift === "CUSTOM") color = "cyan";
 
         return (
           <div>
@@ -106,7 +192,7 @@ export const StaffRosterManager: React.FC = () => {
         return (
           <Select
             value={s}
-            onChange={(val) => updateShiftStatus(record.id, val)}
+            onChange={(val) => handleStatusChange(record.id, val)}
             className="w-36"
             size="small"
           >
@@ -167,7 +253,7 @@ export const StaffRosterManager: React.FC = () => {
           <div className="relative flex-1 max-w-sm">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <Input
-              placeholder="Search staff name, department or ward..."
+              placeholder="Search staff name, ID, department or ward..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -195,15 +281,17 @@ export const StaffRosterManager: React.FC = () => {
               Reset
             </HmsButton>
           </Tooltip>
-          <HmsButton variant="emerald" icon={<Plus className="w-4 h-4" />} onClick={() => setModalOpen(true)}>
+          <HmsButton variant="emerald" icon={<Plus className="w-4 h-4" />} onClick={() => { setValidationError(null); setModalOpen(true); }}>
             Assign Shift Roster
           </HmsButton>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs">
-        <Table columns={columns} dataSource={filteredRosters} rowKey="id" pagination={{ pageSize: 8 }} />
+      <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="w-full overflow-x-auto">
+          <Table columns={columns} dataSource={filteredRosters} rowKey="id" pagination={{ pageSize: 8 }} scroll={{ x: "max-content" }} />
+        </div>
       </div>
 
       {/* Modal */}
@@ -217,11 +305,34 @@ export const StaffRosterManager: React.FC = () => {
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         footer={null}
-        width={560}
+        width={580}
       >
+        {validationError && (
+          <Alert
+            type="error"
+            message="Roster Assignment Validation Error"
+            description={validationError}
+            showIcon
+            icon={<AlertTriangle className="w-5 h-5 text-rose-500" />}
+            className="mb-4"
+          />
+        )}
+
         <Form form={form} layout="vertical" onFinish={handleFinish} className="mt-4">
-          <Form.Item label="Staff Member Name" name="staffName" rules={[{ required: true }]}>
-            <Input prefix={<User className="w-4 h-4 text-teal-600" />} placeholder="Dr. Rajesh Sharma" size="large" />
+          <Form.Item label="Select Staff Member (Canonical Record)" name="userId" rules={[{ required: true, message: "Please select a staff member" }]}>
+            <Select
+              size="large"
+              placeholder="Select active staff user..."
+              onChange={handleStaffSelect}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? "").toString().toLowerCase().includes(input.toLowerCase())
+              }
+              options={staffUsers.map((u) => ({
+                value: u.id,
+                label: `${u.fullName} (${u.employeeId}) — ${u.roleName} [${u.status}]`,
+              }))}
+            />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
@@ -235,18 +346,25 @@ export const StaffRosterManager: React.FC = () => {
               </Select>
             </Form.Item>
 
-            <Form.Item label="Department" name="department" rules={[{ required: true }]}>
-              <Input placeholder="Cardiology" size="large" />
+            <Form.Item label="Department" name="departmentId" rules={[{ required: true }]}>
+              <Select size="large">
+                {departments.map((d) => (
+                  <Select.Option key={d.id} value={d.id}>
+                    {d.name} ({d.code})
+                  </Select.Option>
+                ))}
+              </Select>
             </Form.Item>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item label="Shift Type" name="shift" rules={[{ required: true }]}>
+            <Form.Item label="Standard Shift Type" name="shift" rules={[{ required: true }]}>
               <Select size="large">
                 <Select.Option value="MORNING">Morning Shift</Select.Option>
                 <Select.Option value="EVENING">Evening Shift</Select.Option>
                 <Select.Option value="NIGHT">Night Shift</Select.Option>
                 <Select.Option value="ON_CALL">24x7 On-Call Standby</Select.Option>
+                <Select.Option value="CUSTOM">Custom Shift Routine</Select.Option>
               </Select>
             </Form.Item>
 
@@ -256,16 +374,16 @@ export const StaffRosterManager: React.FC = () => {
           </div>
 
           <Form.Item label="Assigned Station / OPD Clinic Room / Ward" name="assignedWardOrRoom" rules={[{ required: true }]}>
-            <Input placeholder="OPD Clinic Room 104 or ICU Bed Station A" />
+            <Input placeholder="OPD Clinic Room 104 or ICU Bed Station A" size="large" />
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
-            <Form.Item label="Duty Date" name="dutyDate">
+            <Form.Item label="Duty Date" name="dutyDate" rules={[{ required: true }]}>
               <DatePicker className="w-full" size="large" />
             </Form.Item>
 
             <Form.Item label="Contact Phone Number" name="contactNumber">
-              <Input prefix={<Phone className="w-4 h-4 text-slate-400" />} placeholder="+91 98200 11223" />
+              <Input prefix={<Phone className="w-4 h-4 text-slate-400" />} placeholder="+91 98200 11223" size="large" />
             </Form.Item>
           </div>
 

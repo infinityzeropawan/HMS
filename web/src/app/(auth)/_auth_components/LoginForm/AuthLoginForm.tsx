@@ -128,12 +128,22 @@ export const AuthLoginForm: React.FC = () => {
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2 animate-fade-in">
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="p-2 bg-white rounded border border-slate-200">
+                <span className="font-semibold text-primary-teal block text-[11px]">Super Admin</span>
+                <code className="text-[10px] text-slate-700 font-mono">superadmin / super123</code>
+              </div>
+              <div className="p-2 bg-white rounded border border-slate-200">
                 <span className="font-semibold text-primary-teal block text-[11px]">Doctor</span>
                 <code className="text-[10px] text-slate-700 font-mono">doctor / doctor123</code>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-center">
               <div className="p-2 bg-white rounded border border-slate-200">
                 <span className="font-semibold text-blue-600 block text-[11px]">Reception</span>
                 <code className="text-[10px] text-slate-700 font-mono">reception / rec123</code>
+              </div>
+              <div className="p-2 bg-white rounded border border-slate-200">
+                <span className="font-semibold text-slate-700 block text-[11px]">Hospital Admin</span>
+                <code className="text-[10px] text-slate-700 font-mono">hospitaladmin / hospital123</code>
               </div>
             </div>
             <div className="text-[10px] text-slate-500 text-center pt-1 border-t border-slate-200/60">

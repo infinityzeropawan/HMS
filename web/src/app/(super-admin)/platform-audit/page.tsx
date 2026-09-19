@@ -8,88 +8,10 @@ import { ShieldCheck, Building2, Receipt, SlidersHorizontal, Database, Headphone
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
+import { useRbacAuditStore } from "../_super_admin_stores/rbac_audit_store";
+import { PlatformAuditService, PlatformAuditEvent, ExtendedAuditCategory } from "../_super_admin_services/platform_audit_service";
 
-interface AuditEvent {
-  key: string;
-  id: string;
-  timestamp: string;
-  actor: string;
-  actorRole: string;
-  action: string;
-  category: "TENANT_ONBOARDING" | "SUBSCRIPTION_CHANGE" | "FACILITY_TOGGLE" | "FEATURE_FLAG" | "RBAC_ROLES";
-  entity: string;
-  ipAddress: string;
-  riskLevel: "INFO" | "WARNING" | "CRITICAL";
-  details: string;
-}
-
-const INITIAL_AUDIT_LOGS: AuditEvent[] = [
-  {
-    key: "1",
-    id: "AUD-8801",
-    timestamp: "2026-09-17 10:45:12 AM",
-    actor: "Pawan SuperAdmin",
-    actorRole: "SUPER_ADMIN",
-    action: "Updated tenant subscription tier to ENTERPRISE",
-    category: "SUBSCRIPTION_CHANGE",
-    entity: "Apollo Super Speciality Hospital (TENANT-001)",
-    ipAddress: "103.44.120.14",
-    riskLevel: "INFO",
-    details: '{"previousPlan": "PRO", "newPlan": "ENTERPRISE", "seats": 500, "updatedBy": "superadmin_01"}',
-  },
-  {
-    key: "2",
-    id: "AUD-8802",
-    timestamp: "2026-09-17 09:30:44 AM",
-    actor: "System Auto-Provisioner",
-    actorRole: "SYSTEM",
-    action: "Onboarded new hospital tenant & provisioned database schema",
-    category: "TENANT_ONBOARDING",
-    entity: "Fortis Care Heart Institute (TENANT-002)",
-    ipAddress: "10.0.4.12",
-    riskLevel: "INFO",
-    details: '{"subdomain": "fortis", "dbInstance": "db-prod-fortis-02", "status": "PROVISIONED"}',
-  },
-  {
-    key: "3",
-    id: "AUD-8803",
-    timestamp: "2026-09-16 04:15:20 PM",
-    actor: "Admin Rajesh",
-    actorRole: "HOSPITAL_ADMIN",
-    action: "Toggled facility service state (OT Suite 3 Closed for Maintenance)",
-    category: "FACILITY_TOGGLE",
-    entity: "Apollo Super Speciality Hospital",
-    ipAddress: "115.240.88.9",
-    riskLevel: "WARNING",
-    details: '{"facilityId": "FAC-OT-03", "prevState": "OPEN", "newState": "CLOSED", "reason": "Sterilization"}',
-  },
-  {
-    key: "4",
-    id: "AUD-8804",
-    timestamp: "2026-09-16 02:10:00 PM",
-    actor: "Pawan SuperAdmin",
-    actorRole: "SUPER_ADMIN",
-    action: "Enabled global feature flag 'ABDM_M2_CONSENT_ENGINE'",
-    category: "FEATURE_FLAG",
-    entity: "Global SaaS Platform",
-    ipAddress: "103.44.120.14",
-    riskLevel: "INFO",
-    details: '{"flag": "ABDM_M2_CONSENT_ENGINE", "value": true, "scope": "ALL_TENANTS"}',
-  },
-  {
-    key: "5",
-    id: "AUD-8805",
-    timestamp: "2026-09-15 11:05:18 AM",
-    actor: "Security Guardian",
-    actorRole: "SYSTEM",
-    action: "Detected 3 failed login attempts for user admin@apollo.com",
-    category: "RBAC_ROLES",
-    entity: "Apollo Super Speciality Hospital",
-    ipAddress: "49.207.140.22",
-    riskLevel: "CRITICAL",
-    details: '{"user": "admin@apollo.com", "attempts": 3, "status": "ACCOUNT_LOCKED_TEMPORARY"}',
-  },
-];
+type AuditEvent = PlatformAuditEvent;
 
 const CATEGORY_COLOR: Record<string, string> = {
   TENANT_ONBOARDING: "purple",
@@ -97,21 +19,66 @@ const CATEGORY_COLOR: Record<string, string> = {
   FACILITY_TOGGLE: "cyan",
   FEATURE_FLAG: "blue",
   RBAC_ROLES: "volcano",
+  CONSENT_EVENT: "cyan",
+  DPDP_REQUEST: "blue",
+  BREAK_GLASS_ACCESS: "magenta",
+  ROLE_PERMISSION_CHANGE: "purple",
+  RETENTION_POLICY_CHANGE: "geekblue",
+  COMPLIANCE_EVENT: "emerald",
+  BRANDING_CHANGE: "pink",
+  WHITE_LABEL_CHANGE: "orange",
+  SUBSCRIPTION_LIFECYCLE: "green",
+  FEATURE_LICENSE_EVENT: "gold",
+  GOVERNANCE_EVENT: "volcano",
+  SECURITY: "red",
+  LICENSE: "gold",
+  SYSTEM: "blue",
+  CONFIG: "geekblue",
 };
 
 export default function PlatformAuditPage() {
-  const [logs, setLogs] = useState<AuditEvent[]>(INITIAL_AUDIT_LOGS);
+  const { logs: rbacStoreLogs } = useRbacAuditStore();
+  const [platformLogs, setPlatformLogs] = useState<PlatformAuditEvent[]>(() => PlatformAuditService.getAuditLogs());
+  const [auditStats, setAuditStats] = useState(() => PlatformAuditService.getStatistics());
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [riskFilter, setRiskFilter] = useState("ALL");
   const [selectedAudit, setSelectedAudit] = useState<AuditEvent | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  useEffect(() => {
+    return PlatformAuditService.subscribe(() => {
+      setPlatformLogs(PlatformAuditService.getAuditLogs());
+      setAuditStats(PlatformAuditService.getStatistics());
+    });
+  }, []);
+
+  // Map RBAC audit store logs into AuditEvent structure
+  const mappedRbacLogs: AuditEvent[] = rbacStoreLogs.map((l) => ({
+    key: l.eventId,
+    id: l.eventId,
+    timestamp: l.timestamp,
+    actor: l.actor,
+    actorRole: l.actorRole,
+    action: `${l.eventType}: ${l.reason}`,
+    category: "ROLE_PERMISSION_CHANGE" as ExtendedAuditCategory,
+    entity: `${l.tenantName} (${l.tenantId})`,
+    ipAddress: "103.44.120.14",
+    riskLevel: l.eventType.includes("DELETED") || l.eventType.includes("REMOVED") ? "WARNING" : "INFO",
+    details: JSON.stringify({
+      previousValue: l.previousValue,
+      newValue: l.newValue,
+      hashSignature: l.hashSignature,
+    }),
+  }));
+
+  const allCombinedLogs = [...mappedRbacLogs, ...platformLogs];
+
   const handleExportLedger = () => {
     message.success("Generating immutable DPDP Audit Trail Ledger (CSV)...");
   };
 
-  const filteredLogs = logs.filter((l) => {
+  const filteredLogs = allCombinedLogs.filter((l) => {
     const matchesSearch =
       l.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       l.actor.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -230,8 +197,8 @@ export default function PlatformAuditPage() {
           <HmsCard elevated className="border-l-4 border-l-teal-500">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Audit Logged Today</p>
-                <h3 className="text-2xl font-bold text-teal-800 mt-1">1,420 Events</h3>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Total Audit Events</p>
+                <h3 className="text-2xl font-bold text-teal-800 mt-1">{allCombinedLogs.length.toLocaleString("en-IN")} Events</h3>
                 <p className="text-3xs text-emerald-600 font-semibold mt-0.5">100% Tamper Proof</p>
               </div>
               <ShieldCheck className="w-8 h-8 text-teal-500" />
@@ -241,9 +208,9 @@ export default function PlatformAuditPage() {
           <HmsCard elevated className="border-l-4 border-l-emerald-500">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Active Admins</p>
-                <h3 className="text-2xl font-bold text-emerald-700 mt-1">48 Sessions</h3>
-                <p className="text-3xs text-emerald-600 font-semibold mt-0.5">Authenticated 2FA</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Info Events</p>
+                <h3 className="text-2xl font-bold text-emerald-700 mt-1">{auditStats.info} Events</h3>
+                <p className="text-3xs text-emerald-600 font-semibold mt-0.5">Informational Actions</p>
               </div>
               <Lock className="w-8 h-8 text-emerald-500" />
             </div>
@@ -253,8 +220,8 @@ export default function PlatformAuditPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Security Alerts</p>
-                <h3 className="text-2xl font-bold text-amber-600 mt-1">1 Warning</h3>
-                <p className="text-3xs text-amber-600 font-semibold mt-0.5">Failed Login Lockout</p>
+                <h3 className="text-2xl font-bold text-amber-600 mt-1">{auditStats.warning} Warning{auditStats.warning !== 1 ? "s" : ""}</h3>
+                <p className="text-3xs text-amber-600 font-semibold mt-0.5">{auditStats.critical} Critical Event{auditStats.critical !== 1 ? "s" : ""}</p>
               </div>
               <AlertTriangle className="w-8 h-8 text-amber-500" />
             </div>
@@ -287,13 +254,22 @@ export default function PlatformAuditPage() {
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500 font-semibold">Category:</span>
-                <Select value={categoryFilter} onChange={(v) => setCategoryFilter(v)} className="w-44">
+                <Select value={categoryFilter} onChange={(v) => setCategoryFilter(v)} className="w-56" showSearch filterOption={(input, option) => (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())}>
                   <Select.Option value="ALL">All Categories</Select.Option>
+                  <Select.Option value="CONSENT_EVENT">Consent Event</Select.Option>
+                  <Select.Option value="DPDP_REQUEST">DPDP Request</Select.Option>
+                  <Select.Option value="BREAK_GLASS_ACCESS">Break Glass Access</Select.Option>
+                  <Select.Option value="ROLE_PERMISSION_CHANGE">Role Permission Change</Select.Option>
+                  <Select.Option value="RETENTION_POLICY_CHANGE">Retention Policy Change</Select.Option>
+                  <Select.Option value="COMPLIANCE_EVENT">Compliance Event</Select.Option>
+                  <Select.Option value="BRANDING_CHANGE">Branding Change</Select.Option>
+                  <Select.Option value="WHITE_LABEL_CHANGE">White Label Change</Select.Option>
+                  <Select.Option value="SUBSCRIPTION_LIFECYCLE">Subscription Lifecycle</Select.Option>
+                  <Select.Option value="FEATURE_LICENSE_EVENT">Feature License Event</Select.Option>
+                  <Select.Option value="GOVERNANCE_EVENT">Governance Event</Select.Option>
                   <Select.Option value="TENANT_ONBOARDING">Tenant Onboarding</Select.Option>
-                  <Select.Option value="SUBSCRIPTION_CHANGE">Subscription Change</Select.Option>
                   <Select.Option value="FACILITY_TOGGLE">Facility Toggle</Select.Option>
                   <Select.Option value="FEATURE_FLAG">Feature Flags</Select.Option>
-                  <Select.Option value="RBAC_ROLES">RBAC & Roles</Select.Option>
                 </Select>
               </div>
 
@@ -344,7 +320,13 @@ export default function PlatformAuditPage() {
               <div>
                 <span className="font-bold text-slate-800 block mb-1">Raw JSON Audit Payload:</span>
                 <pre className="p-3 bg-slate-900 text-teal-300 font-mono text-[11px] rounded-lg overflow-x-auto">
-                  {JSON.stringify(JSON.parse(selectedAudit.details), null, 2)}
+                  {(() => {
+                    try {
+                      return JSON.stringify(JSON.parse(selectedAudit.details), null, 2);
+                    } catch {
+                      return selectedAudit.details;
+                    }
+                  })()}
                 </pre>
               </div>
 

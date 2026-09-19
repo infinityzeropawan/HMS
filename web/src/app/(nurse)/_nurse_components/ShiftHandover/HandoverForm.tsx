@@ -4,6 +4,10 @@ import React, { useState } from "react";
 import { Form, Input, Select, message } from "antd";
 import { ClipboardList, ShieldCheck, CheckCircle2, UserCheck } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
+import { useStaffUserStore } from "@/app/(admin)/_admin_stores/admin_user_store";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
+import { PlatformAuditService } from "@/app/(super-admin)/_super_admin_services/platform_audit_service";
 
 export interface HandoverRecord {
   id: string;
@@ -24,18 +28,25 @@ interface HandoverFormProps {
 export const HandoverForm: React.FC<HandoverFormProps> = ({ onSaved }) => {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const staffUsers = useStaffUserStore((state) => state.users);
+  const currentUser = useAuthUserStore((state) => state.user);
+  const nurseName = currentUser?.username ? `Nurse ${currentUser.username}` : "Relieving Duty Nurse";
+
+  const nurses = staffUsers.filter(
+    (u) => u.roleCategory === "NURSE" || u.roleName.toLowerCase().includes("nurse")
+  );
 
   const handleSubmit = (values: Record<string, string>) => {
     setSubmitting(true);
     try {
       const record: HandoverRecord = {
         id: `HO-${Date.now().toString().slice(-6)}`,
-        outgoingNurse: values.outgoingNurse || "Nurse Sunita Rao (Reg #NUR-4029)",
-        incomingNurse: values.incomingNurse || "Nurse Kavita Sharma (Reg #NUR-5102)",
+        outgoingNurse: values.outgoingNurse || nurseName,
+        incomingNurse: values.incomingNurse || "Taking-Over Nurse",
         shift: values.shift || "Morning (07:00 - 15:00)",
         ward: values.ward || "IPD Ward 4A (Medical-Surgical)",
-        criticalNotes: values.criticalNotes || "Bed 402: Post-op monitoring required every 2 hours. SpO2 monitoring active.",
-        pendingMedications: values.pendingMedications || "Bed 405: Inj Ceftriaxone 1g IV due at 14:00.",
+        criticalNotes: values.criticalNotes || "Vitals stable across assigned beds. Post-op monitoring ongoing.",
+        pendingMedications: values.pendingMedications || "Scheduled IV medications verified against MAR.",
         signature: values.signature || "Digital Verification via PIN",
         createdAt: new Date().toISOString(),
       };
@@ -45,6 +56,39 @@ export const HandoverForm: React.FC<HandoverFormProps> = ({ onSaved }) => {
         saved.unshift(record);
         localStorage.setItem("hms_nurse_handovers", JSON.stringify(saved));
       }
+
+      // Sync shift handover to IPD Store
+      try {
+        const admissions = useIpdStore.getState().admissions;
+        if (admissions.length > 0) {
+          useIpdStore.getState().addRoundNote(
+            admissions[0].admissionNo,
+            `[Shift Handover - ${record.shift}] Outgoing: ${record.outgoingNurse} -> Incoming: ${record.incomingNurse}. Notes: ${record.criticalNotes}`
+          );
+        }
+      } catch {
+        /* ignore if no store context */
+      }
+
+      // Audit Logging
+      PlatformAuditService.recordAuditEvent({
+        actor: record.outgoingNurse,
+        actorRole: "CLINICAL_NURSE",
+        action: `Shift Handover Logged: #${record.id}`,
+        category: "COMPLIANCE_EVENT",
+        entity: `Nurse Shift Handover at ${record.ward}`,
+        ipAddress: "192.168.1.105",
+        riskLevel: "INFO",
+        details: JSON.stringify({
+          event: "Shift Handover Logged",
+          timestamp: new Date().toISOString(),
+          handoverId: record.id,
+          outgoingNurse: record.outgoingNurse,
+          incomingNurse: record.incomingNurse,
+          shift: record.shift,
+          ward: record.ward,
+        }),
+      });
 
       message.success(`Shift Handover #${record.id} logged & verified successfully!`);
       form.resetFields();
@@ -73,19 +117,31 @@ export const HandoverForm: React.FC<HandoverFormProps> = ({ onSaved }) => {
         layout="vertical"
         onFinish={handleSubmit}
         initialValues={{
-          outgoingNurse: "Nurse Sunita Rao (Reg #NUR-4029)",
-          incomingNurse: "Nurse Kavita Sharma (Reg #NUR-5102)",
           shift: "Morning (07:00 - 15:00)",
           ward: "IPD Ward 4A (Medical-Surgical)",
         }}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <Form.Item label="Outgoing Nurse (Relieving)" name="outgoingNurse" rules={[{ required: true }]}>
-            <Input size="large" prefix={<UserCheck className="w-4 h-4 text-slate-400 mr-1" />} />
+            <Select
+              size="large"
+              placeholder="Select outgoing nurse..."
+              options={nurses.map((n) => ({
+                value: `${n.fullName} (${n.employeeId})`,
+                label: `${n.fullName} (${n.employeeId}) — ${n.departmentName}`,
+              }))}
+            />
           </Form.Item>
 
           <Form.Item label="Incoming Nurse (Taking Over)" name="incomingNurse" rules={[{ required: true }]}>
-            <Input size="large" prefix={<UserCheck className="w-4 h-4 text-purple-500 mr-1" />} />
+            <Select
+              size="large"
+              placeholder="Select incoming nurse..."
+              options={nurses.map((n) => ({
+                value: `${n.fullName} (${n.employeeId})`,
+                label: `${n.fullName} (${n.employeeId}) — ${n.departmentName}`,
+              }))}
+            />
           </Form.Item>
 
           <Form.Item label="Shift Routine" name="shift" rules={[{ required: true }]}>

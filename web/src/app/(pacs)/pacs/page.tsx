@@ -2,86 +2,16 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Table, Tag, Input, Modal, Form, message, Space } from "antd";
-import { SearchOutlined, EyeOutlined, FileTextOutlined, DownloadOutlined } from "@ant-design/icons";
-import { Layers, Eye, FileText, ArrowRight, ShieldCheck, Activity, Stethoscope, Video } from "lucide-react";
+import { Table, Tag, Input, Modal, Form, message } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
+import { Layers, Eye, FileText, ShieldCheck, Activity } from "lucide-react";
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
-
-interface RadiologyStudy {
-  key: string;
-  studyId: string;
-  patientName: string;
-  uhid: string;
-  modality: "CR" | "CT" | "MRI" | "US" | "MG";
-  bodyPart: string;
-  referringDoctor: string;
-  radiologist: string;
-  priority: "EMERGENCY" | "HIGH" | "ROUTINE";
-  status: "UNREAD" | "REPORTED" | "ARCHIVED";
-  date: string;
-  imagesCount: number;
-}
-
-const INITIAL_STUDIES: RadiologyStudy[] = [
-  {
-    key: "1",
-    studyId: "STD-9901",
-    patientName: "Sunil Verma",
-    uhid: "P-2026-1049",
-    modality: "CR",
-    bodyPart: "Chest PA View",
-    referringDoctor: "Dr. Rajesh Sharma",
-    radiologist: "Dr. Vikram Seth (MD Rad)",
-    priority: "EMERGENCY",
-    status: "UNREAD",
-    date: "2026-09-17 10:15 AM",
-    imagesCount: 2,
-  },
-  {
-    key: "2",
-    studyId: "STD-9902",
-    patientName: "Anjali Gupta",
-    uhid: "P-2026-1052",
-    modality: "CT",
-    bodyPart: "HRCT Thorax (Low Dose)",
-    referringDoctor: "Dr. Priya Nair",
-    radiologist: "Dr. Vikram Seth (MD Rad)",
-    priority: "HIGH",
-    status: "UNREAD",
-    date: "2026-09-17 09:45 AM",
-    imagesCount: 140,
-  },
-  {
-    key: "3",
-    studyId: "STD-9903",
-    patientName: "Ramesh Kumar",
-    uhid: "P-2026-1058",
-    modality: "MRI",
-    bodyPart: "Lumbar Spine Contrast",
-    referringDoctor: "Dr. Rajesh Sharma",
-    radiologist: "Dr. Sunita Rao (MD Rad)",
-    priority: "ROUTINE",
-    status: "REPORTED",
-    date: "2026-09-16 04:30 PM",
-    imagesCount: 320,
-  },
-  {
-    key: "4",
-    studyId: "STD-9904",
-    patientName: "Priya Sharma",
-    uhid: "P-2026-1062",
-    modality: "US",
-    bodyPart: "Whole Abdomen & Pelvis",
-    referringDoctor: "Dr. Ananya Roy",
-    radiologist: "Dr. Sunita Rao (MD Rad)",
-    priority: "ROUTINE",
-    status: "REPORTED",
-    date: "2026-09-16 02:15 PM",
-    imagesCount: 18,
-  },
-];
+import { usePacsStore } from "../_pacs_stores/pacs_store";
+import { PacsService } from "../_pacs_services/pacs_service";
+import { RadiologyStudy, RadiologyReportFormValues } from "../_pacs_types/pacs_types";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 
 const MODALITY_COLOR: Record<string, string> = {
   CR: "purple",
@@ -89,10 +19,14 @@ const MODALITY_COLOR: Record<string, string> = {
   MRI: "cyan",
   US: "emerald",
   MG: "magenta",
+  ECG: "red",
 };
 
 export default function PacsWorklistPage() {
-  const [studies, setStudies] = useState<RadiologyStudy[]>(INITIAL_STUDIES);
+  const studies = usePacsStore((state) => state.studies);
+  const currentUser = useAuthUserStore((state) => state.user);
+  const radiologistTitle = currentUser?.username ? `Dr. ${currentUser.username} (MD Radiology)` : "Dr. Vikram Seth (MD Rad)";
+
   const [searchQuery, setSearchQuery] = useState("");
   const [modalityFilter, setModalityFilter] = useState("ALL");
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -102,14 +36,24 @@ export default function PacsWorklistPage() {
   const handleOpenReportModal = (study: RadiologyStudy) => {
     setActiveStudy(study);
     setReportModalOpen(true);
+    form.setFieldsValue({
+      radiologist: study.radiologist || radiologistTitle,
+      technique: study.technique || `${study.modality} Scan of ${study.bodyPart} performed as per standard hospital protocol.`,
+      findings: study.findings || "No gross bony injury or focal lung consolidation. Soft tissue structures appear unremarkable.",
+      impression: study.impression || "Normal study. No acute cardiopulmonary abnormality detected.",
+    });
   };
 
   const handleSaveReport = (values: Record<string, unknown>) => {
     if (!activeStudy) return;
-    const updated = studies.map((s) =>
-      s.studyId === activeStudy.studyId ? { ...s, status: "REPORTED" as const } : s
-    );
-    setStudies(updated);
+    const reportValues: RadiologyReportFormValues = {
+      radiologist: String(values.radiologist || ""),
+      technique: String(values.technique || ""),
+      findings: String(values.findings || ""),
+      impression: String(values.impression || ""),
+    };
+
+    PacsService.finalizeReport(activeStudy.studyId, reportValues);
     message.success(`Radiology Report for Study ${activeStudy.studyId} finalized & signed by ${values.radiologist}!`);
     setReportModalOpen(false);
     form.resetFields();
@@ -124,6 +68,9 @@ export default function PacsWorklistPage() {
     const matchesModality = modalityFilter === "ALL" || s.modality === modalityFilter;
     return matchesSearch && matchesModality;
   });
+
+  const emergencyCount = studies.filter((s) => s.priority === "EMERGENCY" || s.priority === "STAT").length;
+  const reportedCount = studies.filter((s) => s.status === "REPORTED").length;
 
   const columns = [
     {
@@ -164,10 +111,10 @@ export default function PacsWorklistPage() {
       key: "status",
       render: (_: unknown, record: RadiologyStudy) => (
         <div className="space-y-1">
-          <Tag color={record.priority === "EMERGENCY" ? "red" : record.priority === "HIGH" ? "orange" : "blue"}>
+          <Tag color={record.priority === "EMERGENCY" || record.priority === "STAT" ? "red" : record.priority === "HIGH" ? "orange" : "blue"}>
             {record.priority}
           </Tag>
-          <Tag color={record.status === "UNREAD" ? "volcano" : "green"}>{record.status}</Tag>
+          <Tag color={record.status === "UNREAD" || record.status === "ORDERED" ? "volcano" : "green"}>{record.status}</Tag>
         </div>
       ),
     },
@@ -187,7 +134,7 @@ export default function PacsWorklistPage() {
             icon={<FileText className="w-3.5 h-3.5" />}
             onClick={() => handleOpenReportModal(record)}
           >
-            Report
+            {record.status === "REPORTED" ? "Edit Report" : "Report"}
           </HmsButton>
         </div>
       ),
@@ -227,9 +174,9 @@ export default function PacsWorklistPage() {
           <HmsCard elevated className="border-l-4 border-l-purple-500">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Studies Today</p>
-                <h3 className="text-2xl font-bold text-purple-800 mt-1">24 Studies</h3>
-                <p className="text-3xs text-purple-600 font-semibold mt-0.5">CR, CT, MRI & US</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Studies Active</p>
+                <h3 className="text-2xl font-bold text-purple-800 mt-1">{studies.length} Studies</h3>
+                <p className="text-3xs text-purple-600 font-semibold mt-0.5">CR, CT, MRI, US & ECG</p>
               </div>
               <Layers className="w-8 h-8 text-purple-500" />
             </div>
@@ -239,7 +186,7 @@ export default function PacsWorklistPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Unread Critical</p>
-                <h3 className="text-2xl font-bold text-rose-600 mt-1">2 Emergency</h3>
+                <h3 className="text-2xl font-bold text-rose-600 mt-1">{emergencyCount} Emergency</h3>
                 <p className="text-3xs text-rose-600 font-semibold mt-0.5">STAT Review Req.</p>
               </div>
               <Activity className="w-8 h-8 text-rose-500" />
@@ -260,8 +207,8 @@ export default function PacsWorklistPage() {
           <HmsCard elevated className="border-l-4 border-l-emerald-500">
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Reported Today</p>
-                <h3 className="text-2xl font-bold text-emerald-700 mt-1">18 Signed</h3>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Reported & Signed</p>
+                <h3 className="text-2xl font-bold text-emerald-700 mt-1">{reportedCount} Signed</h3>
                 <p className="text-3xs text-emerald-600 font-semibold mt-0.5">EHR Pushed</p>
               </div>
               <FileText className="w-8 h-8 text-emerald-500" />
@@ -295,6 +242,8 @@ export default function PacsWorklistPage() {
                 <option value="CT">CT Scan</option>
                 <option value="MRI">MRI</option>
                 <option value="US">Ultrasound</option>
+                <option value="ECG">ECG / Echo</option>
+                <option value="MG">Mammography</option>
               </select>
             </div>
           </div>
@@ -323,10 +272,10 @@ export default function PacsWorklistPage() {
               layout="vertical"
               onFinish={handleSaveReport}
               initialValues={{
-                radiologist: "Dr. Vikram Seth (MD Radiology - Reg # 77123)",
-                technique: `${activeStudy.modality} Scan of ${activeStudy.bodyPart} performed as per standard hospital protocol.`,
-                findings: "No gross bony injury or focal lung consolidation. Soft tissue structures appear unremarkable.",
-                impression: "Normal study. No acute cardiopulmonary abnormality detected.",
+                radiologist: activeStudy.radiologist || "Dr. Vikram Seth (MD Radiology - Reg # 77123)",
+                technique: activeStudy.technique || `${activeStudy.modality} Scan of ${activeStudy.bodyPart} performed as per standard hospital protocol.`,
+                findings: activeStudy.findings || "No gross bony injury or focal lung consolidation. Soft tissue structures appear unremarkable.",
+                impression: activeStudy.impression || "Normal study. No acute cardiopulmonary abnormality detected.",
               }}
               className="mt-3 space-y-3"
             >

@@ -1,7 +1,6 @@
 "use client";
 
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { useIpdStore, IpdAdmissionRecord } from "@/app/(ipd)/_ipd_stores/ipd_store";
 
 export interface DoctorInpatientRecord {
   id: string;
@@ -27,99 +26,44 @@ export interface DoctorInpatientRecord {
   dischargeReady: boolean;
 }
 
-interface DoctorIpdStoreState {
-  inpatients: DoctorInpatientRecord[];
-  addRoundNote: (id: string, note: string, dischargeReady?: boolean) => void;
-  updateVitals: (id: string, vitals: DoctorInpatientRecord["vitals"]) => void;
-  resetToDefaults: () => void;
+export function mapIpdToDoctorRecord(rec: IpdAdmissionRecord): DoctorInpatientRecord {
+  return {
+    id: rec.id,
+    ipdId: rec.admissionNo,
+    uhid: rec.uhid,
+    patientName: rec.patientName,
+    age: rec.age,
+    gender: rec.gender,
+    bedNumber: rec.bedNumber,
+    wardName: rec.admittedWard,
+    admissionDate: rec.admissionDate,
+    primaryDiagnosis: rec.primaryDiagnosis || "General Admission",
+    attendingNurse: rec.attendingNurse || "Duty Nurse",
+    vitals: rec.vitals || { bp: "120/80", pulse: 72, spO2: 98, temp: "98.6 °F" },
+    roundStatus: rec.roundStatus || "DUE",
+    lastRoundNote: rec.lastRoundNote,
+    lastRoundTime: rec.lastRoundTime,
+    dischargeReady: rec.dischargeReady || rec.status === "DISCHARGE_PENDING",
+  };
 }
 
-const DEFAULT_INPATIENTS: DoctorInpatientRecord[] = [
-  {
-    id: "ipd-101",
-    ipdId: "IPD-2026-0881",
-    uhid: "P-2026-9912",
-    patientName: "Sunil Verma",
-    age: 42,
-    gender: "Male",
-    bedNumber: "ICU-BED-01",
-    wardName: "Intensive Care Unit (ICU)",
-    admissionDate: "2026-09-14",
-    primaryDiagnosis: "Acute Anterolateral Myocardial Infarction (Post-PTCA)",
-    attendingNurse: "Nurse Sunita Deshmukh",
-    vitals: { bp: "128/82", pulse: 74, spO2: 98, temp: "98.4 °F" },
-    roundStatus: "DUE",
-    lastRoundNote: "Post-op Day 2. Chest pain subsided. Troponin levels trending down. Continue dual antiplatelet therapy.",
-    lastRoundTime: "2026-09-16 09:30 AM",
-    dischargeReady: false,
-  },
-  {
-    id: "ipd-102",
-    ipdId: "IPD-2026-0895",
-    uhid: "P-2026-9944",
-    patientName: "Anita Roy",
-    age: 58,
-    gender: "Female",
-    bedNumber: "WARD-3B-04",
-    wardName: "Female Surgical Ward 3B",
-    admissionDate: "2026-09-15",
-    primaryDiagnosis: "Total Knee Arthroplasty (Right TKA)",
-    attendingNurse: "Nurse Kavita Roy",
-    vitals: { bp: "134/86", pulse: 80, spO2: 97, temp: "98.6 °F" },
-    roundStatus: "COMPLETED",
-    lastRoundNote: "Physiotherapy started. Surgical wound clean and dry. Pain controlled with IV analgesics.",
-    lastRoundTime: "2026-09-16 11:15 AM",
-    dischargeReady: true,
-  },
-  {
-    id: "ipd-103",
-    ipdId: "IPD-2026-0902",
-    uhid: "P-2026-9978",
-    patientName: "Rajesh Kulkarni",
-    age: 65,
-    gender: "Male",
-    bedNumber: "DELUXE-402",
-    wardName: "Private Deluxe Wing 4th Floor",
-    admissionDate: "2026-09-16",
-    primaryDiagnosis: "Community Acquired Pneumonia & Type 2 Diabetes",
-    attendingNurse: "Nurse Sunita Deshmukh",
-    vitals: { bp: "142/90", pulse: 92, spO2: 93, temp: "100.8 °F" },
-    roundStatus: "CRITICAL",
-    lastRoundNote: "High grade fever spike. Oxygen supplementation via nasal cannula at 3L/min. Repeat ABG requested.",
-    lastRoundTime: "2026-09-16 08:00 AM",
-    dischargeReady: false,
-  },
-];
+export function useDoctorIpdStore() {
+  const store = useIpdStore();
+  return {
+    inpatients: store.admissions.map(mapIpdToDoctorRecord),
+    addRoundNote: store.addRoundNote,
+    updateVitals: store.updateVitals,
+    resetToDefaults: store.resetToDefaults,
+  };
+}
 
-export const useDoctorIpdStore = create<DoctorIpdStoreState>()(
-  persist(
-    (set) => ({
-      inpatients: DEFAULT_INPATIENTS,
+(useDoctorIpdStore as any).getState = () => {
+  const state = useIpdStore.getState();
+  return {
+    inpatients: state.admissions.map(mapIpdToDoctorRecord),
+    addRoundNote: state.addRoundNote,
+    updateVitals: state.updateVitals,
+    resetToDefaults: state.resetToDefaults,
+  };
+};
 
-      addRoundNote: (id, note, dischargeReady) =>
-        set((state) => ({
-          inpatients: state.inpatients.map((pt) =>
-            pt.id === id
-              ? {
-                  ...pt,
-                  roundStatus: "COMPLETED",
-                  lastRoundNote: note,
-                  lastRoundTime: new Date().toLocaleString(),
-                  dischargeReady: dischargeReady !== undefined ? dischargeReady : pt.dischargeReady,
-                }
-              : pt
-          ),
-        })),
-
-      updateVitals: (id, vitals) =>
-        set((state) => ({
-          inpatients: state.inpatients.map((pt) => (pt.id === id ? { ...pt, vitals } : pt)),
-        })),
-
-      resetToDefaults: () => set({ inpatients: DEFAULT_INPATIENTS }),
-    }),
-    {
-      name: "hms_doctor_ipd_store",
-    }
-  )
-);

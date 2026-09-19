@@ -13,7 +13,7 @@ export default function TelehealthConsultPage() {
   return (
     <div className="p-4 sm:p-6 bg-slate-50 min-h-screen safe-area-padding safe-area-bottom">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4">
-        <HmsButton href="/queue" icon={<ArrowLeft className="w-4 h-4" />} variant="secondary" size="sm">
+        <HmsButton href="/doctor/queue" icon={<ArrowLeft className="w-4 h-4" />} variant="secondary" size="sm">
           Doctor Queue
         </HmsButton>
         <div>

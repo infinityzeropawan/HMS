@@ -15,10 +15,54 @@ export interface SpecimenRecord {
   status: "PENDING_COLLECTION" | "COLLECTED_DISPATCHED" | "ANALYZER_RUNNING" | "REJECTED";
 }
 
+export interface LabTestCatalogItem {
+  id: string;
+  testCode: string;
+  testName: string;
+  category: "HAEMATOLOGY" | "BIOCHEMISTRY" | "MICROBIOLOGY" | "SEROLOGY" | "HISTOPATHOLOGY";
+  containerType: "EDTA_PURPLE" | "SERUM_RED" | "URINE_CONTAINER" | "CITRATE_BLUE";
+  normalRange: string;
+  unit: string;
+  unitPrice: number;
+  tatHours: number;
+  nablAccredited: boolean;
+}
+
+export interface ReferralLabOrder {
+  id: string;
+  referralOrderNo: string;
+  patientUhid: string;
+  patientName: string;
+  testName: string;
+  referralLabName: "Lal PathLabs" | "Metropolis Healthcare" | "SRL Diagnostics" | "Thyrocare";
+  dispatchDate: string;
+  courierTrackingNo: string;
+  coldChainTemp: string;
+  status: "DISPATCHED" | "IN_TRANSIT" | "REPORT_RECEIVED";
+}
+
+export interface PathologistSignoffLog {
+  id: string;
+  orderId: string;
+  patientUhid: string;
+  patientName: string;
+  pathologistName: string;
+  registrationNo: string;
+  signoffTimestamp: string;
+  status: "VERIFIED_SIGNED";
+}
+
 interface LabStoreState {
   specimens: SpecimenRecord[];
+  testCatalog: LabTestCatalogItem[];
+  outsourcedOrders: ReferralLabOrder[];
+  pathologistSignoffs: PathologistSignoffLog[];
+
   updateSpecimenStatus: (id: string, status: SpecimenRecord["status"]) => void;
   addSpecimen: (specimen: Omit<SpecimenRecord, "id" | "sampleBarcode">) => void;
+  addTestCatalogItem: (item: Omit<LabTestCatalogItem, "id">) => void;
+  dispatchOutsourcedOrder: (order: Omit<ReferralLabOrder, "id" | "referralOrderNo" | "status">) => ReferralLabOrder;
+  signoffReport: (signoff: Omit<PathologistSignoffLog, "id" | "signoffTimestamp" | "status">) => void;
   resetToDefaults: () => void;
 }
 
@@ -58,10 +102,67 @@ const DEFAULT_SPECIMENS: SpecimenRecord[] = [
   },
 ];
 
+const DEFAULT_CATALOG: LabTestCatalogItem[] = [
+  {
+    id: "cat-1",
+    testCode: "LAB-CBC-01",
+    testName: "Complete Blood Count (CBC) with Differential",
+    category: "HAEMATOLOGY",
+    containerType: "EDTA_PURPLE",
+    normalRange: "Hb: 12.0 - 16.5 g/dL | TLC: 4,000 - 11,000 /cu mm",
+    unit: "g/dL",
+    unitPrice: 350,
+    tatHours: 4,
+    nablAccredited: true,
+  },
+  {
+    id: "cat-2",
+    testCode: "LAB-LFT-02",
+    testName: "Liver Function Test (LFT Profile)",
+    category: "BIOCHEMISTRY",
+    containerType: "SERUM_RED",
+    normalRange: "Bilirubin: 0.3 - 1.2 mg/dL | SGPT: 7 - 56 U/L",
+    unit: "mg/dL",
+    unitPrice: 650,
+    tatHours: 6,
+    nablAccredited: true,
+  },
+  {
+    id: "cat-3",
+    testCode: "LAB-HISTO-03",
+    testName: "Biopsy Histopathology Analysis",
+    category: "HISTOPATHOLOGY",
+    containerType: "SERUM_RED",
+    normalRange: "Normal Cellular Architecture",
+    unit: "N/A",
+    unitPrice: 2400,
+    tatHours: 48,
+    nablAccredited: true,
+  },
+];
+
+const DEFAULT_OUTSOURCED: ReferralLabOrder[] = [
+  {
+    id: "out-1",
+    referralOrderNo: "REF-2026-101",
+    patientUhid: "P-2026-1049",
+    patientName: "Sunil Verma",
+    testName: "HLA-B27 Genetic Biomarker",
+    referralLabName: "Lal PathLabs",
+    dispatchDate: "2026-09-17 11:30 AM",
+    courierTrackingNo: "AWB-8839201",
+    coldChainTemp: "2 - 8 °C",
+    status: "DISPATCHED",
+  },
+];
+
 export const useLabStore = create<LabStoreState>()(
   persist(
     (set) => ({
       specimens: DEFAULT_SPECIMENS,
+      testCatalog: DEFAULT_CATALOG,
+      outsourcedOrders: DEFAULT_OUTSOURCED,
+      pathologistSignoffs: [],
 
       updateSpecimenStatus: (id, status) =>
         set((state) => ({
@@ -80,10 +181,42 @@ export const useLabStore = create<LabStoreState>()(
           ],
         })),
 
-      resetToDefaults: () => set({ specimens: DEFAULT_SPECIMENS }),
+      addTestCatalogItem: (item) =>
+        set((state) => ({
+          testCatalog: [{ ...item, id: `cat-${Date.now()}` }, ...state.testCatalog],
+        })),
+
+      dispatchOutsourcedOrder: (orderInput) => {
+        const newOrder: ReferralLabOrder = {
+          ...orderInput,
+          id: `out-${Date.now()}`,
+          referralOrderNo: `REF-2026-${Math.floor(100 + Math.random() * 900)}`,
+          status: "DISPATCHED",
+        };
+        set((state) => ({ outsourcedOrders: [newOrder, ...state.outsourcedOrders] }));
+        return newOrder;
+      },
+
+      signoffReport: (signoffInput) => {
+        const newLog: PathologistSignoffLog = {
+          ...signoffInput,
+          id: `so-${Date.now()}`,
+          signoffTimestamp: new Date().toLocaleString(),
+          status: "VERIFIED_SIGNED",
+        };
+        set((state) => ({ pathologistSignoffs: [newLog, ...state.pathologistSignoffs] }));
+      },
+
+      resetToDefaults: () =>
+        set({
+          specimens: DEFAULT_SPECIMENS,
+          testCatalog: DEFAULT_CATALOG,
+          outsourcedOrders: DEFAULT_OUTSOURCED,
+          pathologistSignoffs: [],
+        }),
     }),
     {
-      name: "hms_lab_specimens_store",
+      name: "hms_lab_master_store_v1",
     }
   )
 );

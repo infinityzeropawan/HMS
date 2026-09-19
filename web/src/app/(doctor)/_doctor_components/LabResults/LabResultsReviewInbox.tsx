@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Table, Tag, Modal, Input, message } from "antd";
-import { Microscope, AlertTriangle, CheckCircle2, Search, FileText, Activity, User, Calendar } from "lucide-react";
+import { Microscope, AlertTriangle, CheckCircle2, Search, FileText, Calendar } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
+import { PatientProfileService } from "@/app/(patient)/_patient_services/patient_profile_service";
 
 interface LabResultRecord {
   id: string;
   orderNo: string;
-  patientName: string;
   uhid: string;
   testName: string;
   category: "PATHOLOGY" | "RADIOLOGY" | "MICROBIOLOGY";
@@ -25,7 +25,6 @@ export const LabResultsReviewInbox: React.FC = () => {
     {
       id: "lab-101",
       orderNo: "LAB-2026-9901",
-      patientName: "Rajesh Kulkarni",
       uhid: "P-2026-9978",
       testName: "Serum Electrolytes (Potassium / K+)",
       category: "PATHOLOGY",
@@ -38,7 +37,6 @@ export const LabResultsReviewInbox: React.FC = () => {
     {
       id: "lab-102",
       orderNo: "LAB-2026-9915",
-      patientName: "Sunil Verma",
       uhid: "P-2026-9912",
       testName: "Cardiac Biomarkers (Troponin I)",
       category: "PATHOLOGY",
@@ -50,7 +48,6 @@ export const LabResultsReviewInbox: React.FC = () => {
     {
       id: "lab-103",
       orderNo: "RAD-2026-4412",
-      patientName: "Anita Roy",
       uhid: "P-2026-9944",
       testName: "Digital X-Ray Knee Joint (AP & Lateral)",
       category: "RADIOLOGY",
@@ -66,21 +63,42 @@ export const LabResultsReviewInbox: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [doctorComment, setDoctorComment] = useState("");
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = JSON.parse(localStorage.getItem("hms_lab_orders") || "[]");
+        if (stored.length > 0) {
+          setResults((prev) => {
+            const map = new Map<string, LabResultRecord>();
+            prev.forEach((item) => map.set(item.id, item));
+            stored.forEach((item: LabResultRecord) => map.set(item.id, item));
+            return Array.from(map.values());
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
   const handleSignOff = () => {
     if (!selectedResult) return;
+    const profile = PatientProfileService.getPatientProfile(selectedResult.uhid);
     setResults((prev) =>
       prev.map((r) => (r.id === selectedResult.id ? { ...r, status: "VERIFIED" } : r))
     );
-    message.success(`Diagnostic report for ${selectedResult.patientName} verified and signed off!`);
+    message.success(`Diagnostic report for ${profile.fullName} verified and signed off!`);
     setModalOpen(false);
   };
 
-  const filteredResults = results.filter(
-    (r) =>
-      r.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredResults = results.filter((r) => {
+    const profile = PatientProfileService.getPatientProfile(r.uhid);
+    return (
+      profile.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.uhid.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.testName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    );
+  });
 
   const columns = [
     {
@@ -98,14 +116,19 @@ export const LabResultsReviewInbox: React.FC = () => {
       ),
     },
     {
-      title: "Patient Details",
+      title: "Patient Details (Patient Store)",
       key: "patient",
-      render: (_: unknown, record: LabResultRecord) => (
-        <div>
-          <span className="font-bold text-slate-900">{record.patientName}</span>
-          <p className="text-xs text-slate-500">UHID: <span className="font-mono">{record.uhid}</span></p>
-        </div>
-      ),
+      render: (_: unknown, record: LabResultRecord) => {
+        const profile = PatientProfileService.getPatientProfile(record.uhid);
+        return (
+          <div>
+            <span className="font-bold text-slate-900">{profile.fullName}</span>
+            <p className="text-xs text-slate-500">
+              {profile.age} Yrs / {profile.gender} | UHID: <span className="font-mono">{record.uhid}</span>
+            </p>
+          </div>
+        );
+      },
     },
     {
       title: "Test & Result",
@@ -151,6 +174,8 @@ export const LabResultsReviewInbox: React.FC = () => {
       ),
     },
   ];
+
+  const selectedProfile = selectedResult ? PatientProfileService.getPatientProfile(selectedResult.uhid) : null;
 
   return (
     <div className="space-y-6">
@@ -243,7 +268,7 @@ export const LabResultsReviewInbox: React.FC = () => {
 
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
             <div className="flex justify-between font-bold text-slate-900">
-              <span>Patient: {selectedResult?.patientName}</span>
+              <span>Patient: {selectedProfile?.fullName} ({selectedProfile?.age}Y/{selectedProfile?.gender})</span>
               <span>UHID: {selectedResult?.uhid}</span>
             </div>
             <div className="text-slate-700">Test: <strong>{selectedResult?.testName}</strong></div>
@@ -277,3 +302,4 @@ export const LabResultsReviewInbox: React.FC = () => {
     </div>
   );
 };
+

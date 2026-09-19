@@ -6,35 +6,40 @@ import { Users, Clock, Plus, CheckCircle2, AlertTriangle, Fingerprint, Calendar,
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { useHrStore, StaffAttendanceRecord } from "../../_hr_stores/hr_store";
+import { RosterService } from "@/app/(admin)/_admin_services/roster_service";
+import { useStaffUserStore } from "@/app/(admin)/_admin_stores/admin_user_store";
 
 export const StaffAttendanceTable: React.FC = () => {
-  const { attendanceLogs, addClockIn, resetToDefaults } = useHrStore();
+  const { attendanceLogs } = useHrStore();
+  const staffUsers = useStaffUserStore((state) => state.users);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
 
   const handleFinish = (values: Record<string, unknown>) => {
-    const payload = {
-      staffId: (values.staffId as string) || `STF-${Math.floor(Math.random() * 900 + 100)}`,
-      staffName: values.staffName as string,
-      department: values.department as string,
-      role: values.role as string,
-      clockInTime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      status: (values.status as StaffAttendanceRecord["status"]) || "PRESENT",
-      biometricId: `BIO-${Math.floor(Math.random() * 9000 + 1000)}`,
-    };
+    const selectedUser = staffUsers.find((u) => u.id === values.userId);
+    const staffId = selectedUser ? selectedUser.employeeId : (values.staffId as string) || "STF-101";
+    const clockInTimeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const biometricId = `BIO-${Math.floor(Math.random() * 9000 + 1000)}`;
 
-    addClockIn(payload);
-    message.success(`Biometric Punch recorded for ${payload.staffName}`);
-    setModalOpen(false);
+    try {
+      RosterService.recordAttendancePunch(staffId, clockInTimeStr, biometricId, "Staff Biometric Station");
+      message.success(`Biometric Punch recorded for ${selectedUser ? selectedUser.fullName : staffId}`);
+      setModalOpen(false);
+      form.resetFields();
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to record clock-in";
+      message.error(errMsg);
+    }
   };
 
   const filteredLogs = attendanceLogs.filter(
     (a) =>
       a.staffName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.biometricId.toLowerCase().includes(searchTerm.toLowerCase())
+      a.biometricId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.staffId.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const columns = [
@@ -175,19 +180,16 @@ export const StaffAttendanceTable: React.FC = () => {
         width={560}
       >
         <Form form={form} layout="vertical" onFinish={handleFinish} className="mt-4">
-          <Form.Item label="Staff Member Name" name="staffName" rules={[{ required: true }]}>
-            <Input placeholder="Dr. Rajesh Sharma" size="large" />
+          <Form.Item label="Select Staff Member" name="userId" rules={[{ required: true }]}>
+            <Select
+              size="large"
+              placeholder="Select staff user for biometric punch..."
+              options={staffUsers.map((u) => ({
+                value: u.id,
+                label: `${u.fullName} (${u.employeeId}) — ${u.departmentName}`,
+              }))}
+            />
           </Form.Item>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item label="Department" name="department" rules={[{ required: true }]}>
-              <Input placeholder="Cardiology" size="large" />
-            </Form.Item>
-
-            <Form.Item label="Role Title" name="role" rules={[{ required: true }]}>
-              <Input placeholder="Senior Consultant" size="large" />
-            </Form.Item>
-          </div>
 
           <Form.Item label="Punch Status" name="status" initialValue="PRESENT">
             <Select size="large">

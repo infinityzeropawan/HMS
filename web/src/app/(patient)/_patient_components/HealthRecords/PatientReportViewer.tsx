@@ -4,24 +4,38 @@ import React from "react";
 import { Table, Tag, message } from "antd";
 import { Download } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
+import { EmrService } from "../../_patient_services/emr_service";
 
-export const PatientReportViewer: React.FC = () => {
-  const records = [
-    { key: "1", date: "2026-09-08", type: "e-Prescription", title: "Cardiology OPD Prescription", doctor: "Dr. Rajesh Sharma", docType: "eRx" },
-    { key: "2", date: "2026-09-08", type: "Lab Report", title: "Complete Blood Count & Hb", doctor: "Pathology Lab", docType: "Lab" },
-    { key: "3", date: "2026-09-08", type: "GST Invoice", title: "OPD Consultation & Diagnostic Bill", doctor: "Billing Counter", docType: "Bill" },
-  ];
+export const PatientReportViewer: React.FC<{ uhid?: string }> = ({ uhid = "P-2026-1049" }) => {
+  const profile = EmrService.getPatientEmrProfile(uhid);
+  const documents = profile.documents;
 
   const columns = [
     { title: "Date", dataIndex: "date", key: "date" },
     {
       title: "Category",
-      dataIndex: "type",
-      key: "type",
-      render: (t: string) => <Tag color={t === "e-Prescription" ? "purple" : t === "Lab Report" ? "blue" : "emerald"}>{t}</Tag>,
+      dataIndex: "category",
+      key: "category",
+      render: (t: string) => (
+        <Tag
+          color={
+            t === "e-Prescription"
+              ? "purple"
+              : t === "Lab Report"
+              ? "blue"
+              : t === "Radiology DICOM"
+              ? "cyan"
+              : t === "Discharge Summary"
+              ? "orange"
+              : "emerald"
+          }
+        >
+          {t}
+        </Tag>
+      ),
     },
     { title: "Document Title", dataIndex: "title", key: "title" },
-    { title: "Provider", dataIndex: "doctor", key: "doctor" },
+    { title: "Provider / Department", dataIndex: "provider", key: "provider" },
     {
       title: "Action",
       key: "action",
@@ -38,5 +52,9 @@ export const PatientReportViewer: React.FC = () => {
     },
   ];
 
-  return <Table columns={columns} dataSource={records} pagination={false} />;
+  return (
+    <div className="space-y-4">
+      <Table columns={columns} dataSource={documents} rowKey="id" pagination={{ pageSize: 6 }} />
+    </div>
+  );
 };

@@ -6,6 +6,7 @@ import { SearchOutlined, CheckCircleOutlined, EyeOutlined, PrinterOutlined } fro
 import { Pill, CheckSquare, FileText, DollarSign, AlertCircle } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { FefoBatchModal } from "../FefoBatchSelector/FefoBatchModal";
+import { PharmacyService } from "../../_pharmacy_services/pharmacy_service";
 
 interface PrescribedItem {
   name: string;
@@ -159,6 +160,24 @@ export const PharmacyDispenseTable: React.FC = () => {
   const handleConfirmDispense = () => {
     if (!activeRx) return;
 
+    // Call PharmacyService to deduct stock, post billing invoice, record schedule audit, and send SMS
+    PharmacyService.dispensePrescription({
+      rxId: activeRx.rxId,
+      patientName: activeRx.patientName,
+      uhid: activeRx.uhid,
+      doctorName: activeRx.doctorName,
+      department: activeRx.department,
+      totalAmount: activeRx.totalAmount,
+      paymentMode,
+      items: activeRx.items.map((i) => ({
+        name: i.name,
+        drugName: i.name,
+        qty: i.qty,
+        unitPrice: i.unitPrice,
+        batchNo: i.batchNo,
+      })),
+    });
+
     const updated = prescriptions.map((p) => {
       if (p.rxId === activeRx.rxId) {
         return {
@@ -171,7 +190,7 @@ export const PharmacyDispenseTable: React.FC = () => {
     });
 
     updateAndSaveState(updated);
-    message.success(`Prescription ${activeRx.rxId} dispensed! Payment of ₹${activeRx.totalAmount} collected via ${paymentMode}.`);
+    message.success(`Prescription ${activeRx.rxId} dispensed! ₹${activeRx.totalAmount} collected & stock updated.`);
     setDispenseModalOpen(false);
   };
 
@@ -305,9 +324,65 @@ export const PharmacyDispenseTable: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Table */}
-      <div className="overflow-x-auto">
+      {/* Desktop Main Table */}
+      <div className="hidden sm:block overflow-x-auto">
         <Table columns={columns} dataSource={filteredData} rowKey="key" pagination={{ pageSize: 8 }} />
+      </div>
+
+      {/* Mobile Card List View (<640px) */}
+      <div className="block sm:hidden space-y-3">
+        {filteredData.length === 0 ? (
+          <div className="p-6 text-center text-slate-500 bg-slate-50 rounded-xl border border-dashed">
+            No prescriptions found matching filter.
+          </div>
+        ) : (
+          filteredData.map((record) => (
+            <div key={record.key} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="font-mono font-bold text-purple-700 text-xs block">{record.rxId}</span>
+                  <h4 className="font-bold text-slate-900 text-sm">{record.patientName}</h4>
+                  <span className="font-mono text-[11px] text-slate-500">{record.uhid}</span>
+                </div>
+                <Tag color={record.status === "PENDING" ? "volcano" : record.status === "DISPENSED" ? "green" : "gold"}>
+                  {record.status}
+                </Tag>
+              </div>
+
+              <div className="text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                <p><strong>Doctor:</strong> {record.doctorName} ({record.department})</p>
+                <p className="mt-1 font-semibold text-slate-800">
+                  Meds: {record.items.map((i) => `${i.name} (x${i.qty})`).join(", ")}
+                </p>
+              </div>
+
+              <div className="flex justify-between items-center pt-1 border-t">
+                <span className="font-bold text-emerald-700 font-mono text-sm">₹{record.totalAmount}</span>
+                <div className="flex items-center gap-1">
+                  <HmsButton
+                    size="sm"
+                    variant="secondary"
+                    icon={<EyeOutlined />}
+                    onClick={() => handleViewPrescription(record)}
+                  >
+                    Rx
+                  </HmsButton>
+                  {record.status === "PENDING" && (
+                    <HmsButton
+                      size="sm"
+                      type="primary"
+                      variant="emerald"
+                      icon={<CheckSquare className="w-3.5 h-3.5" />}
+                      onClick={() => handleOpenDispenseModal(record)}
+                    >
+                      Bill
+                    </HmsButton>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* FEFO Batch Picker Modal */}

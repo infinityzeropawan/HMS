@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Table, Tag } from "antd";
 import { Clock, UserCheck } from "lucide-react";
+import { useNurseVitalsStore } from "../../_nurse_stores/nurse_vitals_store";
+import { Patient360DrawerModal } from "../Patient360/Patient360DrawerModal";
 
 interface VitalEntry {
   key: string;
+  uhid: string;
   time: string;
   bp: string;
   pulse: number;
@@ -16,28 +19,22 @@ interface VitalEntry {
   isAbnormal?: boolean;
 }
 
-const DEFAULT_VITALS: VitalEntry[] = [
-  { key: "1", time: "16:00", bp: "130/85", pulse: 74, spo2: 98, temp: "98.6°F", gcs: 15, nurse: "Sr. Kavita R." },
-  { key: "2", time: "12:00", bp: "135/88", pulse: 78, spo2: 97, temp: "99.1°F", gcs: 15, nurse: "Sr. Kavita R." },
-  { key: "3", time: "08:00", bp: "165/98", pulse: 92, spo2: 91, temp: "101.2°F", gcs: 14, nurse: "Sr. Deepa M.", isAbnormal: true },
-];
-
 export const VitalsFlowsheetTable: React.FC = () => {
-  const [vitals, setVitals] = useState<VitalEntry[]>(DEFAULT_VITALS);
+  const vitalsLogs = useNurseVitalsStore((state) => state.vitalsLogs);
+  const [selectedUhid, setSelectedUhid] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("hms_vitals");
-      if (saved) {
-        try {
-          const list = JSON.parse(saved);
-          if (Array.isArray(list) && list.length > 0) {
-            setVitals(list);
-          }
-        } catch { /* use default */ }
-      }
-    }
-  }, []);
+  const mappedVitals: VitalEntry[] = vitalsLogs.map((log) => ({
+    key: log.id,
+    uhid: log.uhid,
+    time: log.recordedAt.includes(" ") ? log.recordedAt.split(" ")[1] || log.recordedAt : log.recordedAt,
+    bp: `${log.bpSystolic}/${log.bpDiastolic}`,
+    pulse: log.pulseRate,
+    spo2: log.spO2Percent,
+    temp: `${log.temperatureFahrenheit}°F`,
+    gcs: 15,
+    nurse: log.recordedBy,
+    isAbnormal: log.isAbnormal,
+  }));
 
   const columns = [
     {
@@ -80,13 +77,14 @@ export const VitalsFlowsheetTable: React.FC = () => {
     <div className="space-y-3">
       {/* Mobile Smartphone Card View */}
       <div className="block sm:hidden space-y-2">
-        {vitals.map((v) => {
+        {mappedVitals.map((v) => {
           const sys = parseInt(v.bp.split("/")[0] || "120", 10);
           const isWarning = sys >= 140 || v.spo2 < 94;
           return (
             <div
               key={v.key}
-              className={`p-3 rounded-xl border space-y-1 text-xs ${
+              onClick={() => setSelectedUhid(v.uhid)}
+              className={`p-3 rounded-xl border space-y-1 text-xs cursor-pointer ${
                 isWarning ? "bg-rose-50/70 border-rose-200" : "bg-slate-50 border-slate-200"
               }`}
             >
@@ -113,8 +111,26 @@ export const VitalsFlowsheetTable: React.FC = () => {
 
       {/* Desktop / Tablet Table */}
       <div className="hidden sm:block overflow-x-auto">
-        <Table columns={columns} dataSource={vitals} pagination={false} size="small" rowKey="key" />
+        <Table
+          columns={columns}
+          dataSource={mappedVitals}
+          pagination={false}
+          size="small"
+          rowKey="key"
+          onRow={(record) => ({
+            onClick: () => setSelectedUhid(record.uhid),
+            style: { cursor: "pointer" },
+          })}
+        />
       </div>
+
+      {selectedUhid && (
+        <Patient360DrawerModal
+          open={!!selectedUhid}
+          onClose={() => setSelectedUhid(null)}
+          uhid={selectedUhid}
+        />
+      )}
     </div>
   );
 };

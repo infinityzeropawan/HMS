@@ -1,36 +1,109 @@
 "use client";
 
 import React, { useState } from "react";
-import { Table, Tag, Modal, Form, Input, Select, InputNumber, Switch, message } from "antd";
-import { BedDouble, Plus, CheckCircle2, User, DollarSign, ShieldCheck, Building2, Calendar, Search } from "lucide-react";
+import { Table, Tag, Modal, Form, Input, Select, InputNumber, Switch, message, Alert } from "antd";
+import { BedDouble, Plus, CheckCircle2, User, DollarSign, ShieldCheck, Building2, Calendar, Search, AlertTriangle } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { useIpdStore, IpdAdmissionRecord } from "../../_ipd_stores/ipd_store";
+import { BedService } from "@/app/(admin)/_admin_services/bed_service";
+import { useBedStore } from "@/app/(admin)/_admin_stores/admin_bed_store";
+import { useBillingStore } from "@/app/(billing)/_billing_stores/billing_store";
 
 export const IpdAdmissionDesk: React.FC = () => {
-  const { admissions, addAdmission, resetToDefaults } = useIpdStore();
+  const { admissions, addAdmission } = useIpdStore();
+  const availableBeds = BedService.getAvailableBeds();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedBedId, setSelectedBedId] = useState<string>("");
+  const [allocationError, setAllocationError] = useState<string | null>(null);
   const [form] = Form.useForm();
 
+  const handleBedSelect = (bedId: string) => {
+    setSelectedBedId(bedId);
+    setAllocationError(null);
+    const bed = BedService.getBedById(bedId);
+    if (bed) {
+      form.setFieldsValue({
+        admittedWard: bed.wardName,
+        bedNumber: bed.bedNumber,
+      });
+
+      const validation = BedService.validateBedAllocation(bedId);
+      if (!validation.valid) {
+        setAllocationError(validation.errors.join("; "));
+      }
+    }
+  };
+
   const handleFinish = (values: Record<string, unknown>) => {
+    setAllocationError(null);
+
+    const bedId = (values.bedId as string) || selectedBedId;
+    const targetBed = BedService.getBedById(bedId) || availableBeds[0];
+
+    if (!targetBed) {
+      message.error("No available bed selected for admission.");
+      return;
+    }
+
     const payload = {
-      uhid: (values.uhid as string) || "P-2026-9900",
+      uhid: (values.uhid as string) || "P-2026-9912",
       patientName: values.patientName as string,
       age: Number(values.age) || 45,
       gender: (values.gender as string) || "Male",
-      admittedWard: values.admittedWard as string,
-      bedNumber: values.bedNumber as string,
+      admittedWard: targetBed.wardName,
+      bedNumber: targetBed.bedNumber,
       attendingDoctor: values.attendingDoctor as string,
       admissionDate: new Date().toISOString().split("T")[0],
       initialDepositAmount: Number(values.initialDepositAmount) || 10000,
       tpaCashlessApproved: Boolean(values.tpaCashlessApproved),
     };
 
-    addAdmission(payload);
-    message.success(`Inpatient ${payload.patientName} admitted to ${payload.bedNumber}`);
-    setModalOpen(false);
+    try {
+      // 1. Lock & Allocate physical bed in BedService
+      BedService.allocateBed(
+        targetBed.id,
+        {
+          uhid: payload.uhid,
+          ipdNo: `IPD-2026-${Math.floor(Math.random() * 9000 + 1000)}`,
+          patientName: payload.patientName,
+          admissionDate: payload.admissionDate,
+        },
+        "IPD Admissions Desk"
+      );
+
+      // 2. Add to IPD admissions store
+      addAdmission(payload);
+
+      // 3. Record advance deposit in useBillingStore ledger
+      try {
+        useBillingStore.getState().recordAdvanceDeposit({
+          depositNo: `DEP-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+          patientUhid: payload.uhid,
+          patientName: payload.patientName,
+          roomBedNo: `${payload.admittedWard} - ${payload.bedNumber}`,
+          admissionDate: payload.admissionDate,
+          initialDeposit: payload.initialDepositAmount,
+          roomCharges: 0,
+          nursingCharges: 0,
+          labCharges: 0,
+          pharmacyCharges: 0,
+        });
+      } catch {
+        /* ignore */
+      }
+
+      message.success(`Inpatient ${payload.patientName} admitted to ${payload.bedNumber} (${targetBed.wardName})`);
+      setModalOpen(false);
+      form.resetFields();
+      setSelectedBedId("");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Admission failed";
+      setAllocationError(errMsg);
+      message.error(errMsg);
+    }
   };
 
   const filteredAdmissions = admissions.filter(
@@ -164,7 +237,7 @@ export const IpdAdmissionDesk: React.FC = () => {
             />
           </div>
 
-          <HmsButton variant="emerald" icon={<Plus className="w-4 h-4" />} onClick={() => setModalOpen(true)}>
+          <HmsButton variant="emerald" icon={<Plus className="w-4 h-4" />} onClick={() => { setAllocationError(null); setModalOpen(true); }}>
             Admit New Patient
           </HmsButton>
         </div>
@@ -188,6 +261,17 @@ export const IpdAdmissionDesk: React.FC = () => {
         footer={null}
         width={600}
       >
+        {allocationError && (
+          <Alert
+            type="error"
+            message="Bed Allocation Guard Conflict"
+            description={allocationError}
+            showIcon
+            icon={<AlertTriangle className="w-5 h-5 text-rose-500" />}
+            className="mb-4"
+          />
+        )}
+
         <Form form={form} layout="vertical" onFinish={handleFinish} className="mt-4">
           <Form.Item label="Patient Full Name" name="patientName" rules={[{ required: true }]}>
             <Input placeholder="e.g. Sunil Verma" size="large" />
@@ -211,20 +295,17 @@ export const IpdAdmissionDesk: React.FC = () => {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item label="Admitted Ward" name="admittedWard" rules={[{ required: true }]}>
-              <Select size="large">
-                <Select.Option value="Intensive Care Unit (ICU)">Intensive Care Unit (ICU)</Select.Option>
-                <Select.Option value="Female Surgical Ward 3B">Female Surgical Ward 3B</Select.Option>
-                <Select.Option value="Private Deluxe Wing 4th Floor">Private Deluxe Wing 4th Floor</Select.Option>
-                <Select.Option value="General Male Ward 2A">General Male Ward 2A</Select.Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item label="Assigned Bed #" name="bedNumber" rules={[{ required: true }]}>
-              <Input placeholder="ICU-BED-01" size="large" />
-            </Form.Item>
-          </div>
+          <Form.Item label="Select Available Bed (Central Bed Engine)" name="bedId" rules={[{ required: true, message: "Please select an available bed" }]}>
+            <Select
+              size="large"
+              placeholder="Select available bed..."
+              onChange={handleBedSelect}
+              options={availableBeds.map((b) => ({
+                value: b.id,
+                label: `${b.bedNumber} — ${b.wardName} (${b.category}) [Rate: ₹${b.dailyRate}/Day]`,
+              }))}
+            />
+          </Form.Item>
 
           <Form.Item label="Attending Consultant Doctor" name="attendingDoctor" rules={[{ required: true }]}>
             <Select size="large">

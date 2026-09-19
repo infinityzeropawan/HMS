@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
@@ -21,6 +22,8 @@ import {
 import { NurseBedMatrixGrid } from "../_nurse_components/StationDashboard/NurseBedMatrixGrid";
 
 export default function NurseMainDashboard() {
+  redirect("/station");
+
   return (
     <HmsAppShell title="Nurse Station Dashboard">
       <div className="max-w-7xl mx-auto space-y-6 pb-8">
@@ -40,12 +43,12 @@ export default function NurseMainDashboard() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Link href="/nurse/vitals">
+              <Link href="/vitals">
                 <HmsButton variant="emerald" icon={<Plus className="w-4 h-4" />}>
                   Record Vitals
                 </HmsButton>
               </Link>
-              <Link href="/nurse/mar">
+              <Link href="/mar/IPD-8801">
                 <HmsButton variant="secondary" icon={<Pill className="w-4 h-4" />}>
                   MAR Medication Check
                 </HmsButton>
@@ -113,7 +116,7 @@ export default function NurseMainDashboard() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <Link
-              href="/nurse/station"
+              href="/station"
               className="p-4 rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 transition-all duration-200 group flex flex-col items-center text-center space-y-2"
             >
               <div className="p-3 bg-teal-100 text-teal-700 rounded-xl group-hover:scale-105 transition-transform">
@@ -124,7 +127,7 @@ export default function NurseMainDashboard() {
             </Link>
 
             <Link
-              href="/nurse/vitals"
+              href="/vitals"
               className="p-4 rounded-xl border border-slate-200 hover:border-rose-500 hover:bg-rose-50/50 transition-all duration-200 group flex flex-col items-center text-center space-y-2"
             >
               <div className="p-3 bg-rose-100 text-rose-700 rounded-xl group-hover:scale-105 transition-transform">
@@ -135,7 +138,7 @@ export default function NurseMainDashboard() {
             </Link>
 
             <Link
-              href="/nurse/mar"
+              href="/mar/IPD-8801"
               className="p-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all duration-200 group flex flex-col items-center text-center space-y-2"
             >
               <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl group-hover:scale-105 transition-transform">
@@ -146,7 +149,7 @@ export default function NurseMainDashboard() {
             </Link>
 
             <Link
-              href="/nurse/fluid-chart"
+              href="/fluid-chart"
               className="p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-200 group flex flex-col items-center text-center space-y-2"
             >
               <div className="p-3 bg-blue-100 text-blue-700 rounded-xl group-hover:scale-105 transition-transform">
@@ -157,7 +160,7 @@ export default function NurseMainDashboard() {
             </Link>
 
             <Link
-              href="/nurse/worklist"
+              href="/worklist"
               className="p-4 rounded-xl border border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 transition-all duration-200 group flex flex-col items-center text-center space-y-2"
             >
               <div className="p-3 bg-amber-100 text-amber-700 rounded-xl group-hover:scale-105 transition-transform">
@@ -168,7 +171,7 @@ export default function NurseMainDashboard() {
             </Link>
 
             <Link
-              href="/nurse/handover"
+              href="/handover"
               className="p-4 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition-all duration-200 group flex flex-col items-center text-center space-y-2"
             >
               <div className="p-3 bg-purple-100 text-purple-700 rounded-xl group-hover:scale-105 transition-transform">
@@ -189,7 +192,7 @@ export default function NurseMainDashboard() {
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">Live patient bed occupancy and quick status badges.</p>
             </div>
-            <Link href="/nurse/station">
+            <Link href="/station">
               <HmsButton size="sm" variant="secondary" icon={<ArrowRight className="w-3.5 h-3.5" />}>
                 Full Station Grid
               </HmsButton>

@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Tabs } from "antd";
 import { DrugMasterTable, Icd10BrowserTable, TerminologyBrowserTable } from "@/app/(super-admin)/_super_admin_components/GlobalMasters/DrugMasterTable";
-import { Database, Building2, Receipt, SlidersHorizontal, ShieldCheck, Headphones } from "lucide-react";
+import { Database, Building2, Receipt, SlidersHorizontal, ShieldCheck, Shield, Headphones } from "lucide-react";
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 
@@ -72,6 +72,16 @@ export default function GlobalMastersPage() {
             <Link href="/feature-flags">
               <HmsButton size="sm" variant="secondary" icon={<SlidersHorizontal className="w-4 h-4" />}>
                 Feature Flags
+              </HmsButton>
+            </Link>
+            <Link href="/role-templates">
+              <HmsButton size="sm" variant="secondary" icon={<ShieldCheck className="w-4 h-4" />}>
+                Role Templates
+              </HmsButton>
+            </Link>
+            <Link href="/compliance-governance">
+              <HmsButton size="sm" variant="secondary" icon={<Shield className="w-4 h-4" />}>
+                Compliance &amp; Governance
               </HmsButton>
             </Link>
             <Link href="/platform-audit">

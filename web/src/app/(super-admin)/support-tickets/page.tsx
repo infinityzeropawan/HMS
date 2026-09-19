@@ -9,69 +9,7 @@ import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 
-interface SupportTicket {
-  key: string;
-  ticketId: string;
-  tenantName: string;
-  tenantId: string;
-  subject: string;
-  category: "BILLING_QUERY" | "PACS_INTEGRATION" | "USER_SEATS_LIMIT" | "ABDM_GATEWAY" | "SYSTEM_BUG";
-  priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
-  status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
-  createdDate: string;
-  assignedAgent: string;
-  conversation: { sender: string; text: string; time: string }[];
-}
-
-const INITIAL_TICKETS: SupportTicket[] = [
-  {
-    key: "1",
-    ticketId: "TICK-901",
-    tenantName: "Apollo Super Speciality Hospital",
-    tenantId: "TENANT-001",
-    subject: "Requesting additional user seat allocation for IPD Nurse Station",
-    category: "USER_SEATS_LIMIT",
-    priority: "HIGH",
-    status: "OPEN",
-    createdDate: "2026-09-17 08:30 AM",
-    assignedAgent: "Agent Rahul (Tier 2 Support)",
-    conversation: [
-      { sender: "Apollo Admin", text: "We have reached our 85 user limit and need 15 additional nurse seats provisioned.", time: "08:30 AM" },
-    ],
-  },
-  {
-    key: "2",
-    ticketId: "TICK-902",
-    tenantName: "Fortis Care Heart Institute",
-    tenantId: "TENANT-002",
-    subject: "ABDM M2 Consent Artifact Push Latency Query",
-    category: "ABDM_GATEWAY",
-    priority: "CRITICAL",
-    status: "IN_PROGRESS",
-    createdDate: "2026-09-17 09:15 AM",
-    assignedAgent: "Eng. Sneha (ABDM Gateway Team)",
-    conversation: [
-      { sender: "Fortis Admin", text: "ABHA consent artifact responses taking > 3 seconds during peak hours.", time: "09:15 AM" },
-      { sender: "Eng. Sneha", text: "Investigating Redis cache queue size; scaling gateway workers.", time: "09:40 AM" },
-    ],
-  },
-  {
-    key: "3",
-    ticketId: "TICK-903",
-    tenantName: "City Diagnostics & OPD Clinic",
-    tenantId: "TENANT-003",
-    subject: "PACS DICOM Viewer WebGL rendering issue on Safari mobile",
-    category: "PACS_INTEGRATION",
-    priority: "MEDIUM",
-    status: "RESOLVED",
-    createdDate: "2026-09-16 02:00 PM",
-    assignedAgent: "Agent Rahul (Tier 2 Support)",
-    conversation: [
-      { sender: "City Diag Admin", text: "DICOM canvas invert button not triggering on iOS 17.", time: "02:00 PM" },
-      { sender: "Agent Rahul", text: "Applied WebGL context fallback patch v2.1.0.", time: "04:30 PM" },
-    ],
-  },
-];
+import { SupportTicketService, SupportTicket } from "../_super_admin_services/support_ticket_service";
 
 const PRIORITY_COLOR: Record<string, string> = {
   CRITICAL: "red",
@@ -81,7 +19,7 @@ const PRIORITY_COLOR: Record<string, string> = {
 };
 
 export default function SupportTicketsPage() {
-  const [tickets, setTickets] = useState<SupportTicket[]>(INITIAL_TICKETS);
+  const [tickets, setTickets] = useState<SupportTicket[]>(() => SupportTicketService.getTickets());
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [replyModalOpen, setReplyModalOpen] = useState(false);
@@ -90,6 +28,12 @@ export default function SupportTicketsPage() {
   const [replyText, setReplyText] = useState("");
   const [form] = Form.useForm();
 
+  React.useEffect(() => {
+    return SupportTicketService.subscribe(() => {
+      setTickets(SupportTicketService.getTickets());
+    });
+  }, []);
+
   const handleOpenReplyModal = (ticket: SupportTicket) => {
     setActiveTicket(ticket);
     setReplyModalOpen(true);
@@ -97,51 +41,31 @@ export default function SupportTicketsPage() {
 
   const handleSendReply = () => {
     if (!activeTicket || !replyText.trim()) return;
-    const updated = tickets.map((t) => {
-      if (t.ticketId === activeTicket.ticketId) {
-        return {
-          ...t,
-          status: "IN_PROGRESS" as const,
-          conversation: [
-            ...t.conversation,
-            { sender: "SuperAdmin Support", text: replyText, time: new Date().toLocaleTimeString() },
-          ],
-        };
-      }
-      return t;
-    });
-    setTickets(updated);
+    SupportTicketService.addReply(activeTicket.ticketId, "SuperAdmin Support", replyText);
+    SupportTicketService.updateTicketStatus(activeTicket.ticketId, "IN_PROGRESS");
     message.success(`Reply sent to ${activeTicket.tenantName} for ticket ${activeTicket.ticketId}!`);
     setReplyText("");
     setReplyModalOpen(false);
   };
 
   const handleResolveTicket = (ticketId: string) => {
-    const updated = tickets.map((t) =>
-      t.ticketId === ticketId ? { ...t, status: "RESOLVED" as const } : t
-    );
-    setTickets(updated);
+    SupportTicketService.updateTicketStatus(ticketId, "RESOLVED");
     message.success(`Ticket ${ticketId} marked as RESOLVED!`);
     setReplyModalOpen(false);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCreateTicket = (values: Record<string, any>) => {
-    const newTicket: SupportTicket = {
-      key: `tick-${Date.now()}`,
-      ticketId: `TICK-${Math.floor(Math.random() * 900 + 100)}`,
+    SupportTicketService.createTicket({
       tenantName: values.tenantName,
       tenantId: `TENANT-00${tickets.length + 1}`,
       subject: values.subject,
       category: values.category,
       priority: values.priority,
-      status: "OPEN",
-      createdDate: new Date().toLocaleString(),
       assignedAgent: "SuperAdmin Support",
-      conversation: [{ sender: "SuperAdmin", text: values.subject, time: new Date().toLocaleTimeString() }],
-    };
-    setTickets([newTicket, ...tickets]);
-    message.success(`Support ticket ${newTicket.ticketId} created!`);
+      initialMessage: values.initialMessage || values.subject,
+    });
+    message.success("New support ticket logged successfully!");
     setCreateModalOpen(false);
     form.resetFields();
   };

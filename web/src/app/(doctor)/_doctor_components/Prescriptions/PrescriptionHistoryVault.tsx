@@ -1,18 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { Table, Tag, Modal, Input, Tooltip } from "antd";
-import { FileText, Search, Printer, ShieldCheck, CheckCircle2, User, Calendar, Pill } from "lucide-react";
+import { Table, Tag, Modal, Input } from "antd";
+import { FileText, Search, Printer, ShieldCheck, CheckCircle2, Calendar, Pill } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
-import { HmsCard } from "@/common_components/HmsCard/HmsCard";
+import { PatientProfileService } from "@/app/(patient)/_patient_services/patient_profile_service";
 
 interface PrescriptionRecord {
   id: string;
   rxNumber: string;
   uhid: string;
-  patientName: string;
-  age: number;
-  gender: string;
   date: string;
   diagnosis: string;
   medicines: string[];
@@ -26,9 +23,6 @@ export const PrescriptionHistoryVault: React.FC = () => {
       id: "rx-1",
       rxNumber: "RX-2026-8812",
       uhid: "P-2026-9912",
-      patientName: "Sunil Verma",
-      age: 42,
-      gender: "Male",
       date: "2026-09-16",
       diagnosis: "Essential Hypertension & Acute Coronary Syndrome",
       medicines: [
@@ -43,9 +37,6 @@ export const PrescriptionHistoryVault: React.FC = () => {
       id: "rx-2",
       rxNumber: "RX-2026-8815",
       uhid: "P-2026-9944",
-      patientName: "Anita Roy",
-      age: 58,
-      gender: "Female",
       date: "2026-09-16",
       diagnosis: "Post-op Osteoarthritis Knee Pain",
       medicines: [
@@ -59,9 +50,6 @@ export const PrescriptionHistoryVault: React.FC = () => {
       id: "rx-3",
       rxNumber: "RX-2026-8820",
       uhid: "P-2026-9978",
-      patientName: "Rajesh Kulkarni",
-      age: 65,
-      gender: "Male",
       date: "2026-09-15",
       diagnosis: "Type 2 Diabetes Mellitus & Bronchitis",
       medicines: [
@@ -77,12 +65,14 @@ export const PrescriptionHistoryVault: React.FC = () => {
   const [selectedRx, setSelectedRx] = useState<PrescriptionRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  const filteredRx = prescriptions.filter(
-    (p) =>
-      p.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredRx = prescriptions.filter((p) => {
+    const profile = PatientProfileService.getPatientProfile(p.uhid);
+    return (
+      profile.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.uhid.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.rxNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    );
+  });
 
   const columns = [
     {
@@ -100,16 +90,19 @@ export const PrescriptionHistoryVault: React.FC = () => {
       ),
     },
     {
-      title: "Patient Details",
+      title: "Patient Details (Patient Store)",
       key: "patient",
-      render: (_: unknown, record: PrescriptionRecord) => (
-        <div>
-          <span className="font-bold text-slate-900">{record.patientName}</span>
-          <p className="text-xs text-slate-500">
-            {record.age} Yrs / {record.gender} | UHID: <span className="font-mono">{record.uhid}</span>
-          </p>
-        </div>
-      ),
+      render: (_: unknown, record: PrescriptionRecord) => {
+        const profile = PatientProfileService.getPatientProfile(record.uhid);
+        return (
+          <div>
+            <span className="font-bold text-slate-900">{profile.fullName}</span>
+            <p className="text-xs text-slate-500">
+              {profile.age} Yrs / {profile.gender} | Blood Group: <span className="font-bold text-rose-600">{profile.bloodGroup}</span> | UHID: <span className="font-mono">{record.uhid}</span>
+            </p>
+          </div>
+        );
+      },
     },
     {
       title: "Diagnosis & Medicines",
@@ -158,6 +151,8 @@ export const PrescriptionHistoryVault: React.FC = () => {
     },
   ];
 
+  const selectedProfile = selectedRx ? PatientProfileService.getPatientProfile(selectedRx.uhid) : null;
+
   return (
     <div className="space-y-6">
       {/* Top Header Card */}
@@ -203,7 +198,7 @@ export const PrescriptionHistoryVault: React.FC = () => {
         <div className="space-y-4 py-2 text-xs">
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
             <div className="flex justify-between font-bold text-slate-900">
-              <span>Patient: {selectedRx?.patientName}</span>
+              <span>Patient: {selectedProfile?.fullName} ({selectedProfile?.age}Y/{selectedProfile?.gender}, Blood: {selectedProfile?.bloodGroup})</span>
               <span>UHID: {selectedRx?.uhid}</span>
             </div>
             <div className="text-slate-600">Diagnosis: <strong>{selectedRx?.diagnosis}</strong></div>
@@ -238,3 +233,4 @@ export const PrescriptionHistoryVault: React.FC = () => {
     </div>
   );
 };
+

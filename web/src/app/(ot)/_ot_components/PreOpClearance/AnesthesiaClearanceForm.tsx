@@ -4,12 +4,22 @@ import React from "react";
 import { Form, Select, Input, message } from "antd";
 import { ShieldCheck } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
+import { useOtStore } from "../../_ot_stores/ot_store";
 
-export const AnesthesiaClearanceForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const AnesthesiaClearanceForm: React.FC<{ surgeryId?: string; onClose: () => void }> = ({ surgeryId, onClose }) => {
   const [form] = Form.useForm();
+  const { updatePreOpClearance } = useOtStore();
 
-  const handleFinish = () => {
-    message.success("Pre-Anesthesia Assessment completed & Surgery cleared.");
+  const handleFinish = (values: Record<string, string>) => {
+    if (surgeryId) {
+      updatePreOpClearance(surgeryId, {
+        pacClearance: "CLEARED",
+        consentStatus: "OBTAINED",
+        labClearance: "CLEARED",
+        radClearance: "CLEARED",
+      });
+    }
+    message.success(`Pre-Anesthesia Assessment completed (ASA: ${values.asaGrade || "ASA II"}). Surgery cleared.`);
     onClose();
   };
 
@@ -31,6 +41,15 @@ export const AnesthesiaClearanceForm: React.FC<{ onClose: () => void }> = ({ onC
           <Select.Option value="CLASS_III">Class III — Soft palate only</Select.Option>
           <Select.Option value="CLASS_IV">Class IV — Hard palate only</Select.Option>
         </Select>
+      </Form.Item>
+
+      <Form.Item label="Pre-Op Clearance Checklists" name="clearances">
+        <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div>✓ Informed Consent: <strong className="text-emerald-700">OBTAINED</strong></div>
+          <div>✓ Lab Clearance: <strong className="text-emerald-700">CLEARED</strong></div>
+          <div>✓ Radiology Clearance: <strong className="text-emerald-700">CLEARED</strong></div>
+          <div>✓ Blood Cross-Match: <strong className="text-emerald-700">READY</strong></div>
+        </div>
       </Form.Item>
 
       <Form.Item label="NPO Status (Fasting Hours)" name="npoHours" initialValue="8 Hours NPO">

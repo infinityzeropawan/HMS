@@ -30,6 +30,7 @@ export const authApiService = {
       billing: { password: "bill123", userId: "BIL-401", username: "Rohan Mehta", role: "BILLER" as const },
       admin: { password: "admin123", userId: "ADM-001", username: "System Administrator", role: "ADMIN" as const },
       hospitaladmin: { password: "hospital123", userId: "HAD-001", username: "Hospital Administrator", role: "HOSPITAL_ADMIN" as const },
+      superadmin: { password: "super123", userId: "SA-001", username: "Platform SuperAdmin", role: "SUPER_ADMIN" as const },
     };
     const account = demoAccounts[input.username.toLowerCase() as keyof typeof demoAccounts];
 

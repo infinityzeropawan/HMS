@@ -5,6 +5,9 @@ import { Table, Tag, Modal, Form, Input, Select, InputNumber, message } from "an
 import { Droplet, Plus, RefreshCw, Activity, ArrowUpRight, ArrowDownRight, Scale } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
+import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+import { PlatformAuditService } from "@/app/(super-admin)/_super_admin_services/platform_audit_service";
 
 interface FluidEntry {
   id: string;
@@ -19,39 +22,42 @@ interface FluidEntry {
 }
 
 export const NurseFluidBalanceChart: React.FC = () => {
+  const admissions = useIpdStore((state) => state.admissions);
+  const currentUser = useAuthUserStore((state) => state.user);
+
   const [entries, setEntries] = useState<FluidEntry[]>([
     {
       id: "fl-1",
-      patientName: "Sunil Verma",
-      bedNumber: "ICU-BED-01",
+      patientName: admissions[0]?.patientName || "Sunil Verma",
+      bedNumber: admissions[0]?.bedNumber || "ICU-BED-01",
       timeSlot: "08:00 AM - 12:00 PM",
-      intakeIvMl: 500, // Normal Saline 0.9%
-      intakeOralMl: 150, // Water
+      intakeIvMl: 500,
+      intakeOralMl: 150,
       outputUrineMl: 400,
       outputDrainMl: 50,
-      recordedBy: "Nurse Sunita Deshmukh",
+      recordedBy: currentUser?.username ? `Nurse ${currentUser.username}` : "Nurse Duty Station",
     },
     {
       id: "fl-2",
-      patientName: "Sunil Verma",
-      bedNumber: "ICU-BED-01",
+      patientName: admissions[0]?.patientName || "Sunil Verma",
+      bedNumber: admissions[0]?.bedNumber || "ICU-BED-01",
       timeSlot: "12:00 PM - 04:00 PM",
-      intakeIvMl: 500, // Ringer Lactate
-      intakeOralMl: 200, // Soup
+      intakeIvMl: 500,
+      intakeOralMl: 200,
       outputUrineMl: 450,
       outputDrainMl: 30,
-      recordedBy: "Nurse Sunita Deshmukh",
+      recordedBy: currentUser?.username ? `Nurse ${currentUser.username}` : "Nurse Duty Station",
     },
     {
       id: "fl-3",
-      patientName: "Rajesh Kulkarni",
-      bedNumber: "DELUXE-402",
+      patientName: admissions[1]?.patientName || "Rajesh Kulkarni",
+      bedNumber: admissions[1]?.bedNumber || "DELUXE-402",
       timeSlot: "08:00 AM - 12:00 PM",
       intakeIvMl: 1000,
       intakeOralMl: 100,
       outputUrineMl: 300,
       outputDrainMl: 0,
-      recordedBy: "Nurse Kavita Roy",
+      recordedBy: currentUser?.username ? `Nurse ${currentUser.username}` : "Nurse Duty Station",
     },
   ]);
 
@@ -62,7 +68,22 @@ export const NurseFluidBalanceChart: React.FC = () => {
   const totalOutput = entries.reduce((acc, e) => acc + e.outputUrineMl + e.outputDrainMl, 0);
   const netBalance = totalIntake - totalOutput;
 
+  const handlePatientSelect = (admissionNo: string) => {
+    const found = admissions.find((a) => a.admissionNo === admissionNo || a.id === admissionNo);
+    if (found) {
+      form.setFieldsValue({
+        patientName: found.patientName,
+        bedNumber: found.bedNumber,
+      });
+    }
+  };
+
   const handleFinish = (values: Record<string, unknown>) => {
+    const nurseTitle = currentUser?.username ? `Nurse ${currentUser.username}` : "Nurse Duty Station";
+    const inTotal = (Number(values.intakeIvMl) || 0) + (Number(values.intakeOralMl) || 0);
+    const outTotal = (Number(values.outputUrineMl) || 0) + (Number(values.outputDrainMl) || 0);
+    const net = inTotal - outTotal;
+
     const newEntry: FluidEntry = {
       id: `fl-${Date.now()}`,
       patientName: values.patientName as string,
@@ -72,11 +93,45 @@ export const NurseFluidBalanceChart: React.FC = () => {
       intakeOralMl: Number(values.intakeOralMl) || 0,
       outputUrineMl: Number(values.outputUrineMl) || 0,
       outputDrainMl: Number(values.outputDrainMl) || 0,
-      recordedBy: "Nurse Duty Station",
+      recordedBy: nurseTitle,
     };
 
     setEntries((prev) => [newEntry, ...prev]);
-    message.success(`Fluid I/O logged for ${newEntry.patientName} (${newEntry.bedNumber})`);
+
+    // Find admission for store persistence
+    const targetAdmission = admissions.find((a) => a.patientName === newEntry.patientName || a.bedNumber === newEntry.bedNumber);
+    if (targetAdmission) {
+      try {
+        useIpdStore.getState().addRoundNote(
+          targetAdmission.admissionNo,
+          `[24-Hr Fluid Balance Logged] Net Balance: ${net >= 0 ? `+${net}` : net} mL (Intake: ${inTotal} mL, Output: ${outTotal} mL) - Logged by ${nurseTitle}`
+        );
+      } catch {
+        /* store fallback */
+      }
+    }
+
+    // Platform Audit Logging
+    PlatformAuditService.recordAuditEvent({
+      actor: nurseTitle,
+      actorRole: "CLINICAL_NURSE",
+      action: `Fluid Balance Logged for ${newEntry.patientName}`,
+      category: "COMPLIANCE_EVENT",
+      entity: `Bed ${newEntry.bedNumber} (${newEntry.patientName})`,
+      ipAddress: "192.168.1.105",
+      riskLevel: "INFO",
+      details: JSON.stringify({
+        patient: newEntry.patientName,
+        bedNumber: newEntry.bedNumber,
+        intakeTotal: inTotal,
+        outputTotal: outTotal,
+        netBalance: net,
+        recordedBy: nurseTitle,
+      }),
+    });
+
+    message.success(`Fluid I/O logged for ${newEntry.patientName} (${newEntry.bedNumber}). EMR Timeline updated.`);
+    form.resetFields();
     setModalOpen(false);
   };
 
@@ -207,10 +262,12 @@ export const NurseFluidBalanceChart: React.FC = () => {
         <Form form={form} layout="vertical" onFinish={handleFinish} className="mt-4">
           <div className="grid grid-cols-2 gap-4">
             <Form.Item label="Patient Name" name="patientName" rules={[{ required: true }]}>
-              <Select placeholder="Select Patient" size="large">
-                <Select.Option value="Sunil Verma">Sunil Verma (ICU-BED-01)</Select.Option>
-                <Select.Option value="Anita Roy">Anita Roy (WARD-3B-04)</Select.Option>
-                <Select.Option value="Rajesh Kulkarni">Rajesh Kulkarni (DELUXE-402)</Select.Option>
+              <Select placeholder="Select Patient" size="large" onChange={handlePatientSelect}>
+                {admissions.map((a) => (
+                  <Select.Option key={a.id} value={a.admissionNo}>
+                    {a.patientName} ({a.bedNumber})
+                  </Select.Option>
+                ))}
               </Select>
             </Form.Item>
 

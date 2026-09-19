@@ -7,6 +7,7 @@ import { Receipt, ShieldCheck, DollarSign, CreditCard, Search, Plus, TrendingUp,
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
+import { useBillingStore } from "../_billing_stores/billing_store";
 
 interface InvoiceSummary {
   key: string;
@@ -29,38 +30,25 @@ const INITIAL_INVOICES: InvoiceSummary[] = [
 ];
 
 export default function BillingMainDashboard() {
+  const { invoices: storeInvoices } = useBillingStore();
   const [searchQuery, setSearchQuery] = useState("");
-  const [invoices, setInvoices] = useState<InvoiceSummary[]>(INITIAL_INVOICES);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceSummary | null>(null);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("hms_invoices");
-      if (saved) {
-        try {
-          const list = JSON.parse(saved);
-          if (Array.isArray(list) && list.length > 0) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const mapped: InvoiceSummary[] = list.map((inv: any, idx: number) => ({
-              key: `saved-inv-${idx}`,
-              invoiceNo: inv.invoiceNumber || `INV-2026-${1060 + idx}`,
-              patientName: inv.patientName || "Patient",
-              uhid: inv.patientUhid || "P-2026-1000",
-              serviceType: "Hospital Services & GST Line Items",
-              amount: inv.totalAmount || 1000,
-              gstAmount: (inv.cgstAmount || 0) + (inv.sgstAmount || 0),
-              paymentMode: inv.paymentMode || "UPI",
-              status: "PAID",
-              date: new Date(inv.createdAt || Date.now()).toLocaleString(),
-            }));
-            setInvoices([...mapped, ...INITIAL_INVOICES]);
-            return;
-          }
-        } catch { /* use initial */ }
-      }
-    }
-  }, []);
+  const mappedStoreInvoices: InvoiceSummary[] = storeInvoices.map((inv, idx) => ({
+    key: inv.id || `inv-${idx}`,
+    invoiceNo: inv.invoiceNumber,
+    patientName: inv.patientName,
+    uhid: inv.patientUhid,
+    serviceType: inv.items?.[0]?.description || "Hospital Services & Line Items",
+    amount: inv.totalAmount,
+    gstAmount: (inv.cgstAmount || 0) + (inv.sgstAmount || 0),
+    paymentMode: inv.paymentMode,
+    status: inv.status === "CLAIM_SUBMITTED" ? "CLAIM_SUBMITTED" : inv.status === "PAID" ? "PAID" : "PENDING",
+    date: inv.createdAt,
+  }));
+
+  const invoices = mappedStoreInvoices.length > 0 ? mappedStoreInvoices : INITIAL_INVOICES;
 
   const handleViewReceipt = (inv: InvoiceSummary) => {
     setSelectedInvoice(inv);
@@ -211,56 +199,95 @@ export default function BillingMainDashboard() {
             <Receipt className="w-5 h-5 text-teal-600" /> Billing Modules & Financial Workspaces
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Link
               href="/invoices"
-              className="p-5 rounded-2xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all duration-200 group flex flex-col justify-between"
+              className="p-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all duration-200 group flex items-start gap-3"
             >
-              <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl w-fit group-hover:scale-105 transition-transform mb-3">
-                <Receipt className="w-6 h-6" />
+              <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <Receipt className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">GST Invoice Generator</h3>
-                <p className="text-xs text-slate-500 mt-1">Itemized OPD/IPD bill creation, SAC codes, CGST/SGST breakdown & print receipts.</p>
+                <h3 className="font-bold text-slate-900 text-sm">GST Invoice Generator</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Itemized OPD/IPD bill creation & SAC tax codes.</p>
               </div>
             </Link>
 
             <Link
               href="/claims"
-              className="p-5 rounded-2xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition-all duration-200 group flex flex-col justify-between"
+              className="p-4 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition-all duration-200 group flex items-start gap-3"
             >
-              <div className="p-3 bg-purple-100 text-purple-700 rounded-xl w-fit group-hover:scale-105 transition-transform mb-3">
-                <ShieldCheck className="w-6 h-6" />
+              <div className="p-2.5 bg-purple-100 text-purple-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">TPA & Insurance Claims</h3>
-                <p className="text-xs text-slate-500 mt-1">Cashless pre-authorization requests, query responses, and settlement logs.</p>
+                <h3 className="font-bold text-slate-900 text-sm">TPA & Insurance Claims</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Pre-authorization cashless claim settlements.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/billing/dues"
+              className="p-4 rounded-xl border border-slate-200 hover:border-rose-500 hover:bg-rose-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-rose-100 text-rose-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Outstanding Dues Recovery</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Track overdue accounts & collect partial dues.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/billing/deposit-ledger"
+              className="p-4 rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-teal-100 text-teal-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">IPD Deposit Ledger</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Advance deposit tracking & charge deduction.</p>
+              </div>
+            </Link>
+
+            <Link
+              href="/billing/refunds"
+              className="p-4 rounded-xl border border-slate-200 hover:border-rose-500 hover:bg-rose-50/50 transition-all duration-200 group flex items-start gap-3"
+            >
+              <div className="p-2.5 bg-rose-100 text-rose-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Credit Notes & Refunds</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Supervisor-approved refund vouchers.</p>
               </div>
             </Link>
 
             <Link
               href="/tariffs"
-              className="p-5 rounded-2xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 transition-all duration-200 group flex flex-col justify-between"
+              className="p-4 rounded-xl border border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 transition-all duration-200 group flex items-start gap-3"
             >
-              <div className="p-3 bg-teal-100 text-teal-700 rounded-xl w-fit group-hover:scale-105 transition-transform mb-3">
-                <SlidersHorizontal className="w-6 h-6" />
+              <div className="p-2.5 bg-amber-100 text-amber-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <SlidersHorizontal className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Service Tariff Schedule</h3>
-                <p className="text-xs text-slate-500 mt-1">OPD consultation rates, bed charges, OT rates & lab procedure master tariffs.</p>
+                <h3 className="font-bold text-slate-900 text-sm">Service Tariff Schedule</h3>
+                <p className="text-xs text-slate-500 mt-0.5">OPD rates, bed charges & procedure master.</p>
               </div>
             </Link>
 
             <Link
               href="/revenue"
-              className="p-5 rounded-2xl border border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 transition-all duration-200 group flex flex-col justify-between"
+              className="p-4 rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition-all duration-200 group flex items-start gap-3"
             >
-              <div className="p-3 bg-amber-100 text-amber-700 rounded-xl w-fit group-hover:scale-105 transition-transform mb-3">
-                <TrendingUp className="w-6 h-6" />
+              <div className="p-2.5 bg-indigo-100 text-indigo-700 rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                <TrendingUp className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-slate-900 text-base">Revenue & Financial Analytics</h3>
-                <p className="text-xs text-slate-500 mt-1">Daily revenue trends, department-wise earnings, and doctor payout summaries.</p>
+                <h3 className="font-bold text-slate-900 text-sm">Revenue Analytics</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Daily collections & doctor payout summaries.</p>
               </div>
             </Link>
           </div>

@@ -16,7 +16,7 @@ export function HmsKeyboardShortcutsListener() {
           case "s":
             e.preventDefault();
             message.info("Shortcut: Doctor SOAP Notes (Ctrl+Alt+S)");
-            router.push("/queue");
+            router.push("/doctor/queue");
             break;
           case "p":
             e.preventDefault();

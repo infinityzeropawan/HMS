@@ -4,6 +4,9 @@ import React, { useEffect, useState } from "react";
 import { Table, Tag, message } from "antd";
 import { CheckCircle2, Barcode, Clock, UserCheck } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
+import { PlatformAuditService } from "@/app/(super-admin)/_super_admin_services/platform_audit_service";
 
 interface DoseRecord {
   key: string;
@@ -14,46 +17,64 @@ interface DoseRecord {
   nurse: string;
 }
 
+interface MedicationAdminChecklistProps {
+  ipdId?: string;
+  uhid?: string;
+}
+
 const DEFAULT_DOSES: DoseRecord[] = [
-  { key: "1", medName: "Inj Pantocid 40mg IV", scheduledTime: "08:00 AM", status: "GIVEN", givenAt: "08:10 AM", nurse: "Sr. Deepa M." },
-  { key: "2", medName: "Tab Ecosprin 75mg PO", scheduledTime: "14:00 PM", status: "GIVEN", givenAt: "14:05 PM", nurse: "Sr. Kavita R." },
+  { key: "1", medName: "Inj Pantocid 40mg IV", scheduledTime: "08:00 AM", status: "GIVEN", givenAt: "08:10 AM", nurse: "Duty Nurse" },
+  { key: "2", medName: "Tab Ecosprin 75mg PO", scheduledTime: "14:00 PM", status: "GIVEN", givenAt: "14:05 PM", nurse: "Duty Nurse" },
   { key: "3", medName: "Inj Augmentin 1.2g IV", scheduledTime: "18:00 PM", status: "SCHEDULED", givenAt: "-", nurse: "-" },
   { key: "4", medName: "Tab Sorbitrate 5mg SL", scheduledTime: "22:00 PM", status: "SCHEDULED", givenAt: "-", nurse: "-" },
 ];
 
-export const MedicationAdminChecklist: React.FC = () => {
+export const MedicationAdminChecklist: React.FC<MedicationAdminChecklistProps> = ({ ipdId, uhid }) => {
   const [doses, setDoses] = useState<DoseRecord[]>(DEFAULT_DOSES);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("hms_mar");
-      if (saved) {
-        try {
-          const list = JSON.parse(saved);
-          if (Array.isArray(list) && list.length > 0) {
-            setDoses(list);
-          }
-        } catch { /* use default */ }
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("hms_mar", JSON.stringify(doses));
-    }
-  }, [doses]);
+  const currentUser = useAuthUserStore((state) => state.user);
+  const nurseName = currentUser?.username ? `Nurse ${currentUser.username}` : "Nurse Duty Station";
 
   const handleAdminister = (key: string, medName: string) => {
     const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setDoses((prev) =>
       prev.map((d) =>
         d.key === key
-          ? { ...d, status: "GIVEN", givenAt: ts, nurse: "Sr. Kavita R. (Reg #NUR-5102)" }
+          ? { ...d, status: "GIVEN", givenAt: ts, nurse: nurseName }
           : d
       )
     );
-    message.success(`Dose ${medName} marked as Administered with Barcode Verification at ${ts}.`);
+
+    // Persist to EMR Timeline via useIpdStore single source of truth
+    if (ipdId) {
+      try {
+        useIpdStore.getState().addRoundNote(
+          ipdId,
+          `[MAR Dose Administered] ${medName} - Barcode verified and given by ${nurseName} at ${ts}`
+        );
+      } catch {
+        /* store fallback */
+      }
+    }
+
+    // Platform Audit Event
+    PlatformAuditService.recordAuditEvent({
+      actor: nurseName,
+      actorRole: "CLINICAL_NURSE",
+      action: `MAR Dose Administered: ${medName}`,
+      category: "COMPLIANCE_EVENT",
+      entity: `IPD Admission ${ipdId || "General"} (UHID: ${uhid || "Inpatient"})`,
+      ipAddress: "192.168.1.105",
+      riskLevel: "INFO",
+      details: JSON.stringify({
+        medication: medName,
+        ipdId,
+        uhid,
+        administeredBy: nurseName,
+        administeredAt: ts,
+      }),
+    });
+
+    message.success(`Dose ${medName} marked as Administered with Barcode Verification by ${nurseName} at ${ts}. EMR Timeline updated.`);
   };
 
   const columns = [

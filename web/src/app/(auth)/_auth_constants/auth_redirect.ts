@@ -1,7 +1,7 @@
 import type { UserRole } from "../_auth_stores/auth_user_store";
 
 const roleHomePaths: Record<UserRole, string> = {
-  DOCTOR: "/queue",
+  DOCTOR: "/doctor/queue",
   NURSE: "/station",
   RECEPTION: "/dashboard",
   RECEPTIONIST: "/dashboard",

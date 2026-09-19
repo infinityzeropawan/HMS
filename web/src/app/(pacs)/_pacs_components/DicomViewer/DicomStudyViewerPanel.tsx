@@ -4,10 +4,26 @@ import React, { useState } from "react";
 import { Tag } from "antd";
 import { ZoomIn, ZoomOut, Contrast, Eye, Layers } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
+import { usePacsStore } from "../../_pacs_stores/pacs_store";
+import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
 
 export const DicomStudyViewerPanel: React.FC<{ studyId: string }> = ({ studyId }) => {
   const [zoomLevel, setZoomLevel] = useState(100);
   const [inverted, setInverted] = useState(false);
+
+  const study = usePacsStore((state) => state.studies.find((s) => s.studyId === studyId));
+  const admissions = useIpdStore((state) => state.admissions);
+
+  const targetAdmission = admissions.find((a) => a.uhid === study?.uhid || a.patientName === study?.patientName);
+
+  const patientName = study?.patientName || targetAdmission?.patientName || "Inpatient Care";
+  const uhid = study?.uhid || targetAdmission?.uhid || "P-2026-9912";
+  const bedNumber = study?.bedNumber || targetAdmission?.bedNumber || "Unassigned Bed";
+  const orderingDoctor = study?.referringDoctor || targetAdmission?.attendingDoctor || "On-Call Medical Officer";
+  const modality = study?.modality || "CR";
+  const bodyPart = study?.bodyPart || "Chest PA View";
+  const imagesCount = study?.imagesCount || 2;
+  const priority = study?.priority || "ROUTINE";
 
   return (
     <div className="bg-slate-900 rounded-xl p-3 sm:p-4 flex flex-col min-h-[34rem] lg:h-[calc(100dvh-140px)] border border-slate-800 text-white">
@@ -17,8 +33,13 @@ export const DicomStudyViewerPanel: React.FC<{ studyId: string }> = ({ studyId }
           <Tag color="purple" icon={<Layers className="w-3.5 h-3.5 inline mr-1" />}>
             PACS DICOM WEB VIEWER
           </Tag>
-          <span className="text-xs text-slate-300 font-mono">Study ID: {studyId}</span>
-          <span className="text-xs text-slate-400 hidden sm:inline">&bull; Patient: Sunil Verma (P-2026-1049) &bull; Modality: Chest X-Ray PA</span>
+          <span className="text-xs text-slate-300 font-mono font-bold">Study ID: {studyId}</span>
+          <Tag color={priority === "EMERGENCY" || priority === "STAT" ? "red" : priority === "HIGH" ? "orange" : "blue"} className="font-bold text-3xs">
+            {priority}
+          </Tag>
+          <span className="text-xs text-slate-300 font-medium">
+            Patient: <strong className="text-white">{patientName}</strong> ({uhid}) &bull; Bed: <strong className="text-teal-400">{bedNumber}</strong> &bull; Doctor: {orderingDoctor}
+          </span>
         </div>
 
         <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
@@ -42,13 +63,15 @@ export const DicomStudyViewerPanel: React.FC<{ studyId: string }> = ({ studyId }
         >
           <Eye className="w-24 h-24 mx-auto mb-2 text-teal-500 opacity-80" />
           <h3 className="text-lg font-bold">DICOM 2D/3D Radiology View</h3>
-          <p className="text-xs text-slate-400 font-mono">Series #1 &bull; 1024 x 1024 Matrix &bull; 16-Bit Grayscale</p>
+          <p className="text-xs text-slate-400 font-mono">
+            {modality} Series #1 &bull; {imagesCount} Slices &bull; 1024 x 1024 Matrix &bull; 16-Bit Grayscale
+          </p>
         </div>
 
         {/* DICOM Metadata Overlay */}
         <div className="absolute top-3 left-3 text-[10px] text-slate-400 font-mono bg-black/60 p-2 rounded border border-slate-800">
-          <div>Patient: Sunil Verma (45M)</div>
-          <div>Modality: CR / Chest PA</div>
+          <div>Patient: {patientName} ({uhid})</div>
+          <div>Modality: {modality} / {bodyPart}</div>
           <div>KvP: 120 | mAs: 4.5</div>
         </div>
 

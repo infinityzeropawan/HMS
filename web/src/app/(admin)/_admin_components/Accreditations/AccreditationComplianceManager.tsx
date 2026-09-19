@@ -180,18 +180,20 @@ export const AccreditationComplianceManager: React.FC = () => {
       </div>
 
       {/* Main Table Container */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
             <Award className="w-5 h-5 text-purple-600" /> NABH / NABL / ISO Accreditation Records
           </h3>
 
-          <HmsButton variant="emerald" icon={<Plus className="w-4 h-4" />} onClick={() => setModalOpen(true)}>
+          <HmsButton variant="emerald" icon={<Plus className="w-4 h-4" />} onClick={() => setModalOpen(true)} className="w-full sm:w-auto">
             Add Accreditation
           </HmsButton>
         </div>
 
-        <Table columns={columns} dataSource={accreditations} rowKey="id" pagination={false} />
+        <div className="w-full overflow-x-auto">
+          <Table columns={columns} dataSource={accreditations} rowKey="id" pagination={false} scroll={{ x: "max-content" }} />
+        </div>
       </div>
 
       {/* Add Modal */}
@@ -222,7 +224,7 @@ export const AccreditationComplianceManager: React.FC = () => {
             <Input placeholder="e.g. NABH Full Hospital Accreditation" size="large" />
           </Form.Item>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Form.Item label="Certificate Registration #" name="certificateNumber" rules={[{ required: true }]}>
               <Input placeholder="NABH-HOSP-2026-99" />
             </Form.Item>
@@ -236,11 +238,11 @@ export const AccreditationComplianceManager: React.FC = () => {
             <DatePicker className="w-full" size="large" />
           </Form.Item>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
-            <HmsButton variant="secondary" onClick={() => setModalOpen(false)}>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2 border-t border-slate-100">
+            <HmsButton variant="secondary" onClick={() => setModalOpen(false)} className="w-full sm:w-auto">
               Cancel
             </HmsButton>
-            <HmsButton variant="emerald" htmlType="submit">
+            <HmsButton variant="emerald" htmlType="submit" className="w-full sm:w-auto">
               Save Certificate
             </HmsButton>
           </div>
