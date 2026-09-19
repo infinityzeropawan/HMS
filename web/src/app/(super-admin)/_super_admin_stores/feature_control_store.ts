@@ -14,6 +14,7 @@ import {
 } from "../_super_admin_types/feature_management";
 import { FeatureCatalogService } from "../_super_admin_services/feature_catalog_service";
 import { SubscriptionPlanService } from "../_super_admin_services/subscription_plan_service";
+import { PlatformAuditService } from "../_super_admin_services/platform_audit_service";
 
 interface StoredTrialRecord {
   startDate: string;
@@ -97,6 +98,28 @@ const INITIAL_TENANT_PLANS: Record<string, SubscriptionPlan> = {
   "TNT-4412": "Enterprise",
   "TENANT-003": "Basic",
   "TNT-5611": "Enterprise",
+};
+
+
+const recordFeatureAudit = (
+  action: string,
+  tenantId: string,
+  tenantName: string,
+  featureId: string,
+  details: Record<string, unknown>,
+  reason: string,
+  adminName: string
+) => {
+  PlatformAuditService.recordAuditEvent({
+    actor: adminName,
+    actorRole: "SUPER_ADMIN",
+    action,
+    category: "FEATURE_LICENSE_EVENT",
+    entity: tenantName + " (" + tenantId + ")",
+    ipAddress: "N/A",
+    riskLevel: action.includes("DISABLED") || action.includes("KILL") ? "WARNING" : "INFO",
+    details: JSON.stringify({ featureId, ...details, reason }),
+  });
 };
 
 // Date helper utility for trials
@@ -503,6 +526,16 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
           },
           historyLogs: [historyItem, ...state.historyLogs],
         });
+
+        recordFeatureAudit(
+          "Feature trial extended",
+          tenantId,
+          tenantName,
+          featureId,
+          { additionalDays, newEndDate: newEndDateStr },
+          reason,
+          adminName
+        );
       },
 
       convertTrialToPaid: (tenantId, tenantName, featureId, adminName = "Super Admin Console") => {
@@ -538,6 +571,16 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
           },
           historyLogs: [historyItem, ...state.historyLogs],
         });
+
+        recordFeatureAudit(
+          "Trial converted to paid feature",
+          tenantId,
+          tenantName,
+          featureId,
+          { state: "Enabled" },
+          "Trial converted to paid active subscription",
+          adminName
+        );
       },
 
       disableFeatureTrial: (tenantId, tenantName, featureId, reason = "Trial Revoked", adminName = "Super Admin Console") => {
@@ -573,6 +616,16 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
           },
           historyLogs: [historyItem, ...state.historyLogs],
         });
+
+        recordFeatureAudit(
+          "Feature trial disabled",
+          tenantId,
+          tenantName,
+          featureId,
+          { state: "Disabled" },
+          reason,
+          adminName
+        );
       },
 
       applyTemplate: (tenantId, tenantName, templateId, adminName = "Super Admin Console") => {
@@ -618,6 +671,16 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
           },
           historyLogs: [historyItem, ...state.historyLogs],
         });
+
+        recordFeatureAudit(
+          "Feature preset template applied",
+          tenantId,
+          tenantName,
+          templateId,
+          { templateId: tmpl.id, templateName: tmpl.name },
+          historyItem.reason,
+          adminName
+        );
       },
 
       toggleGlobalKillSwitch: (featureId, killStatus, reason = "Global Kill Switch Update", adminName = "Super Admin Console") => {
@@ -647,6 +710,16 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
           },
           historyLogs: [historyItem, ...state.historyLogs],
         });
+
+        recordFeatureAudit(
+          killStatus ? "Global feature kill-switch enabled" : "Global feature kill-switch disabled",
+          "ALL_TENANTS",
+          "Global Multi-Tenant Network",
+          featureId,
+          { killSwitchActive: killStatus },
+          reason,
+          adminName
+        );
       },
 
       getLicenseStats: (tenantId) => {
