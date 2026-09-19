@@ -13,7 +13,6 @@ export const AuthLoginForm: React.FC = () => {
 
   return (
     <div className="w-full bg-white p-5 sm:p-7 rounded-2xl shadow-xl border border-slate-200 animate-fade-in my-auto">
-      {/* Sleek Compact Header */}
       <div className="text-center mb-5">
         <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-primary-teal text-white mb-2 shadow-sm">
           <Building2 className="w-6 h-6" />
@@ -26,7 +25,6 @@ export const AuthLoginForm: React.FC = () => {
         </p>
       </div>
 
-      {/* Error Alert */}
       {errorMessage && (
         <Alert
           message="Authentication Error"
@@ -38,15 +36,13 @@ export const AuthLoginForm: React.FC = () => {
         />
       )}
 
-      {/* Form */}
       <Form<AuthLoginInput>
         layout="vertical"
         onFinish={handleLoginSubmit}
-        initialValues={{ tenantId: "TENANT-001" }}
+        initialValues={{ tenantId: "TNT-9014" }}
         size="large"
         className="space-y-3.5"
       >
-        {/* Hospital ID Field */}
         <Form.Item
           label={<span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Hospital / Tenant ID</span>}
           name="tenantId"
@@ -55,14 +51,13 @@ export const AuthLoginForm: React.FC = () => {
         >
           <Input
             prefix={<Building2 className="w-4 h-4 text-slate-400 mr-1" />}
-            placeholder="e.g., TENANT-001"
+            placeholder="e.g., TNT-9014"
             size="large"
             className="rounded-lg text-sm"
             allowClear
           />
         </Form.Item>
 
-        {/* Username Field */}
         <Form.Item
           label={<span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Staff ID / Email</span>}
           name="username"
@@ -78,7 +73,6 @@ export const AuthLoginForm: React.FC = () => {
           />
         </Form.Item>
 
-        {/* Password Field */}
         <Form.Item
           label={<span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</span>}
           name="password"
@@ -93,7 +87,6 @@ export const AuthLoginForm: React.FC = () => {
           />
         </Form.Item>
 
-        {/* Submit Button */}
         <Form.Item className="pt-1 mb-0">
           <HmsButton
             variant="primary"
@@ -109,7 +102,6 @@ export const AuthLoginForm: React.FC = () => {
         </Form.Item>
       </Form>
 
-      {/* Toggle Demo Credentials Bar */}
       <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
         <button
           type="button"
@@ -130,6 +122,7 @@ export const AuthLoginForm: React.FC = () => {
               <div className="p-2 bg-white rounded border border-slate-200">
                 <span className="font-semibold text-primary-teal block text-[11px]">Super Admin</span>
                 <code className="text-[10px] text-slate-700 font-mono">superadmin / super123</code>
+                <span className="mt-1 block text-[9px] text-slate-400">Scope: PLATFORM</span>
               </div>
               <div className="p-2 bg-white rounded border border-slate-200">
                 <span className="font-semibold text-primary-teal block text-[11px]">Doctor</span>
@@ -153,7 +146,6 @@ export const AuthLoginForm: React.FC = () => {
         )}
       </div>
 
-      {/* Security Note */}
       <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
         <Info className="w-3.5 h-3.5 text-slate-400" />
         <span>DPDP 2023 & ABDM Compliant &bull; Multi-Tenant</span>
