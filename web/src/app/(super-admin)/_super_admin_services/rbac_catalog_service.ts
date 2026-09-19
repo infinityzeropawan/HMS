@@ -26,10 +26,10 @@ export const PERMISSION_CLAIMS: PermissionClaim[] = [
   { id: "ot:intraop:nurse", name: "Record Intra-Op Surgical Nurse Logs", description: "Log scrub nurse timers, implant usage, swab counts, and anesthesia charts", category: "Operation Theatre (OT)", requiredFeatureId: "FEAT-CLIN-OT" },
 
   // --- Pharmacy & Dispensing ---
-  { id: "pharmacy:dispense:read", name: "View Dispensing Orders", description: "View pending OPD and IPD pharmacy prescription orders", category: "Pharmacy & Dispensing", requiredFeatureId: "FEAT-CLIN-PHARM" },
-  { id: "pharmacy:dispense:write", name: "Dispense Prescription Medicines", description: "Execute FEFO batch selection, label printing, and medicine handing to patient", category: "Pharmacy & Dispensing", requiredFeatureId: "FEAT-CLIN-PHARM" },
-  { id: "pharmacy:controlled:dispense", name: "Dispense Narcotic & Controlled Drugs", description: "Dispense Schedule H/X narcotic drugs requiring dual authorization", category: "Pharmacy & Dispensing", requiredFeatureId: "FEAT-CLIN-PHARM" },
-  { id: "pharmacy:stock:audit", name: "Perform Stock Audit & Expiry Management", description: "Manage drug inventory adjustments, batch expiry flags, and supplier returns", category: "Pharmacy & Dispensing", requiredFeatureId: "FEAT-CLIN-PHARM" },
+  { id: "pharmacy:dispense:read", name: "View Dispensing Orders", description: "View pending OPD and IPD pharmacy prescription orders", category: "Pharmacy & Dispensing", requiredFeatureId: "FEAT-BIZ-03" },
+  { id: "pharmacy:dispense:write", name: "Dispense Prescription Medicines", description: "Execute FEFO batch selection, label printing, and medicine handing to patient", category: "Pharmacy & Dispensing", requiredFeatureId: "FEAT-BIZ-03" },
+  { id: "pharmacy:controlled:dispense", name: "Dispense Narcotic & Controlled Drugs", description: "Dispense Schedule H/X narcotic drugs requiring dual authorization", category: "Pharmacy & Dispensing", requiredFeatureId: "FEAT-BIZ-03" },
+  { id: "pharmacy:stock:audit", name: "Perform Stock Audit & Expiry Management", description: "Manage drug inventory adjustments, batch expiry flags, and supplier returns", category: "Pharmacy & Dispensing", requiredFeatureId: "FEAT-BIZ-03" },
 
   // --- Pathology & Diagnostics ---
   { id: "lab:orders:read", name: "View Laboratory Test Orders", description: "Access pending diagnostic requisitions and panic value alerts", category: "Pathology & Diagnostics", requiredFeatureId: "FEAT-CLIN-LAB" },
@@ -38,21 +38,21 @@ export const PERMISSION_CLAIMS: PermissionClaim[] = [
   { id: "lab:results:signoff", name: "Validate & Release Pathology Reports", description: "Pathologist sign-off and public release of lab results to patient portal", category: "Pathology & Diagnostics", requiredFeatureId: "FEAT-CLIN-LAB" },
 
   // --- Billing & Financials ---
-  { id: "billing:invoice:create", name: "Generate Invoices & Estimates", description: "Create OPD consultation bills, IPD advance receipts, and final bills", category: "Billing & Financials", requiredFeatureId: "FEAT-BUS-BILLING" },
-  { id: "billing:discount:approve", name: "Approve Billing Discounts & Waivers", description: "Grant tariff discounts, charity waivers, and fee adjustments", category: "Billing & Financials", requiredFeatureId: "FEAT-BUS-BILLING" },
-  { id: "billing:tpa:claims", name: "Process Insurance TPA Pre-Auth & Claims", description: "Submit TPA claim packages, track cash-less authorization, and claim settle", category: "Billing & Financials", requiredFeatureId: "FEAT-BUS-BILLING" },
-  { id: "billing:payouts:manage", name: "Manage Doctor Payouts & Commission Roster", description: "Calculate doctor fee split ratios and release payout vouchers", category: "Billing & Financials", requiredFeatureId: "FEAT-BUS-BILLING" },
+  { id: "billing:invoice:create", name: "Generate Invoices & Estimates", description: "Create OPD consultation bills, IPD advance receipts, and final bills", category: "Billing & Financials", requiredFeatureId: "FEAT-BIZ-01" },
+  { id: "billing:discount:approve", name: "Approve Billing Discounts & Waivers", description: "Grant tariff discounts, charity waivers, and fee adjustments", category: "Billing & Financials", requiredFeatureId: "FEAT-BIZ-01" },
+  { id: "billing:tpa:claims", name: "Process Insurance TPA Pre-Auth & Claims", description: "Submit TPA claim packages, track cash-less authorization, and claim settle", category: "Billing & Financials", requiredFeatureId: "FEAT-BIZ-01" },
+  { id: "billing:payouts:manage", name: "Manage Doctor Payouts & Commission Roster", description: "Calculate doctor fee split ratios and release payout vouchers", category: "Billing & Financials", requiredFeatureId: "FEAT-BIZ-01" },
 
   // --- Integrations & ABDM ---
   { id: "abdm:healthid:link", name: "Create & Link ABHA Health ID", description: "Verify patient ABHA number via Aadhaar OTP and generate ABHA card", category: "Integrations & ABDM", requiredFeatureId: "FEAT-INT-ABDM" },
   { id: "abdm:gateway:push", name: "Push Health Records to ABDM Gateway", description: "Bundle FHIR clinical artifacts and upload to ABDM Health Information Exchange", category: "Integrations & ABDM", requiredFeatureId: "FEAT-INT-ABDM" },
-  { id: "pacs:dicom:view", name: "Access PACS DICOM Medical Imaging", description: "Open web-based DICOM viewer to inspect X-Rays, CT Scans, and MRI studies", category: "Integrations & ABDM", requiredFeatureId: "FEAT-PREM-AI" },
+  { id: "pacs:dicom:view", name: "Access PACS DICOM Medical Imaging", description: "Open web-based DICOM viewer to inspect X-Rays, CT Scans, and MRI studies", category: "Integrations & ABDM", requiredFeatureId: "FEAT-CLIN-06" },
 
   // --- System Administration ---
-  { id: "admin:staff:manage", name: "Manage Hospital Staff & User Credentials", description: "Create staff accounts, assign roles, reset passwords, and toggle active status", category: "System Administration", requiredFeatureId: "FEAT-BUS-BILLING" },
-  { id: "admin:rbac:configure", name: "Configure Custom Roles & Scope Rules", description: "Modify custom role definitions, permissions, and shift roster policies", category: "System Administration", requiredFeatureId: "FEAT-BUS-BILLING" },
-  { id: "admin:tariff:manage", name: "Manage Hospital Service Tariff Masters", description: "Update price lists, room tariffs, and procedure rates", category: "System Administration", requiredFeatureId: "FEAT-BUS-BILLING" },
-  { id: "admin:audit:view", name: "View DPDP Compliance Audit Ledger", description: "Inspect tamper-proof hash-chained data access and consent audit logs", category: "System Administration", requiredFeatureId: "FEAT-BUS-ANALYTICS" },
+  { id: "admin:staff:manage", name: "Manage Hospital Staff & User Credentials", description: "Create staff accounts, assign roles, reset passwords, and toggle active status", category: "System Administration", requiredFeatureId: "FEAT-BIZ-04" },
+  { id: "admin:rbac:configure", name: "Configure Custom Roles & Scope Rules", description: "Modify custom role definitions, permissions, and shift roster policies", category: "System Administration" },
+  { id: "admin:tariff:manage", name: "Manage Hospital Service Tariff Masters", description: "Update price lists, room tariffs, and procedure rates", category: "System Administration", requiredFeatureId: "FEAT-BIZ-01" },
+  { id: "admin:audit:view", name: "View DPDP Compliance Audit Ledger", description: "Inspect tamper-proof hash-chained data access and consent audit logs", category: "System Administration" },
 ];
 
 export const GLOBAL_ROLE_TEMPLATES: RoleDefinition[] = [
