@@ -84,6 +84,11 @@ export default function SupportTicketsPage() {
     form.resetFields();
   };
 
+  const pendingTickets = tickets.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS");
+  const criticalPendingTickets = pendingTickets.filter((t) => t.priority === "CRITICAL").length;
+  const resolvedTickets = tickets.filter((t) => t.status === "RESOLVED" || t.status === "CLOSED").length;
+  const satisfactionPercent = tickets.length > 0 ? Math.round((resolvedTickets / tickets.length) * 100) : 0;
+
   const filteredTickets = tickets.filter((t) => {
     const matchesSearch =
       t.ticketId.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -208,7 +213,7 @@ export default function SupportTicketsPage() {
                 <h3 className="text-2xl font-bold text-rose-600 mt-1">
                   {tickets.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS").length} Pending
                 </h3>
-                <p className="text-3xs text-rose-600 font-semibold mt-0.5">1 Critical Priority</p>
+                <p className="text-3xs text-rose-600 font-semibold mt-0.5">{criticalPendingTickets} Critical Priority</p>
               </div>
               <AlertTriangle className="w-8 h-8 text-rose-500" />
             </div>
@@ -218,8 +223,8 @@ export default function SupportTicketsPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Avg SLA Resolution</p>
-                <h3 className="text-2xl font-bold text-teal-800 mt-1">1.2 Hours</h3>
-                <p className="text-3xs text-emerald-600 font-semibold mt-0.5">SLA Target &lt; 4 Hours</p>
+                <h3 className="text-2xl font-bold text-teal-800 mt-1">—</h3>
+                <p className="text-3xs text-slate-500 font-semibold mt-0.5">Resolution telemetry pending</p>
               </div>
               <Clock className="w-8 h-8 text-teal-500" />
             </div>
@@ -229,8 +234,8 @@ export default function SupportTicketsPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Resolved This Month</p>
-                <h3 className="text-2xl font-bold text-emerald-700 mt-1">42 Tickets</h3>
-                <p className="text-3xs text-emerald-600 font-semibold mt-0.5">100% CSAT Rating</p>
+                <h3 className="text-2xl font-bold text-emerald-700 mt-1">{resolvedTickets} Tickets</h3>
+                <p className="text-3xs text-emerald-600 font-semibold mt-0.5">{satisfactionPercent}% resolved in current demo dataset</p>
               </div>
               <CheckCircle2 className="w-8 h-8 text-emerald-500" />
             </div>
@@ -240,8 +245,8 @@ export default function SupportTicketsPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Customer CSAT</p>
-                <h3 className="text-2xl font-bold text-indigo-800 mt-1">98.4%</h3>
-                <p className="text-3xs text-indigo-600 font-semibold mt-0.5">High Tenant Satisfaction</p>
+                <h3 className="text-2xl font-bold text-indigo-800 mt-1">{satisfactionPercent}%</h3>
+                <p className="text-3xs text-indigo-600 font-semibold mt-0.5">Resolved / total tickets</p>
               </div>
               <UserCheck className="w-8 h-8 text-indigo-500" />
             </div>
@@ -277,8 +282,15 @@ export default function SupportTicketsPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <Table columns={columns} dataSource={filteredTickets} rowKey="key" pagination={{ pageSize: 8 }} />
+          <div className="overflow-x-auto rounded-lg border border-slate-100">
+            <Table
+              columns={columns}
+              dataSource={filteredTickets}
+              rowKey="key"
+              scroll={{ x: 900 }}
+              pagination={{ pageSize: 8, responsive: true }}
+              size="middle"
+            />
           </div>
         </div>
 
@@ -297,7 +309,7 @@ export default function SupportTicketsPage() {
             open={replyModalOpen}
             onCancel={() => setReplyModalOpen(false)}
             footer={null}
-            width={600}
+            width="min(600px, calc(100vw - 32px))"
           >
             <div className="space-y-4 py-2 text-xs">
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
@@ -342,7 +354,7 @@ export default function SupportTicketsPage() {
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                   />
-                  <div className="flex justify-between items-center pt-2">
+                  <div className="flex flex-col sm:flex-row sm:justify-between items-stretch sm:items-center gap-2 pt-2">
                     <button
                       type="button"
                       onClick={() => handleResolveTicket(activeTicket.ticketId)}
@@ -375,7 +387,7 @@ export default function SupportTicketsPage() {
           open={createModalOpen}
           onCancel={() => setCreateModalOpen(false)}
           footer={null}
-          width={520}
+          width="min(520px, calc(100vw - 32px))"
         >
           <Form form={form} layout="vertical" onFinish={handleCreateTicket} className="mt-3 space-y-3">
             <Form.Item label="Target Hospital / Tenant" name="tenantId" rules={[{ required: true }]}>
