@@ -875,7 +875,7 @@ export class TenantApiService {
     this.tenants = this.tenants.map((t) => {
       if (ids.includes(t.id)) {
         count++;
-        const updated = {
+        const updated: Tenant = {
           ...t,
           status: newStatus,
           healthStatus: newStatus === "Suspended" || newStatus === "Archived" ? "Offline" : "Healthy",
