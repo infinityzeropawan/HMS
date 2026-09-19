@@ -154,7 +154,6 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
       { id: "masters", label: "Global Masters", icon: Database, path: "/global-masters", role: ["SUPER_ADMIN"] },
       { id: "platform-audit", label: "Platform Audit", icon: ShieldCheck, path: "/platform-audit", role: ["SUPER_ADMIN"] },
       { id: "support", label: "Support Tickets", icon: FileText, path: "/support-tickets", role: ["SUPER_ADMIN"] },
-      { id: "tenant-audit", label: "Tenant Audit & Governance", icon: FileText, path: "/platform-audit", role: ["SUPER_ADMIN"] },
     ],
   };
 
