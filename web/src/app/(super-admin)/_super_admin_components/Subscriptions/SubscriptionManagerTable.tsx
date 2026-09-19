@@ -571,7 +571,7 @@ export const SubscriptionManagerTable: React.FC = () => {
         style={{ top: 20 }}
       >
         <HospitalFacilityControlManager
-          initialTenantId={activeTenant?.id || "TENANT-001"}
+          initialTenantId={activeTenant?.id || "TNT-9014"}
           onClose={() => setFacilityModalOpen(false)}
         />
       </Modal>
