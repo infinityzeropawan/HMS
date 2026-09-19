@@ -563,14 +563,16 @@ export const TenantFeatureAssignmentGrid: React.FC<{
       />
 
       {/* Plan Upgrade Recommendation Modal */}
-      <PlanUpgradeModal
-        tenantId={selectedTenantId}
-        tenantName={currentTenantLabel}
-        currentPlan={currentPlan}
-        feature={upgradeTargetFeature}
-        open={upgradeModalOpen}
-        onClose={() => setUpgradeModalOpen(false)}
-      />
+      {currentPlan && (
+        <PlanUpgradeModal
+          tenantId={selectedTenantId}
+          tenantName={currentTenantLabel}
+          currentPlan={currentPlan}
+          feature={upgradeTargetFeature}
+          open={upgradeModalOpen}
+          onClose={() => setUpgradeModalOpen(false)}
+        />
+      )}
 
       {/* Manage Trial Modal */}
       <ManageTrialModal
