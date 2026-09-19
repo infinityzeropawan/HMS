@@ -20,15 +20,28 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const router = useRouter();
   const pathname = usePathname();
   const user = useAuthUserStore((s) => s.user);
+  const hasHydrated = useAuthUserStore((s) => s.hasHydrated);
 
-  const isAuthorized = user?.role === "SUPER_ADMIN";
+  const isAuthorized = hasHydrated && user?.role === "SUPER_ADMIN";
 
   useEffect(() => {
+    if (!hasHydrated) return;
+
     if (!isAuthorized) {
       const redirectTarget = pathname && pathname !== "/" ? `?redirect=${encodeURIComponent(pathname)}` : "";
       router.replace(`/login${redirectTarget}`);
     }
-  }, [isAuthorized, pathname, router]);
+  }, [hasHydrated, isAuthorized, pathname, router]);
+
+  // Do not make an authorization decision until the persisted session has hydrated.
+  if (!hasHydrated) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-50">
+        <Spin size="large" />
+        <p className="text-sm font-medium text-slate-500">Loading secure session…</p>
+      </div>
+    );
+  }
 
   // Avoid flashing privileged UI while the redirect is in flight.
   if (!isAuthorized) {
