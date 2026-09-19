@@ -10,6 +10,8 @@ import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 
 import { SubscriptionPlanService, PlanConfig, TenantSubscription } from "../_super_admin_services/subscription_plan_service";
+import { TenantApiService } from "../_super_admin_services/tenant_api_service";
+import { useFeatureControlStore } from "../_super_admin_stores/feature_control_store";
 
 export default function SubscriptionPlansPage() {
   const [plans, setPlans] = useState<PlanConfig[]>(() => SubscriptionPlanService.getPlans());
@@ -19,6 +21,7 @@ export default function SubscriptionPlansPage() {
   const [selectedTenant, setSelectedTenant] = useState<TenantSubscription | null>(null);
   const [form] = Form.useForm();
   const [upgradeForm] = Form.useForm();
+  const updateTenantSubscriptionPlan = useFeatureControlStore((state) => state.updateTenantSubscriptionPlan);
 
   useEffect(() => {
     return SubscriptionPlanService.subscribe(() => {
@@ -72,8 +75,38 @@ export default function SubscriptionPlansPage() {
       planCode: values.planCode,
       billingCycle: values.billingCycle,
     };
-    SubscriptionPlanService.updateTenantSubscription(updated);
-    message.success(`Subscription plan for ${selectedTenant.tenantName} updated to ${values.planCode}!`);
+    const plan = SubscriptionPlanService.getPlan(values.planCode);
+    if (!plan) {
+      message.error("Selected subscription plan is no longer available.");
+      return;
+    }
+
+    const currentTenant = await TenantApiService.fetchTenantById(selectedTenant.tenantId);
+    if (!currentTenant) {
+      message.error("Tenant record could not be found. Plan update was not applied.");
+      return;
+    }
+
+    const updatedSubscription = SubscriptionPlanService.updateTenantSubscription(updated);
+    const mappedPlanName =
+      updatedSubscription.planCode === "BASIC"
+        ? "Basic"
+        : updatedSubscription.planCode === "PRO"
+          ? "Professional"
+          : "Enterprise";
+
+    await TenantApiService.updateTenant(selectedTenant.tenantId, {
+      subscriptionPlan: mappedPlanName,
+      subscriptionDetail: {
+        ...currentTenant.subscriptionDetail,
+        currentPlan: mappedPlanName,
+        billingCycle: updatedSubscription.billingCycle === "ANNUAL" ? "Annual" : "Monthly",
+        expiryDate: updatedSubscription.renewalDate,
+      },
+    });
+
+    updateTenantSubscriptionPlan(selectedTenant.tenantId, mappedPlanName);
+    message.success("Subscription plan for " + selectedTenant.tenantName + " updated to " + values.planCode + "!");
     setUpgradeModalOpen(false);
   };
 
