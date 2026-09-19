@@ -63,18 +63,20 @@ export class UnifiedAuthEvaluator {
 
     // Fetch Tenant Context
     const tenant = getTenantById(context.tenantId);
-    const tenantStatus = tenant?.status || "Active";
+    const tenantStatus = tenant?.status;
     const subscriptionPlan = getPlanByTenant(context.tenantId);
 
     // --- STEP 1: Tenant Active Check ---
-    const step1Passed = tenantStatus === "Active" || tenantStatus === "Trial";
+    const step1Passed = Boolean(tenant) && (tenantStatus === "Active" || tenantStatus === "Trial");
     const step1Result: EvaluationStepResult = {
       stepKey: "STEP_1_TENANT_ACTIVE",
       stepName: "1. Tenant Active",
       passed: step1Passed,
       reason: step1Passed
         ? `Tenant status is '${tenantStatus}'.`
-        : `Tenant is ${tenantStatus}. Access blocked for all users.`,
+        : tenant
+          ? `Tenant is ${tenantStatus}. Access blocked for all users.`
+          : `Tenant '${context.tenantId}' does not exist. Access blocked.`,
     };
     trace.push(step1Result);
     if (!step1Passed) {
@@ -93,14 +95,18 @@ export class UnifiedAuthEvaluator {
     const isPlanExpired = tenant?.expiryDate
       ? new Date(tenant.expiryDate).getTime() < new Date().getTime()
       : false;
-    const step2Passed = !isPlanExpired;
+    const step2Passed = Boolean(tenant) && Boolean(subscriptionPlan) && !isPlanExpired;
     const step2Result: EvaluationStepResult = {
       stepKey: "STEP_2_SUBSCRIPTION_VALID",
       stepName: "2. Subscription Valid",
       passed: step2Passed,
       reason: step2Passed
-        ? `Subscription plan '${subscriptionPlan?.name || "Enterprise"}' is active.`
-        : `Subscription expired on ${tenant?.expiryDate}. Renewal required.`,
+        ? `Subscription plan '${subscriptionPlan.name}' is active.`
+        : !tenant
+          ? `Tenant '${context.tenantId}' does not exist. Subscription validation failed.`
+          : !subscriptionPlan
+            ? `No subscription plan is assigned to tenant '${context.tenantId}'. Access blocked.`
+            : `Subscription expired on ${tenant.expiryDate}. Renewal required.`,
     };
     trace.push(step2Result);
     if (!step2Passed) {
@@ -197,14 +203,14 @@ export class UnifiedAuthEvaluator {
       if (scope.requiresOnDutyRoster && !context.isOnDutyRoster && !context.isEmergencyBreakGlass) {
         step5Passed = false;
         step5Reason = "Role requires active on-duty shift roster check-in.";
-      } else if (
-        scope.scopeType === "Department Scoped" &&
-        context.departmentId &&
-        !scope.allowedDepartments.includes("ALL") &&
-        !scope.allowedDepartments.includes(context.departmentId)
-      ) {
-        step5Passed = false;
-        step5Reason = `Role scope restricted to departments [${scope.allowedDepartments.join(", ")}]. Current: '${context.departmentId}'.`;
+      } else if (scope.scopeType === "Department Scoped" && !scope.allowedDepartments.includes("ALL")) {
+        if (!context.departmentId) {
+          step5Passed = false;
+          step5Reason = "Role requires department scope validation, but no department was supplied.";
+        } else if (!scope.allowedDepartments.includes(context.departmentId)) {
+          step5Passed = false;
+          step5Reason = `Role scope restricted to departments [${scope.allowedDepartments.join(", ")}]. Current: '${context.departmentId}'.`;
+        }
       }
     }
 
