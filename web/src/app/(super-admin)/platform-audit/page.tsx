@@ -8,7 +8,6 @@ import { ShieldCheck, Building2, Receipt, SlidersHorizontal, Database, Headphone
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
-import { useRbacAuditStore } from "../_super_admin_stores/rbac_audit_store";
 import { PlatformAuditService, PlatformAuditEvent, ExtendedAuditCategory } from "../_super_admin_services/platform_audit_service";
 
 type AuditEvent = PlatformAuditEvent;
@@ -37,7 +36,6 @@ const CATEGORY_COLOR: Record<string, string> = {
 };
 
 export default function PlatformAuditPage() {
-  const { logs: rbacStoreLogs } = useRbacAuditStore();
   const [platformLogs, setPlatformLogs] = useState<PlatformAuditEvent[]>(() => PlatformAuditService.getAuditLogs());
   const [auditStats, setAuditStats] = useState(() => PlatformAuditService.getStatistics());
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,26 +51,7 @@ export default function PlatformAuditPage() {
     });
   }, []);
 
-  // Map RBAC audit store logs into AuditEvent structure
-  const mappedRbacLogs: AuditEvent[] = rbacStoreLogs.map((l) => ({
-    key: l.eventId,
-    id: l.eventId,
-    timestamp: l.timestamp,
-    actor: l.actor,
-    actorRole: l.actorRole,
-    action: `${l.eventType}: ${l.reason}`,
-    category: "ROLE_PERMISSION_CHANGE" as ExtendedAuditCategory,
-    entity: `${l.tenantName} (${l.tenantId})`,
-    ipAddress: "103.44.120.14",
-    riskLevel: l.eventType.includes("DELETED") || l.eventType.includes("REMOVED") ? "WARNING" : "INFO",
-    details: JSON.stringify({
-      previousValue: l.previousValue,
-      newValue: l.newValue,
-      hashSignature: l.hashSignature,
-    }),
-  }));
-
-  const allCombinedLogs = [...mappedRbacLogs, ...platformLogs];
+  const allCombinedLogs = platformLogs;
 
   const handleExportLedger = () => {
     message.success("Generating immutable DPDP Audit Trail Ledger (CSV)...");
