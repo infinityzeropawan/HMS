@@ -24,17 +24,27 @@ export const authApiService = {
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     const demoAccounts = {
-      doctor: { password: "doctor123", userId: "DOC-101", username: "Dr. Rajesh Sharma", role: "DOCTOR" as const },
-      reception: { password: "rec123", userId: "REC-201", username: "Ananya Iyer", role: "RECEPTIONIST" as const },
-      nurse: { password: "nurse123", userId: "NUR-301", username: "Priya Nair", role: "NURSE" as const },
-      billing: { password: "bill123", userId: "BIL-401", username: "Rohan Mehta", role: "BILLER" as const },
-      admin: { password: "admin123", userId: "ADM-001", username: "System Administrator", role: "ADMIN" as const },
-      hospitaladmin: { password: "hospital123", userId: "HAD-001", username: "Hospital Administrator", role: "HOSPITAL_ADMIN" as const },
-      superadmin: { password: "super123", userId: "SA-001", username: "Platform SuperAdmin", role: "SUPER_ADMIN" as const },
+      doctor: { password: "doctor123", userId: "DOC-101", username: "Dr. Rajesh Sharma", role: "DOCTOR" as const, tenantId: "TNT-9014" },
+      reception: { password: "rec123", userId: "REC-201", username: "Ananya Iyer", role: "RECEPTIONIST" as const, tenantId: "TNT-9014" },
+      nurse: { password: "nurse123", userId: "NUR-301", username: "Priya Nair", role: "NURSE" as const, tenantId: "TNT-9014" },
+      billing: { password: "bill123", userId: "BIL-401", username: "Rohan Mehta", role: "BILLER" as const, tenantId: "TNT-9014" },
+      admin: { password: "admin123", userId: "ADM-001", username: "System Administrator", role: "ADMIN" as const, tenantId: "TNT-9014" },
+      hospitaladmin: { password: "hospital123", userId: "HAD-001", username: "Hospital Administrator", role: "HOSPITAL_ADMIN" as const, tenantId: "TNT-9014" },
+      superadmin: { password: "super123", userId: "SA-001", username: "Platform SuperAdmin", role: "SUPER_ADMIN" as const, tenantId: "PLATFORM" },
     };
     const account = demoAccounts[input.username.toLowerCase() as keyof typeof demoAccounts];
 
     if (account && input.password === account.password) {
+      const normalizedTenantId = input.tenantId.trim().toUpperCase();
+
+      if (account.role === "SUPER_ADMIN") {
+        if (normalizedTenantId !== "PLATFORM") {
+          throw new Error("Super Admin sign-in requires the PLATFORM tenant scope.");
+        }
+      } else if (normalizedTenantId !== account.tenantId) {
+        throw new Error(`This demo account is scoped to tenant '${account.tenantId}'.`);
+      }
+
       const rawData = {
         success: true,
         mfaRequired: false,
@@ -43,8 +53,8 @@ export const authApiService = {
           userId: account.userId,
           username: account.username,
           role: account.role,
-          tenantId: input.tenantId,
-          hospitalName: "Apollo Super Speciality Hospital",
+          tenantId: account.tenantId,
+          hospitalName: account.role === "SUPER_ADMIN" ? "HMS Platform Console" : "Apollo Super Speciality Hospital",
         },
       };
       return AuthApiResponseSchema.parse(rawData);
@@ -64,11 +74,15 @@ export const authApiService = {
 
   async verifyMfa(input: AuthMfaInput): Promise<UserSession> {
     await new Promise((resolve) => setTimeout(resolve, 600));
+    if (input.mfaSessionToken !== "session-mfa-xyz-789") {
+      throw new Error("MFA session is invalid or has expired. Please sign in again.");
+    }
+
     return {
       userId: "DOC-101",
       username: "Dr. Rajesh Sharma",
       role: "DOCTOR",
-      tenantId: input.mfaSessionToken ? "TENANT-001" : "TENANT-DEFAULT",
+      tenantId: "TNT-9014",
       hospitalName: "Apollo Super Speciality Hospital",
       token: "jwt-mock-verified-token",
     };
