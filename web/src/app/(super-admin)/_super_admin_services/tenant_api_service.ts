@@ -13,6 +13,7 @@ import {
   HealthLevel,
   ServiceDiagnosticIncident,
 } from "../_super_admin_types/tenant_management";
+import { PlatformAuditService } from "./platform_audit_service";
 
 const MOCK_TENANTS: Tenant[] = [
   {
@@ -493,6 +494,26 @@ const enrichTenantDetails = (t: Partial<Tenant>): Tenant => {
   };
 };
 
+
+const recordTenantAudit = (
+  action: string,
+  tenant: Tenant,
+  details: Record<string, unknown>,
+  riskLevel: "INFO" | "WARNING" | "CRITICAL" = "INFO",
+  actor = "Super Admin Console"
+) => {
+  PlatformAuditService.recordAuditEvent({
+    actor,
+    actorRole: "SUPER_ADMIN",
+    action,
+    category: action.toLowerCase().includes("subscription") ? "SUBSCRIPTION_CHANGE" : action.toLowerCase().includes("feature") ? "FACILITY_TOGGLE" : "TENANT_ONBOARDING",
+    entity: tenant.hospitalName + " (" + tenant.id + ")",
+    ipAddress: "N/A",
+    riskLevel,
+    details: JSON.stringify(details),
+  });
+};
+
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 export class TenantApiService {
@@ -733,10 +754,12 @@ export class TenantApiService {
     const index = this.tenants.findIndex((t) => t.id === id);
     if (index === -1) throw new Error("Tenant not found");
 
+    const previous = this.tenants[index];
     this.tenants[index] = {
-      ...this.tenants[index],
+      ...previous,
       ...updates,
     };
+    recordTenantAudit("Tenant settings updated", this.tenants[index], { previous, updates });
     return this.tenants[index];
   }
 
@@ -773,6 +796,7 @@ export class TenantApiService {
       healthStatus: "Offline",
       suspensionHistory: [record, ...currentHistory],
     };
+    recordTenantAudit("Tenant access suspended", this.tenants[index], { reason, reasonNotes }, "CRITICAL", adminName);
 
     return this.tenants[index];
   }
@@ -808,6 +832,7 @@ export class TenantApiService {
       healthStatus: "Healthy",
       suspensionHistory: [record, ...currentHistory],
     };
+    recordTenantAudit("Tenant access restored", this.tenants[index], { previousStatus: "Suspended" }, "WARNING", adminName);
 
     return this.tenants[index];
   }
@@ -824,6 +849,7 @@ export class TenantApiService {
       : [...currentModules, moduleName];
 
     this.tenants[index].enabledModules = newModules;
+    recordTenantAudit("Tenant feature module toggled", this.tenants[index], { moduleName, enabled: !hasModule });
     return newModules;
   }
 
@@ -836,6 +862,7 @@ export class TenantApiService {
       ...this.tenants[index].branding,
       ...branding,
     };
+    recordTenantAudit("Tenant branding updated", this.tenants[index], { branding });
     return this.tenants[index].branding;
   }
 
@@ -848,11 +875,13 @@ export class TenantApiService {
     this.tenants = this.tenants.map((t) => {
       if (ids.includes(t.id)) {
         count++;
-        return {
+        const updated = {
           ...t,
           status: newStatus,
           healthStatus: newStatus === "Suspended" || newStatus === "Archived" ? "Offline" : "Healthy",
         };
+        recordTenantAudit("Bulk tenant status update", updated, { previousStatus: t.status, newStatus }, newStatus === "Suspended" ? "CRITICAL" : "WARNING");
+        return updated;
       }
       return t;
     });
@@ -864,6 +893,7 @@ export class TenantApiService {
     const id = `TNT-${Math.floor(1000 + Math.random() * 9000)}`;
     const fullRecord = enrichTenantDetails({ ...newTenant, id });
     this.tenants.unshift(fullRecord);
+    recordTenantAudit("Tenant onboarded", fullRecord, { status: fullRecord.status, subscriptionPlan: fullRecord.subscriptionPlan });
     return fullRecord;
   }
 
