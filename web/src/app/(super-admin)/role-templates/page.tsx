@@ -362,7 +362,8 @@ export default function RoleTemplatesPage() {
                     <p className="text-xs text-slate-500">
                       Granular permission claims library configured across clinical, administrative, financial, and integration modules.
                     </p>
-                    <Table
+                    <div className="overflow-x-auto rounded-lg border border-slate-100">
+                      <Table
                       dataSource={PERMISSION_CLAIMS.map((p, idx) => ({ ...p, key: p.id }))}
                       columns={[
                         { title: "Claim Code", dataIndex: "id", key: "id", render: (id: string) => <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">{id}</span> },
@@ -371,8 +372,10 @@ export default function RoleTemplatesPage() {
                         { title: "Description", dataIndex: "description", key: "description", render: (desc: string) => <span className="text-xs text-slate-600">{desc}</span> },
                       ]}
                       pagination={{ pageSize: 10 }}
+                      scroll={{ x: 900 }}
                       size="small"
                     />
+                    </div>
                   </div>
                 ),
               },
