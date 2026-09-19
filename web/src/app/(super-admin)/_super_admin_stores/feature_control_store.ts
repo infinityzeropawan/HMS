@@ -39,7 +39,7 @@ interface FeatureControlStoreState {
   historyLogs: FeatureHistoryRecord[];
 
   // Actions
-  getTenantSubscriptionPlan: (tenantId: string) => SubscriptionPlan;
+  getTenantSubscriptionPlan: (tenantId: string) => SubscriptionPlan | undefined;
   updateTenantSubscriptionPlan: (tenantId: string, newPlan: SubscriptionPlan) => void;
   getTenantFeatureStates: (tenantId: string) => Record<string, LicenseState>;
   getTenantFeatureAssignments: (tenantId: string) => TenantFeatureAssignment[];
@@ -229,8 +229,19 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
       getTenantSubscriptionPlan: (tenantId) => {
         const state = get();
         const planFromSubscriptionService = SubscriptionPlanService.getPlanByTenant(tenantId);
-        if (planFromSubscriptionService) return planFromSubscriptionService.name === "Professional Hospital" ? "Professional" : planFromSubscriptionService.name === "OPD Essentials" ? "Basic" : "Enterprise";
-        return state.tenantSubscriptionPlans[tenantId] || "Professional";
+        if (planFromSubscriptionService) {
+          switch (planFromSubscriptionService.code) {
+            case "BASIC":
+              return "Basic";
+            case "PRO":
+              return "Professional";
+            case "ENTERPRISE":
+              return "Enterprise";
+            default:
+              return undefined;
+          }
+        }
+        return state.tenantSubscriptionPlans[tenantId];
       },
 
       updateTenantSubscriptionPlan: (tenantId, newPlan) => {
@@ -283,7 +294,7 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
         const state = get();
         const assignments = state.tenantAssignments[tenantId];
         const planCode = state.getTenantSubscriptionPlan(tenantId);
-        const planDef = SubscriptionPlanService.getPlan(planCode);
+        const planDef = planCode ? SubscriptionPlanService.getPlan(planCode) : undefined;
 
         if (!assignments) {
           const catalog = FeatureCatalogService.getCatalog();
