@@ -143,13 +143,13 @@ const createInitialAssignments = (): Record<string, Record<string, LicenseState>
 
   return {
     "TNT-9014": { ...defaultStates, "FEAT-PREM-01": "Enabled", "FEAT-CLIN-07": "Enabled", "FEAT-PREM-02": "Trial" },
-    "TNT-1042": { ...defaultStates, "FEAT-CLIN-04": "Enabled", "FEAT-CLIN-07": "Trial", "FEAT-INT-01": "Trial" },
+    "TNT-1042": { ...defaultStates, "FEAT-BIZ-03": "Enabled", "FEAT-CLIN-07": "Trial", "FEAT-INT-01": "Trial" },
     "TENANT-003": {
       "FEAT-CLIN-01": "Enabled",
       "FEAT-BIZ-01": "Enabled",
       "FEAT-CLIN-02": "Restricted",
       "FEAT-CLIN-03": "Restricted",
-      "FEAT-CLIN-04": "Disabled",
+      "FEAT-BIZ-03": "Disabled",
       "FEAT-CLIN-05": "Restricted",
       "FEAT-CLIN-06": "Restricted",
       "FEAT-CLIN-07": "Restricted",
