@@ -91,13 +91,12 @@ interface FeatureControlStoreState {
 
 const INITIAL_TENANT_PLANS: Record<string, SubscriptionPlan> = {
   "TNT-9014": "Enterprise",
-  "TENANT-001": "Enterprise",
-  "TNT-1042": "Professional",
-  "TENANT-002": "Professional",
-  "TNT-2088": "Professional",
+  "TNT-1042": "Enterprise",
+  "TNT-2088": "Enterprise",
   "TNT-3105": "Professional",
-  "TNT-4412": "Professional",
+  "TNT-4412": "Enterprise",
   "TENANT-003": "Basic",
+  "TNT-5611": "Enterprise",
 };
 
 // Date helper utility for trials
@@ -110,7 +109,7 @@ const formatDateOffset = (daysOffset: number): string => {
 // Initial mock trial records for active trial demonstrations
 const INITIAL_TRIAL_RECORDS: Record<string, Record<string, StoredTrialRecord>> = {
   "TNT-1042": {
-    "FEAT-CLIN-06": {
+    "FEAT-CLIN-07": {
       startDate: formatDateOffset(-8),
       endDate: formatDateOffset(22),
       estimatedMonthlyPrice: 14999,
@@ -143,14 +142,11 @@ const createInitialAssignments = (): Record<string, Record<string, LicenseState>
   });
 
   return {
-    "TENANT-001": { ...defaultStates, "FEAT-PREM-01": "Enabled", "FEAT-CLIN-07": "Enabled" },
     "TNT-9014": { ...defaultStates, "FEAT-PREM-01": "Enabled", "FEAT-CLIN-07": "Enabled", "FEAT-PREM-02": "Trial" },
-    "TENANT-002": { ...defaultStates, "FEAT-CLIN-04": "Enabled" },
-    "TNT-1042": { ...defaultStates, "FEAT-CLIN-04": "Enabled", "FEAT-CLIN-06": "Trial", "FEAT-INT-01": "Trial" },
+    "TNT-1042": { ...defaultStates, "FEAT-CLIN-04": "Enabled", "FEAT-CLIN-07": "Trial", "FEAT-INT-01": "Trial" },
     "TENANT-003": {
       "FEAT-CLIN-01": "Enabled",
       "FEAT-BIZ-01": "Enabled",
-      "FEAT-CLIN-09": "Enabled",
       "FEAT-CLIN-02": "Restricted",
       "FEAT-CLIN-03": "Restricted",
       "FEAT-CLIN-04": "Disabled",
@@ -232,6 +228,8 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
 
       getTenantSubscriptionPlan: (tenantId) => {
         const state = get();
+        const planFromSubscriptionService = SubscriptionPlanService.getPlanByTenant(tenantId);
+        if (planFromSubscriptionService) return planFromSubscriptionService.name === "Professional Hospital" ? "Professional" : planFromSubscriptionService.name === "OPD Essentials" ? "Basic" : "Enterprise";
         return state.tenantSubscriptionPlans[tenantId] || "Professional";
       },
 
@@ -320,10 +318,7 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
             assignedState = "Restricted";
           }
 
-          const featureSource: FeatureSource = SubscriptionPlanService.getFeatureSource(
-            planCode,
-            f.id
-          );
+          const featureSource: FeatureSource = SubscriptionPlanService.getFeatureSource(planCode, f.id);
 
           const restrictionReason = isRestrictedByPlan
             ? SubscriptionPlanService.getRestrictionReason(planCode, f.id)
