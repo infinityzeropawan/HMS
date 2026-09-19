@@ -1,23 +1,33 @@
 "use client";
 
-import React from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLoginForm } from "../_auth_components/LoginForm/AuthLoginForm";
 import { AuthMfaOtpForm } from "../_auth_components/MfaStep/AuthMfaOtpForm";
 import { useAuthUserStore } from "../_auth_stores/auth_user_store";
-import { getRoleHomePath } from "../_auth_constants/auth_redirect";
+import { getPostLoginPath } from "../_auth_constants/auth_redirect";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { Shield, Heart, Smartphone, LogOut, ArrowRight, UserCheck } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useAuthUserStore((s) => s.user);
   const logout = useAuthUserStore((s) => s.logout);
   const mfaRequired = useAuthUserStore((s) => s.mfaRequired);
+  const hasHydrated = useAuthUserStore((s) => s.hasHydrated);
+
+  const requestedPath = searchParams.get("redirect");
+
+  useEffect(() => {
+    if (hasHydrated && user && !mfaRequired) {
+      router.replace(getPostLoginPath(user.role, requestedPath));
+    }
+  }, [hasHydrated, mfaRequired, requestedPath, router, user]);
 
   const handleContinueToDashboard = () => {
     if (user) {
-      router.push(getRoleHomePath(user.role));
+      router.push(getPostLoginPath(user.role, requestedPath));
     }
   };
 
@@ -30,9 +40,19 @@ export default function LoginPage() {
     logout();
   };
 
+  if (!hasHydrated) {
+    return (
+      <main className="min-h-[100dvh] flex items-center justify-center bg-slate-50 safe-area-padding">
+        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 text-center shadow-sm">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-primary-teal" />
+          <p className="text-sm font-medium text-slate-600">Loading secure session…</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="relative min-h-[100dvh] overflow-x-hidden bg-slate-50 safe-area-padding">
-      {/* Background Subtle Gradient */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(13,148,136,0.16),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.10),_transparent_30%)]" />
 
       <div className="relative mx-auto grid min-h-[calc(100dvh-5rem)] w-full max-w-6xl items-center gap-8 py-6 sm:py-10 lg:grid-cols-[1.1fr_.9fr] lg:gap-14">
@@ -57,56 +77,53 @@ export default function LoginPage() {
 
         <section className="order-1 w-full lg:order-2">
           <div className="w-full max-w-md mx-auto">
-          {user ? (
-            /* Active Session Card */
-            <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-slate-200 text-center space-y-4 animate-fade-in my-auto">
-              <div className="w-14 h-14 rounded-full bg-primary-light-teal border border-primary-teal/30 flex items-center justify-center mx-auto text-primary-teal font-bold text-lg">
-                <UserCheck className="w-7 h-7" />
-              </div>
+            {user ? (
+              <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-slate-200 text-center space-y-4 animate-fade-in my-auto">
+                <div className="w-14 h-14 rounded-full bg-primary-light-teal border border-primary-teal/30 flex items-center justify-center mx-auto text-primary-teal font-bold text-lg">
+                  <UserCheck className="w-7 h-7" />
+                </div>
 
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">Active Session Found</h2>
-                <p className="text-sm text-slate-600 mt-1">
-                  Signed in as <strong className="text-slate-900">{user.username}</strong>
-                </p>
-                <span className="inline-block px-2.5 py-0.5 mt-1 text-xs font-semibold rounded-full bg-primary-light-teal text-primary-teal uppercase tracking-wider">
-                  {user.role}
-                </span>
-                <p className="text-xs text-slate-400 mt-1">{user.hospitalName}</p>
-              </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Active Session Found</h2>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Signed in as <strong className="text-slate-900">{user.username}</strong>
+                  </p>
+                  <span className="inline-block px-2.5 py-0.5 mt-1 text-xs font-semibold rounded-full bg-primary-light-teal text-primary-teal uppercase tracking-wider">
+                    {user.role}
+                  </span>
+                  <p className="text-xs text-slate-400 mt-1">{user.hospitalName}</p>
+                </div>
 
-              <div className="space-y-2.5 pt-2">
-                <HmsButton
-                  variant="emerald"
-                  size="md"
-                  fullWidth
-                  onClick={handleContinueToDashboard}
-                  icon={<ArrowRight className="w-4 h-4" />}
-                >
-                  Continue to Workspace
-                </HmsButton>
+                <div className="space-y-2.5 pt-2">
+                  <HmsButton
+                    variant="emerald"
+                    size="md"
+                    fullWidth
+                    onClick={handleContinueToDashboard}
+                    icon={<ArrowRight className="w-4 h-4" />}
+                  >
+                    Continue to Workspace
+                  </HmsButton>
 
-                <HmsButton
-                  variant="outline"
-                  size="sm"
-                  fullWidth
-                  onClick={handleSignOut}
-                  icon={<LogOut className="w-3.5 h-3.5" />}
-                  className="text-slate-700 border-slate-300 hover:text-rose-600 hover:border-rose-200"
-                >
-                  Sign Out / Switch Account
-                </HmsButton>
+                  <HmsButton
+                    variant="outline"
+                    size="sm"
+                    fullWidth
+                    onClick={handleSignOut}
+                    icon={<LogOut className="w-3.5 h-3.5" />}
+                    className="text-slate-700 border-slate-300 hover:text-rose-600 hover:border-rose-200"
+                  >
+                    Sign Out / Switch Account
+                  </HmsButton>
+                </div>
               </div>
-            </div>
-          ) : (
-            /* Standard Login Form */
-            mfaRequired ? <AuthMfaOtpForm /> : <AuthLoginForm />
-          )}
+            ) : (
+              mfaRequired ? <AuthMfaOtpForm /> : <AuthLoginForm />
+            )}
           </div>
         </section>
       </div>
 
-      {/* Sleek Bottom Bar */}
       <footer className="relative pb-5 text-center text-xs text-slate-500 sm:pb-7">
         <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-1">
           <span className="flex items-center gap-1 text-primary-teal font-medium">
