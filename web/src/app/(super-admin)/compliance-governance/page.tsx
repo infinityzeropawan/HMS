@@ -38,18 +38,9 @@ import { DataRetentionManagerWorkspace } from "../_super_admin_components/Facili
 import { ComplianceScoringDashboard } from "../_super_admin_components/FacilityControl/ComplianceScoringDashboard";
 import { GovernanceExecutiveDashboard } from "../_super_admin_components/FacilityControl/GovernanceExecutiveDashboard";
 
-const TENANT_OPTIONS = [
-  { value: "TNT-9014", label: "Apollo Super Speciality Hospital (TNT-9014)" },
-  { value: "TNT-1042", label: "Fortis Heart & Vascular Institute (TNT-1042)" },
-  { value: "TNT-2088", label: "Max Super Speciality Hospital (TNT-2088)" },
-  { value: "TNT-3105", label: "Manipal Hospital Whitefield (TNT-3105)" },
-  { value: "TNT-4412", label: "Narayana Health City (TNT-4412)" },
-  { value: "TNT-5611", label: "Sir Ganga Ram Hospital (TNT-5611)" },
-  { value: "TENANT-003", label: "City Diagnostics & OPD Clinic (TENANT-003)" },
-];
-
 export default function ComplianceGovernancePage() {
   const [selectedTenantId, setSelectedTenantId] = useState<string>("TNT-9014");
+  const [tenantOptions, setTenantOptions] = useState<{ value: string; label: string }[]>([]);
   const [activeTabKey, setActiveTabKey] = useState<string>("overview");
 
   const tenant = getTenantById(selectedTenantId);
@@ -117,7 +108,7 @@ export default function ComplianceGovernancePage() {
             <Select
               value={selectedTenantId}
               onChange={(val) => setSelectedTenantId(val)}
-              options={TENANT_OPTIONS}
+              options={tenantOptions}
               className="w-full sm:w-80 font-semibold"
               size="large"
             />
