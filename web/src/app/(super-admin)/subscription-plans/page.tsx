@@ -27,6 +27,21 @@ export default function SubscriptionPlansPage() {
     });
   }, []);
 
+  const activeSubscriptions = tenantSubs.filter((sub) => sub.status === "ACTIVE");
+  const monthlyRecurringRevenue = activeSubscriptions.reduce((total, sub) => {
+    const plan = plans.find((item) => item.code === sub.planCode);
+    if (!plan) return total;
+    return total + (sub.billingCycle === "ANNUAL" ? plan.monthlyFee : plan.monthlyFee);
+  }, 0);
+  const averageSlaTarget = activeSubscriptions.length
+    ? Math.max(
+        ...activeSubscriptions.map((sub) => {
+          const plan = plans.find((item) => item.code === sub.planCode);
+          return plan?.sla.includes("99.99") ? 99.99 : plan?.sla.includes("24/7") ? 99.9 : 99;
+        })
+      )
+    : 0;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCreatePlan = (values: Record<string, any>) => {
     const newPlan: PlanConfig = {
@@ -172,8 +187,8 @@ export default function SubscriptionPlansPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Monthly SaaS MRR</p>
-                <h3 className="text-2xl font-bold text-emerald-700 mt-1">₹18.5 Lakhs</h3>
-                <p className="text-3xs text-emerald-600 font-semibold mt-0.5">+12.4% MoM Growth</p>
+                <h3 className="text-2xl font-bold text-emerald-700 mt-1">₹{(monthlyRecurringRevenue / 100000).toFixed(1)} Lakhs</h3>
+                <p className="text-3xs text-slate-500 font-semibold mt-0.5">Derived from active plan assignments</p>
               </div>
               <ArrowUpRight className="w-8 h-8 text-emerald-500" />
             </div>
@@ -183,8 +198,8 @@ export default function SubscriptionPlansPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Subscribed Tenants</p>
-                <h3 className="text-2xl font-bold text-teal-800 mt-1">24 Hospitals</h3>
-                <p className="text-3xs text-slate-500 mt-0.5">100% SLA Compliant</p>
+                <h3 className="text-2xl font-bold text-teal-800 mt-1">{activeSubscriptions.length} Hospitals</h3>
+                <p className="text-3xs text-slate-500 mt-0.5">{tenantSubs.length} total plan assignments</p>
               </div>
               <Building2 className="w-8 h-8 text-teal-500" />
             </div>
@@ -194,8 +209,8 @@ export default function SubscriptionPlansPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Target Uptime SLA</p>
-                <h3 className="text-2xl font-bold text-amber-600 mt-1">99.99%</h3>
-                <p className="text-3xs text-amber-600 font-semibold mt-0.5">Multi-Region Cloud</p>
+                <h3 className="text-2xl font-bold text-amber-600 mt-1">{averageSlaTarget.toFixed(2)}%</h3>
+                <p className="text-3xs text-slate-500 font-semibold mt-0.5">Highest active plan SLA target</p>
               </div>
               <ShieldCheck className="w-8 h-8 text-amber-500" />
             </div>
@@ -216,8 +231,8 @@ export default function SubscriptionPlansPage() {
             </HmsButton>
           </div>
 
-          <div className="overflow-x-auto">
-            <Table columns={planColumns} dataSource={plans} rowKey="id" pagination={false} />
+          <div className="overflow-x-auto rounded-lg border border-slate-100">
+            <Table columns={planColumns} dataSource={plans} rowKey="id" pagination={false} scroll={{ x: 900 }} size="middle" />
           </div>
         </div>
 
@@ -230,8 +245,8 @@ export default function SubscriptionPlansPage() {
             <p className="text-xs text-slate-500 mt-0.5">Hospital tenants and their current tier allocations.</p>
           </div>
 
-          <div className="overflow-x-auto">
-            <Table columns={tenantColumns} dataSource={tenantSubs} rowKey="key" pagination={false} />
+          <div className="overflow-x-auto rounded-lg border border-slate-100">
+            <Table columns={tenantColumns} dataSource={tenantSubs} rowKey="key" pagination={false} scroll={{ x: 900 }} size="middle" />
           </div>
         </div>
 
@@ -246,10 +261,10 @@ export default function SubscriptionPlansPage() {
           open={planModalOpen}
           onCancel={() => setPlanModalOpen(false)}
           footer={null}
-          width={580}
+          width="min(580px, calc(100vw - 32px))"
         >
           <Form form={form} layout="vertical" onFinish={handleCreatePlan} className="mt-3 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Form.Item label="Plan Code" name="code" rules={[{ required: true }]}>
                 <Input placeholder="e.g. ULTIMATE" size="large" />
               </Form.Item>
@@ -258,7 +273,7 @@ export default function SubscriptionPlansPage() {
               </Form.Item>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Form.Item label="Monthly Fee (₹)" name="monthlyFee" rules={[{ required: true }]}>
                 <InputNumber min={0} max={1000000} className="w-full" size="large" />
               </Form.Item>
@@ -321,7 +336,7 @@ export default function SubscriptionPlansPage() {
             open={upgradeModalOpen}
             onCancel={() => setUpgradeModalOpen(false)}
             footer={null}
-            width={480}
+            width="min(480px, calc(100vw - 32px))"
           >
             <Form
               form={upgradeForm}
