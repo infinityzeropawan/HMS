@@ -69,7 +69,7 @@ export default function SubscriptionPlansPage() {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleUpgradeTenantPlan = (values: Record<string, any>) => {
+  const handleUpgradeTenantPlan = async (values: Record<string, any>) => {
     if (!selectedTenant) return;
     const updated: TenantSubscription = {
       ...selectedTenant,
