@@ -178,7 +178,6 @@ const createInitialAssignments = (): Record<string, Record<string, LicenseState>
       "FEAT-CLIN-07": "Restricted",
       "FEAT-CLIN-08": "Restricted",
       "FEAT-BIZ-02": "Disabled",
-      "FEAT-BIZ-03": "Restricted",
       "FEAT-INT-01": "Restricted",
       "FEAT-INT-02": "Restricted",
       "FEAT-PREM-01": "Restricted",
