@@ -289,8 +289,8 @@ export default function PlatformAuditPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <Table columns={columns} dataSource={filteredLogs} rowKey="key" pagination={{ pageSize: 10 }} />
+          <div className="overflow-x-auto rounded-lg border border-slate-100">
+            <Table columns={columns} dataSource={filteredLogs} rowKey="key" pagination={{ pageSize: 10 }} scroll={{ x: 1100 }} size="middle" />
           </div>
         </div>
 
@@ -306,7 +306,7 @@ export default function PlatformAuditPage() {
             open={modalOpen}
             onCancel={() => setModalOpen(false)}
             footer={null}
-            width={520}
+            width="min(520px, calc(100vw - 32px))"
           >
             <div className="space-y-3 py-2 text-xs">
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
