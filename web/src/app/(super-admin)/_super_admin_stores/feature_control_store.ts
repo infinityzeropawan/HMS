@@ -340,7 +340,7 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
         const catalog = FeatureCatalogService.getCatalog();
         const featureStates = state.getTenantFeatureStates(tenantId);
         const planCode = state.getTenantSubscriptionPlan(tenantId);
-        const planDef = SubscriptionPlanService.getPlan(planCode);
+        const planDef = planCode ? SubscriptionPlanService.getPlan(planCode) : undefined;
 
         return catalog.map((f, idx) => {
           const isKilled = state.globalKillSwitches[f.id] || false;
@@ -351,10 +351,14 @@ export const useFeatureControlStore = create<FeatureControlStoreState>()(
             assignedState = "Restricted";
           }
 
-          const featureSource: FeatureSource = SubscriptionPlanService.getFeatureSource(planCode, f.id);
+          const featureSource: FeatureSource = planCode
+            ? SubscriptionPlanService.getFeatureSource(planCode, f.id)
+            : "Restricted";
 
           const restrictionReason = isRestrictedByPlan
-            ? SubscriptionPlanService.getRestrictionReason(planCode, f.id)
+            ? planCode
+              ? SubscriptionPlanService.getRestrictionReason(planCode, f.id)
+              : undefined
             : undefined;
 
           // Compute trial details if feature is in Trial state
