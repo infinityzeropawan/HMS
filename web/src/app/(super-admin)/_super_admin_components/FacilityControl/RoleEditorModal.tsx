@@ -46,6 +46,7 @@ export const RoleEditorModal: React.FC<RoleEditorModalProps> = ({
   const [parentTemplateId, setParentTemplateId] = useState<string | null>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [scopeType, setScopeType] = useState<RoleScopeType>("Department Scoped");
+  const [allowedDepartments, setAllowedDepartments] = useState<string[]>(["ALL"]);
   const [requiresOnDutyRoster, setRequiresOnDutyRoster] = useState(true);
   const [allowEmergencyBreakGlass, setAllowEmergencyBreakGlass] = useState(true);
   const [hideUnavailable, setHideUnavailable] = useState(false);
@@ -58,6 +59,7 @@ export const RoleEditorModal: React.FC<RoleEditorModalProps> = ({
       setParentTemplateId(role.parentTemplateId);
       setSelectedPermissions([...role.permissions]);
       setScopeType(role.scopeRules.scopeType);
+      setAllowedDepartments([...(role.scopeRules.allowedDepartments || ["ALL"])]);
       setRequiresOnDutyRoster(role.scopeRules.requiresOnDutyRoster);
       setAllowEmergencyBreakGlass(role.scopeRules.allowEmergencyBreakGlass);
     } else if (parentTemplate) {
@@ -67,6 +69,7 @@ export const RoleEditorModal: React.FC<RoleEditorModalProps> = ({
       setParentTemplateId(parentTemplate.id);
       setSelectedPermissions([...parentTemplate.permissions]);
       setScopeType(parentTemplate.scopeRules.scopeType);
+      setAllowedDepartments([...(parentTemplate.scopeRules.allowedDepartments || ["ALL"])]);
       setRequiresOnDutyRoster(parentTemplate.scopeRules.requiresOnDutyRoster);
       setAllowEmergencyBreakGlass(parentTemplate.scopeRules.allowEmergencyBreakGlass);
     } else {
@@ -76,6 +79,7 @@ export const RoleEditorModal: React.FC<RoleEditorModalProps> = ({
       setParentTemplateId(null);
       setSelectedPermissions([]);
       setScopeType("Department Scoped");
+      setAllowedDepartments(["ALL"]);
       setRequiresOnDutyRoster(true);
       setAllowEmergencyBreakGlass(true);
     }
@@ -89,6 +93,7 @@ export const RoleEditorModal: React.FC<RoleEditorModalProps> = ({
         setSelectedPermissions([...parent.permissions]);
         setCategory(parent.category);
         setScopeType(parent.scopeRules.scopeType);
+        setAllowedDepartments([...(parent.scopeRules.allowedDepartments || ["ALL"])]);
         setRequiresOnDutyRoster(parent.scopeRules.requiresOnDutyRoster);
         setAllowEmergencyBreakGlass(parent.scopeRules.allowEmergencyBreakGlass);
       }
@@ -120,7 +125,7 @@ export const RoleEditorModal: React.FC<RoleEditorModalProps> = ({
 
     const scopeRules = {
       scopeType,
-      allowedDepartments: ["ALL"],
+      allowedDepartments,
       requiresOnDutyRoster,
       allowEmergencyBreakGlass,
     };
