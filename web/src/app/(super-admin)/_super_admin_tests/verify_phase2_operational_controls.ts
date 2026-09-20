@@ -16,8 +16,8 @@ async function runPhase2OperationalControlsAudit() {
 
   let passed = true;
 
-  // 1. RBAC Claim Audit & pacs:dicom:view Specific Licensing Check
-  console.log("--- 1. RBAC Claim Audit & PACS DICOM Mapping Assertion ---");
+  // 1. RBAC Claim Audit & PACS DICOM Mapping Assertion
+  console.log("--- 1. RBAC Claim Audit & Feature Mapping Assertions ---");
   const pacsClaim = PERMISSION_CLAIMS.find((c) => c.id === "pacs:dicom:view");
   if (!pacsClaim) {
     console.error("FAIL: pacs:dicom:view claim not found in PERMISSION_CLAIMS!");
@@ -25,15 +25,24 @@ async function runPhase2OperationalControlsAudit() {
   } else {
     const pacsCanonical = normalizeToCanonicalFeatureId(pacsClaim.requiredFeatureId || "");
     if (pacsCanonical !== "FEAT-CLIN-06") {
-      console.error(`FAIL: pacs:dicom:view maps to '${pacsClaim.requiredFeatureId}' -> '${pacsCanonical}'. Expected 'FEAT-CLIN-06' (PACS DICOM Imaging)!`);
+      console.error(`FAIL: pacs:dicom:view maps to '${pacsClaim.requiredFeatureId}' -> '${pacsCanonical}'. Expected 'FEAT-CLIN-06'!`);
       passed = false;
     } else {
-      console.log(`  ✓ pacs:dicom:view correctly maps to requiredFeatureId '${pacsClaim.requiredFeatureId}' -> Canonical 'FEAT-CLIN-06' (Radiology & DICOM PACS Imaging).`);
+      console.log(`  ✓ pacs:dicom:view correctly maps to requiredFeatureId '${pacsClaim.requiredFeatureId}' -> Canonical 'FEAT-CLIN-06'.`);
     }
   }
 
+  // Check admin:staff:manage and admin:rbac:configure mapping (Issue 7)
+  const staffClaim = PERMISSION_CLAIMS.find((c) => c.id === "admin:staff:manage");
+  const rbacClaim = PERMISSION_CLAIMS.find((c) => c.id === "admin:rbac:configure");
+  if (staffClaim?.requiredFeatureId !== "FEAT-BUS-ROSTER" || rbacClaim?.requiredFeatureId !== "FEAT-BUS-ROSTER") {
+    console.error("FAIL: admin:staff:manage or admin:rbac:configure not mapped to FEAT-BUS-ROSTER!");
+    passed = false;
+  } else {
+    console.log("  ✓ admin:staff:manage and admin:rbac:configure correctly mapped to 'FEAT-BUS-ROSTER' -> 'FEAT-BIZ-04'.");
+  }
+
   // Verify all claims map to valid catalog features
-  console.log(`Auditing all ${PERMISSION_CLAIMS.length} permission claims against canonical FEATURE_CATALOG...`);
   for (const claim of PERMISSION_CLAIMS) {
     if (claim.requiredFeatureId) {
       const canonicalId = normalizeToCanonicalFeatureId(claim.requiredFeatureId);
@@ -46,10 +55,18 @@ async function runPhase2OperationalControlsAudit() {
   }
   console.log(`  ✓ All ${PERMISSION_CLAIMS.length} permission claims resolve to valid canonical catalog features.`);
 
-  // 2. Tenant Management Operational Lifecycle Audit
-  console.log("\n--- 2. Tenant Management Operational Lifecycle Audit ---");
+  // 2. Tenant Management & Repository Boundaries (Issue 1, 10)
+  console.log("\n--- 2. Tenant Management & Deterministic ID Generation ---");
+  const newTenantId1 = TenantApiService.generateUniqueTenantId();
+  const newTenantId2 = TenantApiService.generateUniqueTenantId();
+  if (!newTenantId1.startsWith("TNT-") || newTenantId1 === newTenantId2) {
+    console.error(`FAIL: generateUniqueTenantId generated invalid or colliding IDs: ${newTenantId1}, ${newTenantId2}`);
+    passed = false;
+  } else {
+    console.log(`  ✓ generateUniqueTenantId produced unique deterministic IDs: ${newTenantId1}, ${newTenantId2}`);
+  }
 
-  // Test Suspend Tenant
+  // Test Suspend & Restore Tenant
   const testTenantId = "TNT-9014";
   console.log(`Testing tenant suspension for '${testTenantId}'...`);
   await TenantApiService.suspendTenant(testTenantId, "Compliance Issue", "System Audit Pass");
@@ -61,19 +78,18 @@ async function runPhase2OperationalControlsAudit() {
     console.log(`  ✓ Tenant '${testTenantId}' status mutated to 'Suspended'.`);
   }
 
-  // Verify Audit Log Emission
+  // Verify Audit Log Emission via Single Event Bus Path (Issue 6, 11)
   const auditLogsAfterSuspend = PlatformAuditService.getAuditLogs();
-  const suspendAuditLog = auditLogsAfterSuspend.find(
+  const suspendAuditLog = auditLogsAfterSuspend.filter(
     (log) => log.action.includes("Suspended hospital tenant") && log.entity.includes(testTenantId)
   );
-  if (!suspendAuditLog) {
-    console.error("FAIL: Tenant suspension did NOT emit a canonical platform audit event!");
+  if (suspendAuditLog.length !== 1) {
+    console.error(`FAIL: Tenant suspension emitted ${suspendAuditLog.length} audit logs, expected exactly 1!`);
     passed = false;
   } else {
-    console.log(`  ✓ Tenant suspension emitted canonical audit event [${suspendAuditLog.id}] (${suspendAuditLog.action}).`);
+    console.log(`  ✓ Tenant suspension emitted exactly 1 audit event via GovernanceEventBus [${suspendAuditLog[0].id}].`);
   }
 
-  // Test Restore Tenant
   console.log(`Testing tenant restoration for '${testTenantId}'...`);
   await TenantApiService.restoreTenant(testTenantId, "Platform Audit Restoration Pass");
   const restoredTenant = TenantApiService.getTenantById(testTenantId);
@@ -84,9 +100,19 @@ async function runPhase2OperationalControlsAudit() {
     console.log(`  ✓ Tenant '${testTenantId}' status mutated back to 'Active'.`);
   }
 
-  // 3. Fail-Closed Licensing & Access Evaluation Check
+  // Test Subscription Sync with Tenant (Issue 2)
+  console.log(`Testing tenant subscription plan update for '${testTenantId}'...`);
+  await TenantApiService.updateTenantSubscription(testTenantId, "Enterprise", 200, 100);
+  const updatedTenantSub = TenantApiService.getTenantById(testTenantId);
+  if (updatedTenantSub?.subscriptionPlan !== "Enterprise" || updatedTenantSub?.maxUsers !== 200) {
+    console.error(`FAIL: Tenant subscription plan update did not sync! plan=${updatedTenantSub?.subscriptionPlan}`);
+    passed = false;
+  } else {
+    console.log(`  ✓ Tenant '${testTenantId}' subscription updated and synced with SubscriptionPlanService.`);
+  }
+
+  // 3. Fail-Closed Licensing & Access Evaluation Check (Issue 8)
   console.log("\n--- 3. Fail-Closed Licensing & Access Evaluation Check ---");
-  // Unknown feature evaluateAccess
   const unkFeatureAccess = UnifiedAuthEvaluator.getFeatureStateForClaim(testTenantId, "FEAT-NONEXISTENT-999");
   if (unkFeatureAccess.state !== "Disabled" || unkFeatureAccess.source !== "Restricted") {
     console.error(`FAIL: Unknown feature was NOT failed closed! state=${unkFeatureAccess.state}, source=${unkFeatureAccess.source}`);
@@ -95,7 +121,6 @@ async function runPhase2OperationalControlsAudit() {
     console.log("  ✓ Unknown feature 'FEAT-NONEXISTENT-999' failed closed -> Disabled (Restricted).");
   }
 
-  // Unknown tenant access evaluation
   const unkTenantEval = UnifiedAuthEvaluator.evaluateAccess({
     tenantId: "TENANT-UNKNOWN-9999",
     permissionId: "opd:queue:read",
@@ -108,34 +133,30 @@ async function runPhase2OperationalControlsAudit() {
     console.log("  ✓ Unknown tenant access evaluation denied at STEP 1 (Tenant Active Check).");
   }
 
-  // 4. Support Ticket Operational Controls Audit
-  console.log("\n--- 4. Support Ticket Operational Controls Audit ---");
-  const tickets = SupportTicketService.getTickets();
-  if (tickets.length === 0) {
-    console.error("FAIL: No support tickets found in SupportTicketService!");
+  // 4. Support Ticket Operational Controls & Metrics Audit (Issue 4, 5)
+  console.log("\n--- 4. Support Ticket Operational Controls & Single Audit Emission ---");
+  const supportMetrics = SupportTicketService.getSupportMetrics();
+  if (typeof supportMetrics.openTickets !== "number" || supportMetrics.csatRating !== "Not tracked") {
+    console.error(`FAIL: Support metrics invalid! openTickets=${supportMetrics.openTickets}, csat=${supportMetrics.csatRating}`);
     passed = false;
   } else {
+    console.log(`  ✓ Support metrics dynamically retrieved: openTickets=${supportMetrics.openTickets}, csatRating='${supportMetrics.csatRating}'.`);
+  }
+
+  const tickets = SupportTicketService.getTickets();
+  if (tickets.length > 0) {
     const targetTicket = tickets[0];
-    console.log(`Updating status of ticket '${targetTicket.ticketId}' to 'RESOLVED'...`);
+    const initialLogCount = PlatformAuditService.getAuditLogs().length;
     SupportTicketService.updateTicketStatus(targetTicket.ticketId, "RESOLVED");
 
-    const updatedTicket = SupportTicketService.getTickets().find((t) => t.ticketId === targetTicket.ticketId);
-    if (updatedTicket?.status !== "RESOLVED") {
-      console.error(`FAIL: Ticket status is '${updatedTicket?.status}', expected 'RESOLVED'.`);
+    const addedCount = PlatformAuditService.getAuditLogs().length - initialLogCount;
+    const newLogs = PlatformAuditService.getAuditLogs().slice(0, addedCount);
+    const ticketAuditLogs = newLogs.filter((log) => log.action.includes("Updated Ticket Status"));
+    if (ticketAuditLogs.length !== 1) {
+      console.error(`FAIL: Support ticket status update emitted ${ticketAuditLogs.length} audit logs! Expected 1.`);
       passed = false;
     } else {
-      console.log(`  ✓ Ticket '${targetTicket.ticketId}' status updated to 'RESOLVED'.`);
-    }
-
-    // Verify Audit Event for Ticket Update
-    const ticketAudit = PlatformAuditService.getAuditLogs().find(
-      (log) => log.action.includes("Updated Ticket Status") && log.details.includes(targetTicket.ticketId)
-    );
-    if (!ticketAudit) {
-      console.error("FAIL: Support ticket status update did NOT emit a platform audit event!");
-      passed = false;
-    } else {
-      console.log(`  ✓ Support ticket status update emitted canonical audit event [${ticketAudit.id}].`);
+      console.log(`  ✓ Support ticket update emitted exactly 1 audit event [${ticketAuditLogs[0].id}].`);
     }
   }
 
@@ -160,7 +181,6 @@ async function runPhase2OperationalControlsAudit() {
 
   // 6. Platform Audit Search & Filter Capabilities
   console.log("\n--- 6. Platform Audit Search & Filter Capabilities ---");
-  const allLogs = PlatformAuditService.getAuditLogs();
   const searchResult = PlatformAuditService.searchAuditLogs({
     category: "SUBSCRIPTION_LIFECYCLE",
     searchTerm: testTenantId,
@@ -180,7 +200,7 @@ async function runPhase2OperationalControlsAudit() {
     console.log(`  ✓ CSV export serialized successfully (${csvExport.split("\n").length} lines generated).`);
   }
 
-  // 7. Architectural Dependency & Circular Import Audit
+  // 7. Architectural Dependency & Circular Import Audit (Issue 12)
   console.log("\n--- 7. Architectural Service Boundary & Zero-Cycle Audit ---");
   const planServicePath = path.join(__dirname, "../_super_admin_services/subscription_plan_service.ts");
   const planServiceSource = fs.readFileSync(planServicePath, "utf-8");

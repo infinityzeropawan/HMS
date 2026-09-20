@@ -49,8 +49,8 @@ export const PERMISSION_CLAIMS: PermissionClaim[] = [
   { id: "pacs:dicom:view", name: "Access PACS DICOM Medical Imaging", description: "Open web-based DICOM viewer to inspect X-Rays, CT Scans, and MRI studies", category: "Integrations & ABDM", requiredFeatureId: "FEAT-CLIN-PACS" },
 
   // --- System Administration ---
-  { id: "admin:staff:manage", name: "Manage Hospital Staff & User Credentials", description: "Create staff accounts, assign roles, reset passwords, and toggle active status", category: "System Administration", requiredFeatureId: "FEAT-BUS-BILLING" },
-  { id: "admin:rbac:configure", name: "Configure Custom Roles & Scope Rules", description: "Modify custom role definitions, permissions, and shift roster policies", category: "System Administration", requiredFeatureId: "FEAT-BUS-BILLING" },
+  { id: "admin:staff:manage", name: "Manage Hospital Staff & User Credentials", description: "Create staff accounts, assign roles, reset passwords, and toggle active status", category: "System Administration", requiredFeatureId: "FEAT-BUS-ROSTER" },
+  { id: "admin:rbac:configure", name: "Configure Custom Roles & Scope Rules", description: "Modify custom role definitions, permissions, and shift roster policies", category: "System Administration", requiredFeatureId: "FEAT-BUS-ROSTER" },
   { id: "admin:tariff:manage", name: "Manage Hospital Service Tariff Masters", description: "Update price lists, room tariffs, and procedure rates", category: "System Administration", requiredFeatureId: "FEAT-BUS-BILLING" },
   { id: "admin:audit:view", name: "View DPDP Compliance Audit Ledger", description: "Inspect tamper-proof hash-chained data access and consent audit logs", category: "System Administration", requiredFeatureId: "FEAT-BUS-ANALYTICS" },
 ];

@@ -10,6 +10,8 @@ import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 
 import { SupportTicketService, SupportTicket } from "../_super_admin_services/support_ticket_service";
+import { TenantApiService } from "../_super_admin_services/tenant_api_service";
+import { Tenant } from "../_super_admin_types/tenant_management";
 
 const PRIORITY_COLOR: Record<string, string> = {
   CRITICAL: "red",
@@ -20,6 +22,7 @@ const PRIORITY_COLOR: Record<string, string> = {
 
 export default function SupportTicketsPage() {
   const [tickets, setTickets] = useState<SupportTicket[]>(() => SupportTicketService.getTickets());
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [replyModalOpen, setReplyModalOpen] = useState(false);
@@ -29,10 +32,13 @@ export default function SupportTicketsPage() {
   const [form] = Form.useForm();
 
   React.useEffect(() => {
+    TenantApiService.fetchTenants().then((res) => setTenants(res.tenants));
     return SupportTicketService.subscribe(() => {
       setTickets(SupportTicketService.getTickets());
     });
   }, []);
+
+  const supportMetrics = SupportTicketService.getSupportMetrics();
 
   const handleOpenReplyModal = (ticket: SupportTicket) => {
     setActiveTicket(ticket);
@@ -56,16 +62,22 @@ export default function SupportTicketsPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCreateTicket = (values: Record<string, any>) => {
+    const selectedTenant = TenantApiService.getTenantById(values.tenantId) || tenants.find((t) => t.id === values.tenantId);
+    if (!selectedTenant) {
+      message.error("Selected hospital tenant not found!");
+      return;
+    }
+
     SupportTicketService.createTicket({
-      tenantName: values.tenantName,
-      tenantId: `TENANT-00${tickets.length + 1}`,
+      tenantName: selectedTenant.hospitalName,
+      tenantId: selectedTenant.id,
       subject: values.subject,
       category: values.category,
       priority: values.priority,
       assignedAgent: "SuperAdmin Support",
       initialMessage: values.initialMessage || values.subject,
     });
-    message.success("New support ticket logged successfully!");
+    message.success("New support ticket logged successfully with real tenant linkage!");
     setCreateModalOpen(false);
     form.resetFields();
   };
@@ -192,9 +204,9 @@ export default function SupportTicketsPage() {
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Open Tickets</p>
                 <h3 className="text-2xl font-bold text-rose-600 mt-1">
-                  {tickets.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS").length} Pending
+                  {supportMetrics.openTickets} Pending
                 </h3>
-                <p className="text-3xs text-rose-600 font-semibold mt-0.5">1 Critical Priority</p>
+                <p className="text-3xs text-rose-600 font-semibold mt-0.5">{supportMetrics.criticalTickets} Critical Priority</p>
               </div>
               <AlertTriangle className="w-8 h-8 text-rose-500" />
             </div>
@@ -204,7 +216,7 @@ export default function SupportTicketsPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Avg SLA Resolution</p>
-                <h3 className="text-2xl font-bold text-teal-800 mt-1">1.2 Hours</h3>
+                <h3 className="text-2xl font-bold text-teal-800 mt-1">{supportMetrics.avgSlaHours} Hours</h3>
                 <p className="text-3xs text-emerald-600 font-semibold mt-0.5">SLA Target &lt; 4 Hours</p>
               </div>
               <Clock className="w-8 h-8 text-teal-500" />
@@ -215,8 +227,8 @@ export default function SupportTicketsPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Resolved This Month</p>
-                <h3 className="text-2xl font-bold text-emerald-700 mt-1">42 Tickets</h3>
-                <p className="text-3xs text-emerald-600 font-semibold mt-0.5">100% CSAT Rating</p>
+                <h3 className="text-2xl font-bold text-emerald-700 mt-1">{supportMetrics.resolvedTickets} Tickets</h3>
+                <p className="text-3xs text-emerald-600 font-semibold mt-0.5">CSAT: {supportMetrics.csatRating}</p>
               </div>
               <CheckCircle2 className="w-8 h-8 text-emerald-500" />
             </div>
@@ -226,8 +238,8 @@ export default function SupportTicketsPage() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Customer CSAT</p>
-                <h3 className="text-2xl font-bold text-indigo-800 mt-1">98.4%</h3>
-                <p className="text-3xs text-indigo-600 font-semibold mt-0.5">High Tenant Satisfaction</p>
+                <h3 className="text-2xl font-bold text-indigo-800 mt-1">{supportMetrics.csatRating}</h3>
+                <p className="text-3xs text-indigo-600 font-semibold mt-0.5">Satisfactory Metrics</p>
               </div>
               <UserCheck className="w-8 h-8 text-indigo-500" />
             </div>
@@ -364,8 +376,14 @@ export default function SupportTicketsPage() {
           width={520}
         >
           <Form form={form} layout="vertical" onFinish={handleCreateTicket} className="mt-3 space-y-3">
-            <Form.Item label="Target Hospital / Tenant" name="tenantName" rules={[{ required: true }]} initialValue="Apollo Super Speciality Hospital">
-              <Input size="large" />
+            <Form.Item label="Target Hospital / Tenant" name="tenantId" rules={[{ required: true }]}>
+              <Select size="large" placeholder="Select hospital tenant...">
+                {tenants.map((t) => (
+                  <Select.Option key={t.id} value={t.id}>
+                    {t.hospitalName} ({t.id})
+                  </Select.Option>
+                ))}
+              </Select>
             </Form.Item>
 
             <div className="grid grid-cols-2 gap-3">

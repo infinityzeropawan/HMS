@@ -178,8 +178,8 @@ export class UnifiedAuthEvaluator {
           featureState = "Enabled";
           featureSource = "Included By Plan";
         } else {
-          featureState = "Enabled";
-          featureSource = "Included By Plan";
+          featureState = "Disabled";
+          featureSource = "Restricted";
         }
       }
     }
@@ -295,6 +295,9 @@ export class UnifiedAuthEvaluator {
       }
       return { state: "Enabled", source: "Purchased Add-on" };
     }
-    return { state: "Enabled", source: "Included By Plan" };
+    if (plan.includedFeatures?.includes(catalogId) || plan.modules?.includes("All Modules")) {
+      return { state: "Enabled", source: "Included By Plan" };
+    }
+    return { state: "Disabled", source: "Restricted" };
   }
 }

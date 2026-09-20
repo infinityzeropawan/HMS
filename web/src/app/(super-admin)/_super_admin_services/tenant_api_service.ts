@@ -12,9 +12,22 @@ import {
   TenantHealthTelemetry,
   HealthLevel,
   ServiceDiagnosticIncident,
+  SubscriptionPlan,
 } from "../_super_admin_types/tenant_management";
 import { GovernanceEventBus } from "./governance_event_bus";
+import { SubscriptionPlanService } from "./subscription_plan_service";
 
+
+export interface ITenantRepository {
+  getTenants(params?: TenantFilterParams, sort?: TenantSortParams): Promise<PaginatedTenantResponse>;
+  getTenantById(id: string): Tenant | undefined;
+  updateTenant(id: string, updates: Partial<Tenant>): Promise<Tenant>;
+  suspendTenant(id: string, reason: SuspensionReason, reasonNotes: string, adminName?: string): Promise<Tenant>;
+  restoreTenant(id: string, adminName?: string): Promise<Tenant>;
+  addTenant(newTenant: Partial<Tenant>): Promise<Tenant>;
+  fetchTenantUsage(id: string): Promise<TenantUsageMetrics>;
+  exportTenants(ids?: string[]): string;
+}
 
 const MOCK_TENANTS: Tenant[] = [
   {
@@ -735,10 +748,33 @@ export class TenantApiService {
     const index = this.tenants.findIndex((t) => t.id === id);
     if (index === -1) throw new Error("Tenant not found");
 
+    const oldPlan = this.tenants[index].subscriptionPlan;
     this.tenants[index] = {
       ...this.tenants[index],
       ...updates,
     };
+
+    if (updates.subscriptionPlan && updates.subscriptionPlan !== oldPlan) {
+      const planCode = updates.subscriptionPlan.toUpperCase();
+      const currentSub = SubscriptionPlanService.getTenantSubscriptions().find((s) => s.tenantId === id || s.key === id);
+      if (currentSub) {
+        SubscriptionPlanService.updateTenantSubscription({
+          ...currentSub,
+          planCode,
+        });
+      }
+      GovernanceEventBus.emit({
+        eventType: "SUBSCRIPTION_PLAN_MUTATED",
+        tenantId: id,
+        tenantName: this.tenants[index].hospitalName,
+        actor: "Super Admin Console",
+        actorRole: "SUPER_ADMIN",
+        action: `Changed tenant subscription plan from ${oldPlan} to ${updates.subscriptionPlan}`,
+        details: { previousPlan: oldPlan, newPlan: updates.subscriptionPlan },
+        riskLevel: "INFO",
+      });
+    }
+
     return this.tenants[index];
   }
 
@@ -906,9 +942,34 @@ export class TenantApiService {
     return count;
   }
 
+  private static lastGeneratedNum = 9014;
+  static generateUniqueTenantId(): string {
+    const existingIds = new Set(this.tenants.map((t) => t.id));
+    let nextNum = Math.max(9015, this.lastGeneratedNum + 1);
+    while (existingIds.has(`TNT-${nextNum}`)) {
+      nextNum++;
+    }
+    this.lastGeneratedNum = nextNum;
+    return `TNT-${nextNum}`;
+  }
+
+  static async updateTenantSubscription(
+    id: string,
+    subscriptionPlanId: SubscriptionPlan,
+    maxUsers?: number,
+    maxBeds?: number
+  ): Promise<Tenant> {
+    const updates: Partial<Tenant> = {
+      subscriptionPlan: subscriptionPlanId,
+      ...(maxUsers ? { maxUsers } : {}),
+      ...(maxBeds ? { maxBeds } : {}),
+    };
+    return this.updateTenant(id, updates);
+  }
+
   static async addTenant(newTenant: Partial<Tenant>): Promise<Tenant> {
     await delay(300);
-    const id = `TNT-${Math.floor(1000 + Math.random() * 9000)}`;
+    const id = newTenant.id || this.generateUniqueTenantId();
     const fullRecord = enrichTenantDetails({ ...newTenant, id });
     this.tenants.unshift(fullRecord);
     return fullRecord;
