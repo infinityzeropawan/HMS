@@ -108,7 +108,7 @@ Tenant lifecycle operations currently mutate a process-local in-memory array. Th
 
 ## Current verification status
 
-Latest known Vercel status for commit `79dead6f1f5c9791de5dc99ef6c803b05dda82bc` was **PENDING** at the time this report was written. A successful Vercel deployment was previously confirmed for commit `5d4a32c73cb276dba540d7a583bd73f56c8f294d`.
+Latest known Vercel status for the current audit commits is **PENDING**. The current fixes `50b6e4f5c83663c16babfd7734bbc0c12e186628` and `21b43657646863c16babfd7734bbc0c12e186628`, plus this report update, do not yet have a confirmed successful Vercel deployment in repository status metadata. A successful Vercel deployment was previously confirmed for commit `5d4a32c73cb276dba540d7a583bd73f56c8f294d`.
 
 The existing Phase 1/Phase 2 reports record successful TypeScript/build/test runs, but this Phase 3 review does not independently claim a fresh full browser E2E pass across every clickable control.
 
