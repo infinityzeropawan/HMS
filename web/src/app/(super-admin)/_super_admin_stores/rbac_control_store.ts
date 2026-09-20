@@ -255,7 +255,7 @@ export const useRbacControlStore = create<RbacControlStoreState>()(
             actorRole: "SUPER_ADMIN",
             targetRoleId: roleId,
             targetRoleName: oldRole.name,
-            eventType: "ROLE_DELETED",
+            eventType: "ROLE_UPDATED",
             previousValue: `Status: ${oldRole.status}`,
             newValue: `Status: ${activeStatus ? "Active" : "Disabled"}`,
             reason: `Role status toggled to ${activeStatus ? "Active" : "Disabled"}.`,
