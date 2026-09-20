@@ -127,19 +127,20 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
       { id: "masters", label: "Global Masters", icon: SlidersHorizontal, path: "/global-masters", role: ["LAB_TECH"] },
     ],
     ADMIN: [
-      { id: "analytics", label: "Analytics Hub", icon: Activity, path: "/analytics", role: ["ADMIN"] },
-      { id: "revenue-report", label: "Revenue Analytics", icon: Activity, path: "/revenue", role: ["ADMIN"] },
-      { id: "inventory-forecast", label: "Inventory Forecast", icon: Package, path: "/analytics/inventory", role: ["ADMIN"] },
+      { id: "dashboard", label: "Admin Dashboard", icon: Home, path: "/admin", role: ["ADMIN"] },
       { id: "users", label: "Staff & RBAC Users", icon: Users, path: "/users", role: ["ADMIN"] },
       { id: "departments", label: "Departments", icon: Building2, path: "/departments", role: ["ADMIN"] },
       { id: "beds", label: "Wards & Beds", icon: BedDouble, path: "/beds", role: ["ADMIN"] },
       { id: "settings", label: "Hospital Settings", icon: Settings, path: "/hospital-settings", role: ["ADMIN"] },
+      { id: "tariffs", label: "Service Tariffs", icon: SlidersHorizontal, path: "/tariffs", role: ["ADMIN"] },
       { id: "templates", label: "Print Templates", icon: FileText, path: "/print-templates", role: ["ADMIN"] },
       { id: "accreditations", label: "Accreditations", icon: ShieldCheck, path: "/accreditations", role: ["ADMIN"] },
-      { id: "tariffs", label: "Service Tariffs", icon: SlidersHorizontal, path: "/tariffs", role: ["ADMIN"] },
-      { id: "notifications", label: "Notifications", icon: Bell, path: "/notifications", role: ["ADMIN"], badge: notificationCount },
       { id: "audit", label: "Audit Logs (DPDP)", icon: ShieldCheck, path: "/audit-logs", role: ["ADMIN"] },
       { id: "roster", label: "Staff Duty Roster", icon: Calendar, path: "/roster", role: ["ADMIN"] },
+      { id: "notifications", label: "Notifications", icon: Bell, path: "/notifications", role: ["ADMIN"], badge: notificationCount },
+      { id: "analytics", label: "Analytics Hub", icon: Activity, path: "/analytics", role: ["ADMIN"] },
+      { id: "revenue-report", label: "Revenue Analytics", icon: Activity, path: "/revenue", role: ["ADMIN"] },
+      { id: "inventory-forecast", label: "Inventory Forecast", icon: Package, path: "/analytics/inventory", role: ["ADMIN"] },
       { id: "payouts", label: "Doctor Payouts", icon: Receipt, path: "/payouts", role: ["ADMIN"] },
       { id: "equipment", label: "Biomedical Assets", icon: Settings, path: "/equipment", role: ["ADMIN"] },
       { id: "gateway", label: "ABDM Gateway", icon: Building2, path: "/gateway", role: ["ADMIN"] },
@@ -166,18 +167,30 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
   }));
 
   const navItems = roleNavItems[normalizedRole] || roleNavItems.DOCTOR;
-  // Dynamic routes (for example /encounter/[id]) should keep their parent
-  // navigation item selected instead of falling back to the first item.
-  const isCurrentPath = (path: string) => {
-    if (currentPath === path || currentPath.startsWith(`${path}/`)) return true;
 
-    // The menu uses representative IDs for dynamic pages. Match their stable
-    // top-level route so /encounter/P-2026-1049 still selects Encounter.
+  // Longest-prefix match helper for active item determination (R5 fix)
+  const currentNavItem = (() => {
+    const exact = navItems.find((item) => item.path === currentPath);
+    if (exact) return exact;
+
+    const matchingPrefixItems = navItems.filter((item) => currentPath.startsWith(`${item.path}/`));
+    if (matchingPrefixItems.length > 0) {
+      return matchingPrefixItems.sort((a, b) => b.path.length - a.path.length)[0];
+    }
+
     const currentSection = currentPath.split("/").filter(Boolean)[0];
-    const itemSection = path.split("/").filter(Boolean)[0];
-    return Boolean(currentSection && itemSection && currentSection === itemSection);
-  };
-  const currentNavItem = navItems.find((item) => isCurrentPath(item.path)) || navItems[0];
+    if (currentSection) {
+      const sectionMatch = navItems.find((item) => {
+        const itemSection = item.path.split("/").filter(Boolean)[0];
+        return itemSection === currentSection;
+      });
+      if (sectionMatch) return sectionMatch;
+    }
+
+    return navItems[0];
+  })();
+
+  const isItemActive = (item: NavItem) => currentNavItem.id === item.id;
 
   const handleNavClick = (item: NavItem) => {
     onNavigate(item.path);
@@ -245,7 +258,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-lg safe-area-bottom">
         <div className="grid grid-cols-5">
           {navItems.slice(0, 5).map((item) => {
-            const isActive = isCurrentPath(item.path);
+            const isActive = isItemActive(item);
             return (
               <button
                 key={item.id}
@@ -257,7 +270,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
                 <div className="relative">
                   <item.icon className="w-5 h-5 mb-0.5" />
                   {item.badge && item.badge > 0 ? (
-                    <span className="absolute -top-1 -right-2 px-1 min-w-4 h-4 bg-alert-crimson text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                    <span className="absolute -top-1 -right-2 px-1 min-w-4 h-4 bg-crimson text-white text-[10px] rounded-full flex items-center justify-center font-bold">
                       {item.badge}
                     </span>
                   ) : null}
@@ -315,7 +328,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
                 Module Navigation
               </div>
               {navItems.map((item) => {
-                const isActive = isCurrentPath(item.path);
+                const isActive = isItemActive(item);
                 return (
                   <button
                     key={item.id}
@@ -337,7 +350,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
                     
                     <div className="flex items-center gap-2">
                       {item.badge && item.badge > 0 ? (
-                        <span className="px-2 py-0.5 bg-alert-crimson text-white text-xs rounded-full font-bold">
+                        <span className="px-2 py-0.5 bg-crimson text-white text-xs rounded-full font-bold">
                           {item.badge}
                         </span>
                       ) : null}
@@ -392,7 +405,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
             Navigation
           </div>
           {navItems.map((item) => {
-            const isActive = isCurrentPath(item.path);
+            const isActive = isItemActive(item);
             return (
               <button
                 key={item.id}
@@ -406,7 +419,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
                 <item.icon className={`w-5 h-5 ${isActive ? 'text-primary-teal' : 'text-slate-500'}`} />
                 <span className="truncate">{item.label}</span>
                 {item.badge && item.badge > 0 ? (
-                  <span className="ml-auto px-2 py-0.5 bg-alert-crimson text-white text-xs rounded-full font-bold">
+                  <span className="ml-auto px-2 py-0.5 bg-crimson text-white text-xs rounded-full font-bold">
                     {item.badge}
                   </span>
                 ) : null}

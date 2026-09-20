@@ -32,11 +32,18 @@ export const StaffRosterManager: React.FC = () => {
     if (user) {
       // Pre-fill department, role category, contact details
       let roleCat: StaffRoleCategory = "DOCTOR";
-      if (user.roleCategory === "DOCTOR") roleCat = "DOCTOR";
-      else if (user.roleCategory === "NURSE") roleCat = "NURSE";
-      else if (user.roleCategory === "PHARMACIST") roleCat = "PHARMACIST";
-      else if (user.roleCategory === "LAB_TECH") roleCat = "LAB_TECH";
-      else if (user.roleCategory === "RECEPTIONIST") roleCat = "RECEPTIONIST";
+      const cat = (user.roleCategory || "").toUpperCase();
+      const roleNameUpper = (user.roleName || "").toUpperCase();
+      const roleIdUpper = (user.roleId || "").toUpperCase();
+
+      if (cat === "DOCTOR" || roleNameUpper.includes("DOCTOR") || roleIdUpper.includes("DOC")) roleCat = "DOCTOR";
+      else if (cat === "NURSE" || roleNameUpper.includes("NURSE") || roleIdUpper.includes("NUR")) roleCat = "NURSE";
+      else if (cat === "PHARMACIST" || roleNameUpper.includes("PHARM") || roleIdUpper.includes("PHARM")) roleCat = "PHARMACIST";
+      else if (cat === "LAB_TECH" || roleNameUpper.includes("LAB") || roleIdUpper.includes("LAB")) roleCat = "LAB_TECH";
+      else if (cat === "RECEPTIONIST" || roleNameUpper.includes("RECEPT") || roleIdUpper.includes("REC")) roleCat = "RECEPTIONIST";
+      else if (cat === "FINANCE" || roleNameUpper.includes("BILLER") || roleNameUpper.includes("FINANCE") || roleIdUpper.includes("BIL")) roleCat = "FINANCE";
+      else if (cat === "ADMINISTRATIVE" || roleNameUpper.includes("ADMIN") || roleIdUpper.includes("ADM")) roleCat = "ADMINISTRATIVE";
+      else if (cat === "ALLIED_HEALTH") roleCat = "ALLIED_HEALTH";
 
       form.setFieldsValue({
         departmentId: user.departmentId,
@@ -269,9 +276,12 @@ export const StaffRosterManager: React.FC = () => {
               { value: "NURSE", label: "Nursing Staff" },
               { value: "PHARMACIST", label: "Pharmacists" },
               { value: "LAB_TECH", label: "Lab Technicians" },
-              { value: "RECEPTIONIST", label: "Front Desk & Billing" },
+              { value: "RECEPTIONIST", label: "Front Desk & Reception" },
+              { value: "FINANCE", label: "Billing & Finance" },
+              { value: "ADMINISTRATIVE", label: "Hospital Admin & Ops" },
+              { value: "ALLIED_HEALTH", label: "Allied Health" },
             ]}
-            className="w-48"
+            className="w-56"
           />
         </div>
 
@@ -343,6 +353,9 @@ export const StaffRosterManager: React.FC = () => {
                 <Select.Option value="PHARMACIST">Pharmacist</Select.Option>
                 <Select.Option value="LAB_TECH">Lab Technician</Select.Option>
                 <Select.Option value="RECEPTIONIST">Receptionist</Select.Option>
+                <Select.Option value="FINANCE">Billing & Finance</Select.Option>
+                <Select.Option value="ADMINISTRATIVE">Hospital Admin & Ops</Select.Option>
+                <Select.Option value="ALLIED_HEALTH">Allied Health</Select.Option>
               </Select>
             </Form.Item>
 

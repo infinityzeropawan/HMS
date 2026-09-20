@@ -1,15 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Select, Switch, Input, Radio, message, Tooltip } from "antd";
 import { Printer, FileText, CheckCircle2, Eye, Layout, ShieldCheck, Download, RefreshCw } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { useAdminSettingsStore } from "../../_admin_stores/admin_settings_store";
+import { PlatformAuditService } from "@/app/(super-admin)/_super_admin_services/platform_audit_service";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+import { useBrandingStore } from "@/app/(super-admin)/_super_admin_stores/branding_store";
 
 type TemplateType = "OPD_PRESCRIPTION" | "DISCHARGE_SUMMARY" | "TAX_INVOICE" | "LAB_REPORT" | "ABHA_CONSENT";
 
 export const PrintTemplateStudio: React.FC = () => {
   const hospitalSettings = useAdminSettingsStore();
+  const user = useAuthUserStore((s) => s.user);
+  const sessionTenantId = user?.tenantId || "TNT-9014";
+  const tenantBranding = useBrandingStore((s) => s.brandingByTenant[sessionTenantId]);
 
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateType>("OPD_PRESCRIPTION");
   const [logoPosition, setLogoPosition] = useState<"LEFT" | "CENTER" | "RIGHT">("LEFT");
@@ -21,8 +27,46 @@ export const PrintTemplateStudio: React.FC = () => {
     "This is a computer-generated medical record under IT Act 2000. Valid without physical signature when digitally verified."
   );
 
+  useEffect(() => {
+    const saved = hospitalSettings.printTemplateConfigs?.[selectedTemplate];
+    if (saved) {
+      setLogoPosition(saved.logoPosition);
+      setShowWatermark(saved.showWatermark);
+      setShowDoctorRegNo(saved.showDoctorRegNo);
+      setShowGstinOnInvoice(saved.showGstinOnInvoice);
+      setPageSize(saved.pageSize);
+      setDisclaimerFooter(saved.disclaimerFooter);
+    }
+  }, [selectedTemplate, hospitalSettings.printTemplateConfigs]);
+
   const handleSaveTemplate = () => {
-    message.success(`Print template layout for ${selectedTemplate} saved successfully!`);
+    const currentConfigs = hospitalSettings.printTemplateConfigs || {};
+    const updatedConfigs = {
+      ...currentConfigs,
+      [selectedTemplate]: {
+        logoPosition,
+        showWatermark,
+        showDoctorRegNo,
+        showGstinOnInvoice,
+        pageSize,
+        disclaimerFooter,
+      },
+    };
+
+    hospitalSettings.updateSettings({ printTemplateConfigs: updatedConfigs });
+
+    PlatformAuditService.recordAuditEvent({
+      actor: user?.username || "Hospital Admin",
+      actorRole: user?.role || "HOSPITAL_ADMIN",
+      action: `Saved Print Template Layout for ${selectedTemplate}`,
+      category: "BRANDING_CHANGE",
+      entity: `Template Studio (${selectedTemplate})`,
+      ipAddress: "192.168.1.105",
+      riskLevel: "INFO",
+      details: JSON.stringify({ template: selectedTemplate, logoPosition, pageSize }),
+    });
+
+    message.success(`Print template layout for ${selectedTemplate} persisted successfully!`);
   };
 
   return (

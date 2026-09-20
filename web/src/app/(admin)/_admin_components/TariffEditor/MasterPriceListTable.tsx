@@ -53,10 +53,20 @@ const CATEGORY_OPTIONS: { label: string; value: TariffCategory | "ALL" }[] = [
   { label: "Insurance Package", value: "INSURANCE_PACKAGE" },
 ];
 
-export const MasterPriceListTable: React.FC = () => {
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+
+export interface MasterPriceListTableProps {
+  externalCreateModalOpen?: boolean;
+  onResetExternalCreateModal?: () => void;
+}
+
+export const MasterPriceListTable: React.FC<MasterPriceListTableProps> = ({
+  externalCreateModalOpen,
+  onResetExternalCreateModal,
+}) => {
   const tariffs = useTariffStore((state) => state.tariffs);
-  const [selectedCategory, setSelectedCategory] = useState<TariffCategory | "ALL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<TariffCategory | "ALL">("ALL");
 
   // Modals state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -68,12 +78,21 @@ export const MasterPriceListTable: React.FC = () => {
   const [editForm] = Form.useForm();
   const [addForm] = Form.useForm();
 
+  React.useEffect(() => {
+    if (externalCreateModalOpen) {
+      addForm.resetFields();
+      setIsAddModalOpen(true);
+      onResetExternalCreateModal?.();
+    }
+  }, [externalCreateModalOpen]);
+
   // Validation report state
   const [validationReport, setValidationReport] = useState<TariffValidationResult | null>(null);
 
-  // Actor state for role permission verification simulation
-  const [currentActorRole, setCurrentActorRole] = useState("HOSPITAL_ADMIN");
-  const [currentActorName, setCurrentActorName] = useState("Dr. Rajesh Sharma (Admin)");
+  // Authenticated actor session
+  const user = useAuthUserStore((s) => s.user);
+  const currentActorRole = user?.role || "HOSPITAL_ADMIN";
+  const currentActorName = user?.username || "Dr. Rajesh Sharma (Admin)";
 
   // Filtered dataset
   const filteredTariffs = tariffs.filter((t) => {
@@ -331,25 +350,9 @@ export const MasterPriceListTable: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-          <Select
-            value={currentActorRole}
-            onChange={(r) => {
-              setCurrentActorRole(r);
-              setCurrentActorName(
-                r === "HOSPITAL_ADMIN"
-                  ? "Dr. Rajesh Sharma (Admin)"
-                  : r === "FINANCE"
-                  ? "Suresh Patel (Finance Lead)"
-                  : "Unauthorized Nurse User"
-              );
-            }}
-            options={[
-              { label: "Role: Hospital Admin", value: "HOSPITAL_ADMIN" },
-              { label: "Role: Finance Officer", value: "FINANCE" },
-              { label: "Role: Staff Nurse (Restricted)", value: "NURSE" },
-            ]}
-            className="w-full sm:w-48 text-xs"
-          />
+          <Tag color="purple" className="!px-3 !py-1 text-xs font-semibold">
+            Actor Role: {currentActorRole}
+          </Tag>
 
           <HmsButton
             size="sm"

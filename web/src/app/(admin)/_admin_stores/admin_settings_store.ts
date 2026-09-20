@@ -81,6 +81,19 @@ export interface HospitalSettingsState {
   whatsAppBusinessToken: string;
   pacsDicomServerUrl: string;
 
+  // Print Template Configurations
+  printTemplateConfigs?: Record<
+    string,
+    {
+      logoPosition: "LEFT" | "CENTER" | "RIGHT";
+      showWatermark: boolean;
+      showDoctorRegNo: boolean;
+      showGstinOnInvoice: boolean;
+      pageSize: "A4" | "LETTER" | "THERMAL_80MM";
+      disclaimerFooter: string;
+    }
+  >;
+
   // Actions
   updateSettings: (updates: Partial<HospitalSettingsState>) => void;
   resetToDefaults: () => void;

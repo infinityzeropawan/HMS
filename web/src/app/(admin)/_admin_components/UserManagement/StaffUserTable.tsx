@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Table, Tag, Switch, Modal, Form, Input, Select, Drawer, Progress, message, Tooltip, Alert } from "antd";
 import {
   Users,
@@ -31,12 +31,29 @@ import { DepartmentService } from "../../_admin_services/department_service";
 import { StaffUser, StaffUserStatus, StaffRoleCategory, UserDeleteSafetyResult } from "../../_admin_types/staff_user_types";
 import { PlatformAuditService } from "@/app/(super-admin)/_super_admin_services/platform_audit_service";
 import { useRbacControlStore } from "@/app/(super-admin)/_super_admin_stores/rbac_control_store";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 
-export const StaffUserTable: React.FC = () => {
+export interface StaffUserTableProps {
+  externalCreateModalOpen?: boolean;
+  onResetExternalCreateModal?: () => void;
+}
+
+export const StaffUserTable: React.FC<StaffUserTableProps> = ({
+  externalCreateModalOpen,
+  onResetExternalCreateModal,
+}) => {
   const users = useStaffUserStore((state) => state.users);
-  const rbacRoles = useRbacControlStore((state) => state.getRolesForTenant("TNT-9014"));
+  const sessionTenantId = useAuthUserStore((s) => s.user?.tenantId) || "TNT-9014";
   const globalTemplates = useRbacControlStore((state) => state.globalTemplates);
-  const allRoles = [...globalTemplates, ...(rbacRoles || [])];
+  const tenantCustomRolesMap = useRbacControlStore((state) => state.tenantCustomRoles);
+
+  const allRoles = useMemo(() => {
+    const custom = tenantCustomRolesMap[sessionTenantId] || [];
+    const roleMap = new Map<string, (typeof globalTemplates)[number]>();
+    globalTemplates.forEach((r) => roleMap.set(r.id, r));
+    custom.forEach((r) => roleMap.set(r.id, r));
+    return Array.from(roleMap.values());
+  }, [globalTemplates, tenantCustomRolesMap, sessionTenantId]);
 
   const departments = DepartmentService.getDepartments();
   const licenseUsage = StaffUserService.getLicenseUsage();
@@ -56,6 +73,13 @@ export const StaffUserTable: React.FC = () => {
   const [safetyCheckResult, setSafetyCheckResult] = useState<UserDeleteSafetyResult | null>(null);
 
   const [form] = Form.useForm();
+
+  React.useEffect(() => {
+    if (externalCreateModalOpen) {
+      handleOpenAdd();
+      onResetExternalCreateModal?.();
+    }
+  }, [externalCreateModalOpen]);
 
   const handleOpenAdd = () => {
     setEditingUser(null);

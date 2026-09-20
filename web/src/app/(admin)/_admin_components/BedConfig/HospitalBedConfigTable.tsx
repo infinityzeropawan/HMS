@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import { EditOutlined, PlusOutlined, ToolOutlined, CheckCircleOutlined, SyncOutlined } from "@ant-design/icons";
-import { Button, Space, Table, Tag, Typography, Select, Modal, Form, Input, InputNumber, message, Tooltip } from "antd";
+import React, { useState, useMemo } from "react";
+import { Table, Tag, Typography, Select, Modal, Form, Input, message, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import { PlusOutlined, SyncOutlined } from "@ant-design/icons";
+import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { useBedStore } from "../../_admin_stores/admin_bed_store";
 import { BedService } from "../../_admin_services/bed_service";
+import { TariffService } from "../../_admin_services/tariff_service";
 import { DepartmentService } from "../../_admin_services/department_service";
 import { HospitalBed, BedStatus, BedCategory } from "../../_admin_types/bed_types";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 
 const STATUS_COLORS: Record<BedStatus, string> = {
   VACANT: "success",
@@ -19,11 +22,19 @@ const STATUS_COLORS: Record<BedStatus, string> = {
 };
 
 export function HospitalBedConfigTable() {
-  const beds = useBedStore((state) => state.beds);
+  const rawBeds = useBedStore((state) => state.beds);
   const resetToDefaults = useBedStore((state) => state.resetToDefaults);
   const departments = DepartmentService.getDepartments();
 
+  const user = useAuthUserStore((s) => s.user);
+  const actorName = user?.username || "Hospital Admin";
+  const actorRole = user?.role || "HOSPITAL_ADMIN";
+
+  // Re-resolve rates dynamically through BedService (single source of truth)
+  const beds = useMemo(() => BedService.getBeds(), [rawBeds]);
+
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<BedCategory>("GENERAL");
   const [form] = Form.useForm();
 
   const available = beds.filter((d) => d.status === "VACANT" || d.status === "RESERVED").length;
@@ -31,12 +42,14 @@ export function HospitalBedConfigTable() {
   const cleaning = beds.filter((d) => d.status === "CLEANING").length;
   const maintenance = beds.filter((d) => d.status === "MAINTENANCE" || d.status === "BLOCKED").length;
 
+  const derivedRate = useMemo(() => TariffService.resolveBedRate(selectedCategory), [selectedCategory]);
+
   const handleStatusChange = (bedId: string, newStatus: BedStatus) => {
     try {
       if (newStatus === "VACANT" && beds.find((b) => b.id === bedId)?.status === "CLEANING") {
-        BedService.completeCleaning(bedId, "Admin Bed Config");
+        BedService.completeCleaning(bedId, actorName);
       } else {
-        BedService.setMaintenanceStatus(bedId, newStatus as "MAINTENANCE" | "BLOCKED" | "VACANT", undefined, "Admin Bed Config");
+        BedService.setMaintenanceStatus(bedId, newStatus as "MAINTENANCE" | "BLOCKED" | "VACANT", undefined, actorName);
       }
       message.success(`Updated bed status to ${newStatus}`);
     } catch (err: unknown) {
@@ -52,26 +65,34 @@ export function HospitalBedConfigTable() {
       name: "Cardiology",
     };
 
-    const newBed: Omit<HospitalBed, "id"> = {
-      bedNumber: values.bedNumber as string,
-      roomId: (values.roomId as string) || `rm-${Date.now().toString().slice(-4)}`,
-      roomNumber: (values.roomNumber as string) || "Room 101",
-      wardId: (values.wardId as string) || "ward-101",
-      wardName: (values.wardName as string) || "General Ward A",
-      departmentId: dept.id,
-      departmentCode: dept.code,
-      departmentName: dept.name,
-      floor: (values.floor as string) || "1st Floor",
-      category: (values.category as BedCategory) || "GENERAL",
-      status: "VACANT",
-      dailyRate: Number(values.dailyRate) || 2500,
-      billingCode: `SRV-BED-${(values.category as string || "GEN")}`,
-    };
+    const category = (values.category as BedCategory) || "GENERAL";
 
-    useBedStore.getState().addBed(newBed);
-    message.success(`Added new bed ${newBed.bedNumber} (${newBed.wardName})`);
-    setModalOpen(false);
-    form.resetFields();
+    const res = BedService.registerBed(
+      {
+        bedNumber: values.bedNumber as string,
+        roomId: (values.roomId as string) || `rm-${Date.now().toString().slice(-4)}`,
+        roomNumber: (values.roomNumber as string) || "Room 101",
+        wardId: (values.wardId as string) || "ward-101",
+        wardName: (values.wardName as string) || "General Ward A",
+        departmentId: dept.id,
+        departmentCode: dept.code,
+        departmentName: dept.name,
+        floor: (values.floor as string) || "1st Floor",
+        category,
+        status: "VACANT",
+        billingCode: `SRV-BED-${category}`,
+      },
+      actorName,
+      actorRole
+    );
+
+    if (res.success) {
+      message.success(res.message);
+      setModalOpen(false);
+      form.resetFields();
+    } else {
+      message.error("Failed to register bed");
+    }
   };
 
   const columns: ColumnsType<HospitalBed> = [
@@ -102,78 +123,62 @@ export function HospitalBedConfigTable() {
       title: "Category",
       dataIndex: "category",
       key: "category",
-      render: (v) => <Tag color="blue" className="font-bold text-3xs">{v}</Tag>,
+      render: (c) => <Tag color="blue">{c}</Tag>,
     },
     {
-      title: "Bed Status",
-      dataIndex: "status",
+      title: "Tariff Daily Rate",
+      dataIndex: "dailyRate",
+      key: "dailyRate",
+      render: (v) => <span className="font-mono font-bold text-slate-800">₹{v?.toLocaleString("en-IN")}/day</span>,
+    },
+    {
+      title: "Status & Management",
       key: "status",
-      render: (v: BedStatus, rec: HospitalBed) => (
+      render: (_, rec) => (
         <Select
-          value={v}
-          onChange={(val) => handleStatusChange(rec.id, val)}
           size="small"
-          className="w-32 font-bold"
+          value={rec.status}
+          onChange={(val) => handleStatusChange(rec.id, val as BedStatus)}
+          className="w-36 text-xs"
         >
           <Select.Option value="VACANT">VACANT</Select.Option>
-          <Select.Option value="OCCUPIED">OCCUPIED</Select.Option>
+          <Select.Option value="OCCUPIED" disabled>OCCUPIED ({rec.currentPatientName || "Patient"})</Select.Option>
           <Select.Option value="CLEANING">CLEANING</Select.Option>
           <Select.Option value="MAINTENANCE">MAINTENANCE</Select.Option>
-          <Select.Option value="RESERVED">RESERVED</Select.Option>
           <Select.Option value="BLOCKED">BLOCKED</Select.Option>
         </Select>
       ),
     },
-    {
-      title: "Current Occupant",
-      key: "occupant",
-      render: (_, rec) =>
-        rec.currentPatientName ? (
-          <div>
-            <div className="font-bold text-xs text-slate-900">{rec.currentPatientName}</div>
-            <div className="text-3xs font-mono text-slate-500">{rec.currentUhid} | {rec.currentIpdNo}</div>
-          </div>
-        ) : (
-          <span className="text-xs text-slate-400 italic">Unoccupied</span>
-        ),
-    },
-    {
-      title: "Daily Rate (₹)",
-      dataIndex: "dailyRate",
-      key: "dailyRate",
-      render: (v: number) => `₹${v.toLocaleString("en-IN")}`,
-      sorter: (a, b) => a.dailyRate - b.dailyRate,
-    },
   ];
 
   return (
-    <Space direction="vertical" size={16} style={{ width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-        <Space wrap>
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+        <div className="flex flex-wrap items-center gap-2">
           <Tag color="success">{available} Available / Vacant</Tag>
           <Tag color="error">{occupied} Occupied</Tag>
           <Tag color="warning">{cleaning} Cleaning</Tag>
           <Tag>{maintenance} Maintenance / Blocked</Tag>
-        </Space>
+        </div>
 
-        <Space>
+        <div className="flex items-center gap-2">
           <Tooltip title="Reset beds to standard defaults">
-            <Button size="small" icon={<SyncOutlined />} onClick={resetToDefaults}>
+            <HmsButton size="sm" variant="secondary" icon={<SyncOutlined />} onClick={resetToDefaults}>
               Reset Defaults
-            </Button>
+            </HmsButton>
           </Tooltip>
-          <Button
-            id="add-bed-btn"
-            type="primary"
+          <HmsButton
+            size="sm"
+            variant="emerald"
             icon={<PlusOutlined />}
             onClick={() => setModalOpen(true)}
           >
             Add Bed
-          </Button>
-        </Space>
+          </HmsButton>
+        </div>
       </div>
 
-      <div className="w-full overflow-x-auto">
+      <div className="w-full overflow-x-auto bg-white rounded-xl border border-slate-200">
         <Table<HospitalBed>
           id="hospital-bed-config-table"
           rowKey="id"
@@ -224,7 +229,10 @@ export function HospitalBedConfigTable() {
             </Form.Item>
 
             <Form.Item label="Bed Category" name="category" initialValue="GENERAL">
-              <Select size="large">
+              <Select
+                size="large"
+                onChange={(cat) => setSelectedCategory(cat as BedCategory)}
+              >
                 <Select.Option value="GENERAL">General Ward</Select.Option>
                 <Select.Option value="SEMI_PRIVATE">Semi-Private</Select.Option>
                 <Select.Option value="PRIVATE">Private Suite</Select.Option>
@@ -238,16 +246,18 @@ export function HospitalBedConfigTable() {
             </Form.Item>
           </div>
 
-          <Form.Item label="Daily Bed Tariff Rate (₹)" name="dailyRate" initialValue={2500}>
-            <InputNumber className="w-full" size="large" min={0} max={500000} />
-          </Form.Item>
+          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs mb-4">
+            <span className="font-semibold text-slate-700">Resolved Tariff Rate: </span>
+            <span className="font-mono font-bold text-teal-700">₹{derivedRate?.toLocaleString("en-IN")}/day</span>
+            <span className="text-slate-500 block text-[11px] mt-0.5">Automated single-source resolution from Tariff Price Master for &apos;{selectedCategory}&apos;.</span>
+          </div>
 
           <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2 border-t border-slate-100">
-            <Button onClick={() => setModalOpen(false)} className="w-full sm:w-auto">Cancel</Button>
-            <Button type="primary" htmlType="submit" className="w-full sm:w-auto">Add Bed</Button>
+            <HmsButton variant="secondary" onClick={() => setModalOpen(false)}>Cancel</HmsButton>
+            <HmsButton variant="emerald" htmlType="submit">Add Bed</HmsButton>
           </div>
         </Form>
       </Modal>
-    </Space>
+    </div>
   );
 }

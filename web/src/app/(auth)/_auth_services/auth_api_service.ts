@@ -79,10 +79,14 @@ export const authApiService = {
     }
 
     if (usernameLower === "mfauser") {
+      const submittedTenantId = (input.tenantId || "").trim().toUpperCase();
+      if (!submittedTenantId || !VALID_DEMO_TENANT_IDS.has(submittedTenantId)) {
+        throw new Error(`Invalid Hospital / Tenant ID "${input.tenantId}". Please enter a valid registered Tenant ID (e.g., TENANT-001, TNT-9014).`);
+      }
       const rawData = {
         success: true,
         mfaRequired: true,
-        mfaSessionToken: "session-mfa-doctor-789",
+        mfaSessionToken: `session-mfa-doctor-789:${submittedTenantId}`,
       };
       return AuthApiResponseSchema.parse(rawData);
     }
@@ -96,12 +100,14 @@ export const authApiService = {
     // Explicitly prevent unauthenticated privilege escalation via MFA to SUPER_ADMIN
     const token = input.mfaSessionToken || "";
     const isNurseToken = token.includes("nurse");
+    const parts = token.split(":");
+    const tenantId = parts[1] || (token ? "TENANT-001" : "TENANT-DEFAULT");
 
     return {
       userId: isNurseToken ? "NUR-301" : "DOC-101",
       username: isNurseToken ? "Priya Nair" : "Dr. Rajesh Sharma",
       role: isNurseToken ? "NURSE" : "DOCTOR",
-      tenantId: token ? "TENANT-001" : "TENANT-DEFAULT",
+      tenantId: tenantId,
       hospitalName: "Apollo Super Speciality Hospital",
       token: "jwt-mock-verified-token",
     };

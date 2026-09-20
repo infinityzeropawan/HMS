@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
@@ -14,18 +14,27 @@ import {
   Printer,
   Calendar,
   Award,
-  Bell,
-  SlidersHorizontal,
   Plus,
   ArrowRight,
   TrendingUp,
-  Activity,
   CheckCircle2,
+  SlidersHorizontal,
 } from "lucide-react";
 import { StaffUserTable } from "../_admin_components/UserManagement/StaffUserTable";
 import { DpdpAuditLogTable } from "../_admin_components/AuditLogs/DpdpAuditLogTable";
+import { StaffUserService } from "../_admin_services/staff_user_service";
+import { BedService } from "../_admin_services/bed_service";
+import { useBedStore } from "../_admin_stores/admin_bed_store";
 
 export default function HospitalAdminMainDashboard() {
+  const licenseUsage = StaffUserService.getLicenseUsage();
+  const rawBeds = useBedStore((s) => s.beds);
+  const beds = useMemo(() => BedService.getBeds(), [rawBeds]);
+
+  const totalBeds = beds.length;
+  const occupiedBeds = beds.filter((b) => b.status === "OCCUPIED").length;
+  const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+
   return (
     <HmsAppShell title="Hospital Admin Console">
       <div className="max-w-7xl mx-auto space-y-6 pb-8">
@@ -36,9 +45,9 @@ export default function HospitalAdminMainDashboard() {
               <div className="inline-flex items-center gap-2 bg-teal-500/20 text-teal-300 border border-teal-500/30 px-3 py-1 rounded-full text-xs font-semibold">
                 <Building2 className="w-3.5 h-3.5" /> Hospital Operations Control Center
               </div>
-              <h1 className="text-xl sm:text-3xl font-black text-white tracking-tight">
+              <h2 className="text-xl sm:text-3xl font-black text-white tracking-tight">
                 Hospital Administration Dashboard
-              </h1>
+              </h2>
               <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
                 Configure facility departments, staff user RBAC, bed quotas, master service tariffs, print templates, and ABDM DPDP audit logs.
               </p>
@@ -65,9 +74,11 @@ export default function HospitalAdminMainDashboard() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Active Staff Licenses</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-teal-800 mt-1">237 / 315</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-teal-800 mt-1">
+                  {licenseUsage.activeUsers} / {licenseUsage.licensedSeats}
+                </h3>
                 <p className="text-3xs text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" /> 12 Doctors On Duty
+                  <TrendingUp className="w-3 h-3" /> {licenseUsage.availableSeats} Available Seats
                 </p>
               </div>
               <Users className="w-8 h-8 text-teal-500 shrink-0" />
@@ -78,8 +89,10 @@ export default function HospitalAdminMainDashboard() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Bed Occupancy Rate</p>
-                <h3 className="text-xl sm:text-2xl font-bold text-purple-800 mt-1">78.4%</h3>
-                <p className="text-3xs text-slate-500 mt-0.5">148 Occupied / 185 Total Beds</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-purple-800 mt-1">{occupancyRate}%</h3>
+                <p className="text-3xs text-slate-500 mt-0.5">
+                  {occupiedBeds} Occupied / {totalBeds} Total Beds
+                </p>
               </div>
               <BedDouble className="w-8 h-8 text-purple-500 shrink-0" />
             </div>
@@ -124,7 +137,7 @@ export default function HospitalAdminMainDashboard() {
               <div className="p-2.5 sm:p-3 bg-teal-100 text-teal-700 rounded-xl group-hover:scale-105 transition-transform">
                 <Users className="w-5 h-5" />
               </div>
-              <span className="text-xs font-bold text-slate-800">Staff & RBAC</span>
+              <span className="text-xs font-bold text-slate-800">Staff &amp; RBAC</span>
               <span className="text-3xs text-slate-400">Manage Credentials</span>
             </Link>
 
@@ -146,7 +159,7 @@ export default function HospitalAdminMainDashboard() {
               <div className="p-2.5 sm:p-3 bg-purple-100 text-purple-700 rounded-xl group-hover:scale-105 transition-transform">
                 <BedDouble className="w-5 h-5" />
               </div>
-              <span className="text-xs font-bold text-slate-800">Beds & Wards</span>
+              <span className="text-xs font-bold text-slate-800">Beds &amp; Wards</span>
               <span className="text-3xs text-slate-400">Bed Quota Layout</span>
             </Link>
 
@@ -158,7 +171,7 @@ export default function HospitalAdminMainDashboard() {
                 <DollarSign className="w-5 h-5" />
               </div>
               <span className="text-xs font-bold text-slate-800">Tariff Master</span>
-              <span className="text-3xs text-slate-400">Price List & GST</span>
+              <span className="text-3xs text-slate-400">Price List &amp; GST</span>
             </Link>
 
             <Link
@@ -180,7 +193,7 @@ export default function HospitalAdminMainDashboard() {
                 <Printer className="w-5 h-5" />
               </div>
               <span className="text-xs font-bold text-slate-800">Print Studio</span>
-              <span className="text-3xs text-slate-400">Prescriptions & Bills</span>
+              <span className="text-3xs text-slate-400">Prescriptions &amp; Bills</span>
             </Link>
           </div>
         </div>
@@ -190,7 +203,7 @@ export default function HospitalAdminMainDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Users className="w-5 h-5 text-teal-600" /> Active Staff Credentials & RBAC Access
+                <Users className="w-5 h-5 text-teal-600" /> Active Staff Credentials &amp; RBAC Access
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">Role permissions for Doctors, Nurses, Pharmacists, and Billers.</p>
             </div>
@@ -211,9 +224,9 @@ export default function HospitalAdminMainDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-teal-600" /> DPDP Act & ABDM Data Access Audit Trail
+                <ShieldCheck className="w-5 h-5 text-teal-600" /> DPDP Act &amp; ABDM Data Access Audit Trail
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">Immutable clinical record access & system action logs.</p>
+              <p className="text-xs text-slate-500 mt-0.5">Immutable clinical record access &amp; system action logs.</p>
             </div>
             <Link href="/audit-logs" className="w-full sm:w-auto">
               <HmsButton size="sm" variant="secondary" fullWidth icon={<ArrowRight className="w-3.5 h-3.5" />} className="min-h-[44px] sm:min-h-0">

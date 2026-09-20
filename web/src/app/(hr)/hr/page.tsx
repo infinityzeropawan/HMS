@@ -121,7 +121,7 @@ export default function HrMainDashboard() {
             </Link>
 
             <Link
-              href="/hr/roster"
+              href="/roster"
               className="p-5 rounded-2xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 transition-all duration-200 group flex items-start gap-4"
             >
               <div className="p-3 bg-teal-100 text-teal-700 rounded-xl group-hover:scale-105 transition-transform shrink-0">
@@ -157,7 +157,7 @@ export default function HrMainDashboard() {
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">Doctor and nursing shift schedules.</p>
             </div>
-            <Link href="/hr/roster">
+            <Link href="/roster">
               <HmsButton size="sm" variant="secondary" icon={<ArrowRight className="w-3.5 h-3.5" />}>
                 Full Duty Roster
               </HmsButton>

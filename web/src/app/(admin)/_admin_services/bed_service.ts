@@ -42,6 +42,43 @@ export class BedService {
   }
 
   /**
+   * Registers a new physical hospital bed, resolves daily rate from Tariff Master,
+   * updates store and emits audit log.
+   */
+  public static registerBed(
+    bed: Omit<HospitalBed, "id" | "dailyRate">,
+    actorName: string = "Hospital Admin",
+    actorRole: string = "HOSPITAL_ADMIN"
+  ): { success: boolean; message: string; bed?: HospitalBed } {
+    const rate = TariffService.resolveBedRate(bed.category);
+    const newId = `bed-${Math.floor(100 + Math.random() * 900)}`;
+    const fullBed: HospitalBed = {
+      ...bed,
+      id: newId,
+      dailyRate: rate,
+    };
+
+    useBedStore.getState().addBed(fullBed);
+
+    PlatformAuditService.recordAuditEvent({
+      actor: actorName,
+      actorRole,
+      action: `Registered new physical bed ${fullBed.bedNumber} in ${fullBed.wardName}`,
+      category: "GOVERNANCE_EVENT",
+      entity: `${fullBed.wardName} (${fullBed.bedNumber})`,
+      ipAddress: "192.168.1.105",
+      riskLevel: "INFO",
+      details: JSON.stringify({ bedId: newId, category: fullBed.category, dailyRate: rate }),
+    });
+
+    return {
+      success: true,
+      message: `Bed ${fullBed.bedNumber} registered successfully with tariff rate ₹${rate}/day.`,
+      bed: fullBed,
+    };
+  }
+
+  /**
    * Retrieves all available beds suitable for admission (VACANT or RESERVED).
    */
   public static getAvailableBeds(): HospitalBed[] {

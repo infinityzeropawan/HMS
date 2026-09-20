@@ -57,13 +57,26 @@ export default function DepartmentDetailPage({ params }: { params: Promise<{ dep
     (l) => l.entity.includes(department.name) || l.entity.includes(department.id) || l.entity.includes(department.code)
   );
 
-  const rosters = useAdminRosterStore
-    .getState()
-    .rosters.filter((r) => r.department.toLowerCase().includes(department.name.toLowerCase()) || r.department.toLowerCase().includes(department.code.toLowerCase()));
+  const allRosters = useAdminRosterStore((s) => s.rosters);
+  const allAttendanceLogs = useHrStore((s) => s.attendanceLogs);
 
-  const attendance = useHrStore
-    .getState()
-    .attendanceLogs.filter((a) => a.department.toLowerCase().includes(department.name.toLowerCase()) || a.department.toLowerCase().includes(department.code.toLowerCase()));
+  const rosters = React.useMemo(() => {
+    if (!department) return [];
+    return allRosters.filter(
+      (r) =>
+        r.department.toLowerCase().includes(department.name.toLowerCase()) ||
+        r.department.toLowerCase().includes(department.code.toLowerCase())
+    );
+  }, [allRosters, department]);
+
+  const attendance = React.useMemo(() => {
+    if (!department) return [];
+    return allAttendanceLogs.filter(
+      (a) =>
+        a.department.toLowerCase().includes(department.name.toLowerCase()) ||
+        a.department.toLowerCase().includes(department.code.toLowerCase())
+    );
+  }, [allAttendanceLogs, department]);
 
   const bedOccupancyPercent = department.bedCapacity?.operationalBeds
     ? Math.round(((department.bedCapacity.occupiedBeds || 0) / department.bedCapacity.operationalBeds) * 100)
@@ -83,7 +96,7 @@ export default function DepartmentDetailPage({ params }: { params: Promise<{ dep
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Departments
             </Link>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">{department.name}</h1>
+              <h2 className="text-2xl font-bold text-slate-900">{department.name}</h2>
               <span className="font-mono text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
                 {department.code}
               </span>

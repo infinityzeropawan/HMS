@@ -1,35 +1,140 @@
 "use client";
 
-import React from "react";
-import { Table, Tag } from "antd";
-import { Lock } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Table, Tag, Input, Select } from "antd";
+import { Lock, Search, ShieldCheck } from "lucide-react";
+import { PlatformAuditService, PlatformAuditEvent } from "@/app/(super-admin)/_super_admin_services/platform_audit_service";
 
 export const DpdpAuditLogTable: React.FC = () => {
-  const columns = [
-    { title: "Timestamp", dataIndex: "timestamp", key: "timestamp" },
-    { title: "Actor User", dataIndex: "actor", key: "actor" },
-    { title: "Role", dataIndex: "role", key: "role", render: (r: string) => <Tag color="purple">{r}</Tag> },
-    { title: "Event Type", dataIndex: "eventType", key: "eventType", render: (e: string) => <Tag color="teal">{e}</Tag> },
-    { title: "Resource UHID", dataIndex: "uhid", key: "uhid" },
-    { title: "Consent Artifact Hash", dataIndex: "consentHash", key: "consentHash" },
-  ];
+  const [logs, setLogs] = useState<PlatformAuditEvent[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
 
-  const data = [
-    { key: "1", timestamp: "2026-09-08 15:30:12", actor: "Dr. Rajesh Sharma", role: "DOCTOR", eventType: "EHR_ACCESS", uhid: "P-2026-1049", consentHash: "0x8f4a...92b1" },
-    { key: "2", timestamp: "2026-09-08 14:15:00", actor: "Sr. Kavita R.", role: "NURSE", eventType: "MAR_UPDATE", uhid: "P-2026-1049", consentHash: "0x3c2b...11a9" },
-    { key: "3", timestamp: "2026-09-08 10:45:22", actor: "Sunita Deshmukh", role: "RECEPTIONIST", eventType: "PATIENT_REGISTRATION", uhid: "P-2026-1052", consentHash: "0x91d4...84f0" },
+  useEffect(() => {
+    setLogs(PlatformAuditService.getAuditLogs());
+    return PlatformAuditService.subscribe(() => {
+      setLogs(PlatformAuditService.getAuditLogs());
+    });
+  }, []);
+
+  const filteredLogs = logs.filter((l) => {
+    const matchesCategory = categoryFilter === "ALL" || l.category === categoryFilter;
+    const term = searchTerm.toLowerCase().trim();
+    const matchesSearch =
+      !term ||
+      l.id.toLowerCase().includes(term) ||
+      l.actor.toLowerCase().includes(term) ||
+      l.action.toLowerCase().includes(term) ||
+      l.entity.toLowerCase().includes(term) ||
+      l.details.toLowerCase().includes(term);
+    return matchesCategory && matchesSearch;
+  });
+
+  const columns = [
+    {
+      title: "Audit ID & Time",
+      key: "id",
+      render: (r: PlatformAuditEvent) => (
+        <div>
+          <span className="font-mono font-bold text-teal-700 block">{r.id}</span>
+          <span className="text-[11px] text-slate-500">{r.timestamp}</span>
+        </div>
+      ),
+    },
+    {
+      title: "Actor & Role",
+      key: "actor",
+      render: (r: PlatformAuditEvent) => (
+        <div>
+          <span className="font-semibold text-slate-900 text-xs block">{r.actor}</span>
+          <Tag color="purple" className="text-[10px] mt-0.5">{r.actorRole}</Tag>
+        </div>
+      ),
+    },
+    {
+      title: "Action & Category",
+      key: "action",
+      render: (r: PlatformAuditEvent) => (
+        <div className="max-w-md">
+          <span className="font-semibold text-slate-800 text-xs block">{r.action}</span>
+          <Tag color="blue" className="text-[10px] mt-0.5">{r.category}</Tag>
+        </div>
+      ),
+    },
+    {
+      title: "Target Entity",
+      dataIndex: "entity",
+      key: "entity",
+      render: (e: string) => <span className="text-xs font-mono text-slate-700">{e}</span>,
+    },
+    {
+      title: "Risk Level",
+      dataIndex: "riskLevel",
+      key: "riskLevel",
+      render: (lvl: string) => (
+        <Tag color={lvl === "CRITICAL" ? "red" : lvl === "WARNING" ? "orange" : "green"}>
+          {lvl}
+        </Tag>
+      ),
+    },
+    {
+      title: "Details",
+      dataIndex: "details",
+      key: "details",
+      render: (d: string) => (
+        <span className="text-[11px] font-mono text-slate-500 max-w-xs truncate block" title={d}>
+          {d}
+        </span>
+      ),
+    },
   ];
 
   return (
-    <div className="space-y-3">
-      <div className="p-3 bg-slate-100 border border-slate-200 rounded text-xs text-slate-600 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 font-semibold text-slate-800">
-          <Lock className="w-4 h-4 text-emerald-600" /> DPDP & ABDM Compliance Immutable Audit Trail (Append-Only)
+    <div className="space-y-4">
+      <div className="p-3.5 bg-slate-900 text-white rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm">
+        <span className="flex items-center gap-2 font-semibold text-xs sm:text-sm text-teal-300">
+          <Lock className="w-4 h-4 text-emerald-400" /> DPDP & ABDM Compliance Immutable Audit Trail (Append-Only)
         </span>
-        <span className="font-mono text-[10px] text-slate-500">Hash-Chain Validated</span>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-teal-400" />
+          <span className="font-mono text-[11px] text-slate-300">Hash-Chain Validated Ledger</span>
+        </div>
       </div>
-      <div className="w-full overflow-x-auto">
-        <Table columns={columns} dataSource={data} pagination={false} size="small" scroll={{ x: "max-content" }} />
+
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+        <Input
+          prefix={<Search className="w-4 h-4 text-slate-400" />}
+          placeholder="Search Audit ID, Actor, Action or Entity..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full sm:w-80"
+          allowClear
+        />
+
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <span className="text-xs text-slate-500 font-semibold">Category:</span>
+          <Select value={categoryFilter} onChange={(v) => setCategoryFilter(v)} className="w-48">
+            <Select.Option value="ALL">All Audit Categories</Select.Option>
+            <Select.Option value="SUBSCRIPTION_LIFECYCLE">Subscription Lifecycle</Select.Option>
+            <Select.Option value="TENANT_ONBOARDING">Tenant Onboarding</Select.Option>
+            <Select.Option value="BREAK_GLASS_ACCESS">Break Glass Access</Select.Option>
+            <Select.Option value="ROLE_PERMISSION_CHANGE">Role Permission Change</Select.Option>
+            <Select.Option value="CONSENT_EVENT">Consent Event</Select.Option>
+            <Select.Option value="DPDP_REQUEST">DPDP Request</Select.Option>
+            <Select.Option value="GOVERNANCE_EVENT">Governance Event</Select.Option>
+          </Select>
+        </div>
+      </div>
+
+      <div className="w-full overflow-x-auto bg-white rounded-xl border border-slate-200">
+        <Table
+          columns={columns}
+          dataSource={filteredLogs}
+          rowKey="id"
+          pagination={{ pageSize: 8 }}
+          size="small"
+          scroll={{ x: "max-content" }}
+        />
       </div>
     </div>
   );

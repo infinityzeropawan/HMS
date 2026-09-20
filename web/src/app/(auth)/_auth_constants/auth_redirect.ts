@@ -11,8 +11,8 @@ const roleHomePaths: Record<UserRole, string> = {
   PHARMACIST: "/dispense",
   LAB: "/orders",
   LAB_TECH: "/orders",
-  ADMIN: "/users",
-  HOSPITAL_ADMIN: "/users",
+  ADMIN: "/admin",
+  HOSPITAL_ADMIN: "/admin",
   SUPER_ADMIN: "/tenants",
 };
 
