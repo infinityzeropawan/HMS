@@ -125,6 +125,15 @@ function priorityTag(priority: RemediationItem["priority"]) {
 // ─── SVG Sparkline ────────────────────────────────────────────────────────────
 function Sparkline({ values, color }: { values: number[]; color: string }) {
   const w = 120, h = 36, pad = 4;
+  if (values.length === 0) return null;
+  if (values.length === 1) {
+    const y = h / 2;
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
+        <circle cx={w / 2} cy={y} r={3} fill={color} />
+      </svg>
+    );
+  }
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
@@ -255,8 +264,8 @@ function OverviewSection({ report }: { report: ComplianceScoreReport }) {
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1">
           <span className="text-xs text-slate-500 font-medium block">Open Remediations</span>
-          <span className="text-2xl font-black text-slate-700">{report.remediations.length}</span>
-          <span className="text-[11px] text-slate-400">Action items in queue</span>
+          <span className="text-2xl font-black text-slate-700">{report.remediations.filter((r) => r.status === "Open").length}</span>
+          <span className="text-[11px] text-slate-400">Open action items in queue</span>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1">
           <span className="text-xs text-slate-500 font-medium block">Potential Score Lift</span>
@@ -546,6 +555,7 @@ function RemediationSection({ report }: { report: ComplianceScoreReport }) {
       <Table
         columns={columns}
         dataSource={report.remediations}
+        scroll={{ x: 980 }}
         rowKey="id"
         size="small"
         pagination={{ pageSize: 10, showSizeChanger: false }}
