@@ -81,6 +81,28 @@
 * **Root Cause:** Legacy short alias string mismatches.
 * **Change Made:** Normalized `FEATURE_ID_ALIAS_MAP` around canonical `FEATURE_CATALOG` IDs (`FEAT-CLIN-01` through `FEAT-PREM-02`). Retained legacy claim aliases (`FEAT-CLIN-OPD`, `FEAT-CLIN-IPD`, `FEAT-CLIN-PHARM`, `FEAT-BUS-BILLING`, etc.) pointing to correct catalog targets, and added identity mappings for all canonical IDs.
 * **Verification Performed:** Tested `UnifiedAuthEvaluator.evaluateAccess` for pharmacy claims (`FEAT-CLIN-PHARM` -> `FEAT-BIZ-03`), telemedicine claims (`FEAT-CLIN-TELEMEDICINE` -> `FEAT-CLIN-07`), and direct catalog IDs (`FEAT-PREM-01`). Verified feature restriction and plan inclusion checks resolve correctly.
+* **Remaining Limitation:** Semantic collision (`FEAT-BUS-ANALYTICS` and `FEAT-BUS-BILLING` both pointing to `FEAT-BIZ-01`) identified in review, fully resolved in Fix 3.3 below.
+
+### Fix 3.3: Corrective Feature Catalog Identity Mapping & Collision Elimination
+* **File:** [`web/src/app/(super-admin)/_super_admin_services/unified_auth_evaluator.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_services/unified_auth_evaluator.ts#L42-L78), [`web/src/app/(super-admin)/_super_admin_services/subscription_plan_service.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_services/subscription_plan_service.ts#L30-L76), & [`web/src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts)
+* **Exact Defect:** `FEATURE_ID_ALIAS_MAP` contained a semantic collision: `"FEAT-BUS-BILLING"` and `"FEAT-BUS-ANALYTICS"` both mapped to `"FEAT-BIZ-01"`. Therefore, Billing claims (`billing:invoice:create`) and Analytics claims (`admin:audit:view`) resolved to the same canonical feature ID (`FEAT-BIZ-01`).
+* **Root Cause:** Misassigned alias target for `FEAT-BUS-ANALYTICS` in `FEATURE_ID_ALIAS_MAP`.
+* **Change Made:**
+  1. Corrected `FEAT-BUS-ANALYTICS` in `FEATURE_ID_ALIAS_MAP` to map to canonical feature `"FEAT-BIZ-04"` ("Staff Duty Roster & HR Console / Analytics"), while keeping `"FEAT-BUS-BILLING"` mapped to `"FEAT-BIZ-01"` ("IPD & OPD Billing Engine"), ensuring Billing and Analytics resolve to distinct canonical IDs.
+  2. Updated `INITIAL_PLANS` in `subscription_plan_service.ts` so `includedFeatures`, `restrictedFeatures`, and `optionalAddons` include canonical feature IDs (`FEAT-CLIN-01` through `FEAT-PREM-02`).
+  3. Integrated `FeatureCatalogService.getFeatureById()` check in `UnifiedAuthEvaluator` to deny unknown features fail-closed (`featureState: "Disabled"`, `featureSource: "Restricted"`).
+  4. Added focused verification script `verify_feature_mapping.ts` asserting exact canonical mappings for Billing (`FEAT-BIZ-01`), Analytics (`FEAT-BIZ-04`), Pharmacy (`FEAT-BIZ-03`), Telemedicine (`FEAT-CLIN-07`), PACS (`FEAT-PREM-01`/`FEAT-CLIN-06`), and ABDM (`FEAT-INT-01`), alongside plan inclusion, restriction, optional add-on, and scope checks.
+* **Verification Performed:** Executed `verify_feature_mapping.ts` with `tsx`. Verified:
+  - `FEAT-BUS-BILLING` -> `FEAT-BIZ-01`
+  - `FEAT-BUS-ANALYTICS` -> `FEAT-BIZ-04` (distinct from `FEAT-BIZ-01`)
+  - `FEAT-CLIN-PHARM` -> `FEAT-BIZ-03`
+  - `FEAT-CLIN-TELEMEDICINE` -> `FEAT-CLIN-07`
+  - `FEAT-PREM-AI` -> `FEAT-PREM-01`
+  - `FEAT-INT-ABDM` -> `FEAT-INT-01`
+  - Billing on BASIC (`TENANT-003`) -> Enabled (Included By Plan)
+  - IPD on BASIC (`TENANT-003`) -> Restricted
+  - Telemedicine on BASIC (`TENANT-003`) -> Enabled (Purchased Add-on)
+  - Unknown Feature (`FEAT-UNKNOWN-999`) -> Disabled (Restricted)
 * **Remaining Limitation:** None.
 
 ---

@@ -3,6 +3,7 @@ import { FeatureSource, LicenseState } from "../_super_admin_types/feature_manag
 import { PERMISSION_CLAIMS } from "./rbac_catalog_service";
 import { getPlanByTenant } from "./subscription_plan_service";
 import { getTenantById } from "./tenant_api_service";
+import { FeatureCatalogService } from "./feature_catalog_service";
 
 export type EvaluationStepKey =
   | "STEP_1_TENANT_ACTIVE"
@@ -57,7 +58,7 @@ export const FEATURE_ID_ALIAS_MAP: Record<string, string> = {
   "FEAT-INT-KIOSK": "FEAT-INT-02",
   "FEAT-PREM-AI": "FEAT-PREM-01",
   "FEAT-PREM-BLOOD": "FEAT-PREM-02",
-  "FEAT-BUS-ANALYTICS": "FEAT-BIZ-01",
+  "FEAT-BUS-ANALYTICS": "FEAT-BIZ-04",
   // Identity Mappings for Canonical Catalog IDs
   "FEAT-CLIN-01": "FEAT-CLIN-01",
   "FEAT-CLIN-02": "FEAT-CLIN-02",
@@ -184,24 +185,35 @@ export class UnifiedAuthEvaluator {
 
     if (requiredFeatureId) {
       const catalogId = FEATURE_ID_ALIAS_MAP[requiredFeatureId] || requiredFeatureId;
-      const isRestrictedByPlan = subscriptionPlan.restrictedFeatures?.includes(catalogId) ?? false;
-      const isOptionalAddon = subscriptionPlan.optionalAddons?.includes(catalogId) ?? false;
+      const featureDef = FeatureCatalogService.getFeatureById(catalogId);
 
-      if (isRestrictedByPlan) {
-        featureState = "Restricted";
+      if (!featureDef) {
+        featureState = "Disabled";
         featureSource = "Restricted";
-      } else if (isOptionalAddon) {
-        // Mock add-on check for demonstration (Telemedicine / AI PACS optional)
-        if (catalogId === "FEAT-CLIN-06") {
-          featureState = "Disabled";
-          featureSource = "Optional Add-on";
+      } else {
+        const isRestrictedByPlan = subscriptionPlan.restrictedFeatures?.includes(catalogId) ?? false;
+        const isOptionalAddon = subscriptionPlan.optionalAddons?.includes(catalogId) ?? false;
+        const isIncludedByPlan = subscriptionPlan.includedFeatures?.includes(catalogId) || subscriptionPlan.modules?.includes("All Modules");
+
+        if (isRestrictedByPlan) {
+          featureState = "Restricted";
+          featureSource = "Restricted";
+        } else if (isOptionalAddon) {
+          // Mock add-on check for demonstration (Telemedicine / AI PACS optional)
+          if (catalogId === "FEAT-CLIN-06") {
+            featureState = "Disabled";
+            featureSource = "Optional Add-on";
+          } else {
+            featureState = "Enabled";
+            featureSource = "Purchased Add-on";
+          }
+        } else if (isIncludedByPlan) {
+          featureState = "Enabled";
+          featureSource = "Included By Plan";
         } else {
           featureState = "Enabled";
-          featureSource = "Purchased Add-on";
+          featureSource = "Included By Plan";
         }
-      } else {
-        featureState = "Enabled";
-        featureSource = "Included By Plan";
       }
     }
 
@@ -260,7 +272,8 @@ export class UnifiedAuthEvaluator {
       if (scope.requiresOnDutyRoster && !context.isOnDutyRoster && !context.isEmergencyBreakGlass) {
         step5Passed = false;
         step5Reason = "Role requires active on-duty shift roster check-in.";
-      } else if (scope.scopeType === "Department Scoped") {
+      }
+      if (step5Passed && scope.scopeType === "Department Scoped") {
         if (!context.departmentId) {
           step5Passed = false;
           step5Reason = "Role is department-scoped but no departmentId context was provided.";
@@ -300,13 +313,16 @@ export class UnifiedAuthEvaluator {
   public static getFeatureStateForClaim(tenantId: string, requiredFeatureId?: string): { state: LicenseState; source: FeatureSource } {
     if (!requiredFeatureId) return { state: "Enabled", source: "Included By Plan" };
     const plan = getPlanByTenant(tenantId);
-    const catalogId = FEATURE_ID_ALIAS_MAP[requiredFeatureId] || requiredFeatureId;
+    if (!plan) return { state: "Disabled", source: "Restricted" };
 
-    if (plan?.restrictedFeatures?.includes(catalogId)) {
+    const catalogId = FEATURE_ID_ALIAS_MAP[requiredFeatureId] || requiredFeatureId;
+    const featureDef = FeatureCatalogService.getFeatureById(catalogId);
+    if (!featureDef) return { state: "Disabled", source: "Restricted" };
+
+    if (plan.restrictedFeatures?.includes(catalogId)) {
       return { state: "Restricted", source: "Restricted" };
     }
-    if (plan?.optionalAddons?.includes(catalogId)) {
-      // Mock status for demo
+    if (plan.optionalAddons?.includes(catalogId)) {
       if (catalogId === "FEAT-CLIN-06") {
         return { state: "Disabled", source: "Optional Add-on" };
       }
