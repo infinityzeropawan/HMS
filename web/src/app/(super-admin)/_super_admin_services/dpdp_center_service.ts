@@ -224,6 +224,23 @@ export class DpdpCenterService {
 
     const timestamp = new Date().toISOString().replace("T", " ").substring(0, 19);
     const existing = currentDpdpStore[index];
+    const allowedTransitions: Record<DpdpWorkflowState, DpdpWorkflowState[]> = {
+      "Submitted": ["Under Review"],
+      "Under Review": ["Approved", "Rejected"],
+      "Approved": ["Completed"],
+      "Rejected": [],
+      "Completed": [],
+    };
+
+    if (!allowedTransitions[existing.workflowState].includes(newState)) {
+      throw new Error(
+        `Invalid DPDP workflow transition: "${existing.workflowState}" -> "${newState}".`
+      );
+    }
+
+    if (!notes.trim()) {
+      throw new Error("DPO resolution and audit justification notes are required.");
+    }
 
     let completedDate = existing.completedDate;
     let processingTimeDays = existing.processingTimeDays;
