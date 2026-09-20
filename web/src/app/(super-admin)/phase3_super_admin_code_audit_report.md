@@ -43,6 +43,28 @@ That meant an existing role's department boundary could be lost when edited, and
 
 **Commit:** `79dead6f1f5c9791de5dc99ef6c803b05dda82bc`
 
+---
+
+### 4. Global feature kill-switch was not enforced by the authorization evaluator — FIXED
+**File:** `web/src/app/(super-admin)/_super_admin_services/unified_auth_evaluator.ts`
+
+**Defect:** The feature-control store treated a global kill-switch as disabled for tenant assignments and route enforcement, but the centralized access evaluator calculated access from the subscription plan alone.
+
+**Fix applied:** `UnifiedAuthEvaluator` now reads the canonical feature ID's global kill-switch state and fails the feature step closed when the switch is active. `getFeatureStateForClaim()` uses the same rule so the permission matrix and runtime evaluator stay consistent.
+
+**Commit:** `50b6e4f5c83663c16babfd7734bbc0c12e186628`
+
+---
+
+### 5. DPDP workflow allowed arbitrary state jumps and empty mandatory DPO notes — FIXED
+**File:** `web/src/app/(super-admin)/_super_admin_services/dpdp_center_service.ts`
+
+**Defects:** The service accepted any workflow-state transition, including invalid backward/terminal jumps, and accepted blank resolution notes although the UI marks them required.
+
+**Fix applied:** Added explicit workflow transitions: Submitted -> Under Review -> Approved/Rejected -> Completed. Terminal states cannot transition further. Blank DPO resolution/audit notes now reject the mutation.
+
+**Commit:** `21b43657646863c16babfd7734bbc0c12e186628`
+
 ## Important findings still present / tracked
 
 ### A. Super Admin tenant data layer is still in-memory/mock
@@ -61,6 +83,20 @@ Examples include compliance, consent, DPDP, retention and support stores/service
 For example, the existing Phase 2 report claims executive analytics were dynamically linked from services, while the currently inspected `global-masters/page.tsx` is primarily a master-catalog page. The source/report wording should therefore be treated separately.
 
 **Status:** Report accuracy issue; existing Phase 2 report was not rewritten to avoid erasing historical audit history.
+
+### D. ComplianceService tenant-scoping remains incomplete
+**File:** `web/src/app/(super-admin)/_super_admin_services/compliance_service.ts`
+
+The compliance, consent, retention, governance, report and break-glass methods accept a `tenantId`, but several currently return the same hardcoded records regardless of that value. In a real multi-tenant deployment this would be a data-isolation defect.
+
+**Status:** High-priority production data-boundary issue; tracked. A safe fix requires the real tenant data contract rather than inventing filters over the single seeded dataset.
+
+### E. Tenant service is demonstrative, not durable
+**File:** `web/src/app/(super-admin)/_super_admin_services/tenant_api_service.ts`
+
+Tenant lifecycle operations currently mutate a process-local in-memory array. This is suitable for frontend demonstration but is not durable persistence or a production authorization boundary.
+
+**Status:** Architecture limitation; tracked.
 
 ## Structural checks performed
 
