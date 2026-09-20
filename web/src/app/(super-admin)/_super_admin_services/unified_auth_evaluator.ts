@@ -153,6 +153,7 @@ export class UnifiedAuthEvaluator {
     if (requiredFeatureId) {
       const catalogId = normalizeToCanonicalFeatureId(requiredFeatureId);
       const featureDef = FeatureCatalogService.getFeatureById(catalogId);
+      const isGloballyKilled = useFeatureControlStore.getState().globalKillSwitches[catalogId] ?? false;
 
       if (!featureDef) {
         featureState = "Disabled";
@@ -162,7 +163,10 @@ export class UnifiedAuthEvaluator {
         const isOptionalAddon = subscriptionPlan.optionalAddons?.includes(catalogId) ?? false;
         const isIncludedByPlan = subscriptionPlan.includedFeatures?.includes(catalogId) || subscriptionPlan.modules?.includes("All Modules");
 
-        if (isRestrictedByPlan) {
+        if (isGloballyKilled) {
+          featureState = "Disabled";
+          featureSource = "Restricted";
+        } else if (isRestrictedByPlan) {
           featureState = "Restricted";
           featureSource = "Restricted";
         } else if (isOptionalAddon) {
@@ -284,8 +288,12 @@ export class UnifiedAuthEvaluator {
 
     const catalogId = normalizeToCanonicalFeatureId(requiredFeatureId);
     const featureDef = FeatureCatalogService.getFeatureById(catalogId);
+    const isGloballyKilled = useFeatureControlStore.getState().globalKillSwitches[catalogId] ?? false;
     if (!featureDef) return { state: "Disabled", source: "Restricted" };
 
+    if (isGloballyKilled) {
+      return { state: "Disabled", source: "Restricted" };
+    }
     if (plan.restrictedFeatures?.includes(catalogId)) {
       return { state: "Restricted", source: "Restricted" };
     }
