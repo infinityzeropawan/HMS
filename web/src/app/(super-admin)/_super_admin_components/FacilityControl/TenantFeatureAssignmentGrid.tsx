@@ -39,20 +39,15 @@ import { PlanUpgradeModal } from "./PlanUpgradeModal";
 import { ManageTrialModal } from "./ManageTrialModal";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
+import { TenantApiService } from "../../_super_admin_services/tenant_api_service";
 
-const TENANT_OPTIONS = [
-  { value: "TNT-9014", label: "Apollo Super Speciality Hospital (TNT-9014)" },
-  { value: "TNT-1042", label: "Fortis Heart & Vascular Institute (TNT-1042)" },
-  { value: "TNT-2088", label: "Max Super Speciality Hospital (TNT-2088)" },
-  { value: "TNT-3105", label: "Manipal Hospital Whitefield (TNT-3105)" },
-  { value: "TNT-4412", label: "Narayana Health City (TNT-4412)" },
-  { value: "TENANT-003", label: "City Diagnostics & OPD Clinic (TENANT-003)" },
-];
 
 export const TenantFeatureAssignmentGrid: React.FC<{
   onOpenHistory: () => void;
 }> = ({ onOpenHistory }) => {
   const [selectedTenantId, setSelectedTenantId] = useState<string>("TNT-9014");
+  const [tenantOptions, setTenantOptions] = useState<{ value: string; label: string }[]>([]);
+  const [tenantLoadError, setTenantLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
 
@@ -79,6 +74,36 @@ export const TenantFeatureAssignmentGrid: React.FC<{
   const [trialDetailsTarget, setTrialDetailsTarget] = useState<FeatureTrialDetails | undefined>(undefined);
   const [trialModalOpen, setTrialModalOpen] = useState(false);
 
+  React.useEffect(() => {
+    let cancelled = false;
+
+    TenantApiService.fetchTenants({}, { field: "hospitalName", order: "asc" }, 1, 100)
+      .then((response) => {
+        if (cancelled) return;
+
+        const options = response.tenants.map((tenant) => ({
+          value: tenant.id,
+          label: `${tenant.hospitalName} (${tenant.id})`,
+        }));
+
+        setTenantOptions(options);
+        setTenantLoadError(null);
+
+        if (options.length > 0 && !options.some((option) => option.value === selectedTenantId)) {
+          setSelectedTenantId(options[0].value);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTenantLoadError("Unable to load hospital tenants.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTenantId]);
+
   const {
     getTenantFeatureAssignments,
     getTenantFeatureStates,
@@ -90,7 +115,7 @@ export const TenantFeatureAssignmentGrid: React.FC<{
   } = useFeatureControlStore();
 
   const currentTenantLabel =
-    TENANT_OPTIONS.find((t) => t.value === selectedTenantId)?.label.split(" (")[0] || selectedTenantId;
+    tenantOptions.find((t) => t.value === selectedTenantId)?.label.split(" (")[0] || selectedTenantId;
 
   const currentPlan = getTenantSubscriptionPlan(selectedTenantId);
   const catalog = FeatureCatalogService.getCatalog();
@@ -254,9 +279,11 @@ export const TenantFeatureAssignmentGrid: React.FC<{
           <Select
             value={selectedTenantId}
             onChange={(val) => setSelectedTenantId(val)}
-            options={TENANT_OPTIONS}
+            options={tenantOptions}
+            loading={tenantOptions.length === 0 && !tenantLoadError}
             className="w-full sm:w-80 font-semibold"
             size="large"
+            notFoundContent={tenantLoadError || "No hospital tenants found"}
           />
           <Tag
             color={currentPlan === "Enterprise" ? "gold" : currentPlan === "Super Specialty" ? "purple" : currentPlan === "Professional" ? "blue" : "volcano"}
@@ -278,6 +305,13 @@ export const TenantFeatureAssignmentGrid: React.FC<{
           </HmsButton>
         </div>
       </div>
+
+      {/* Tenant source health */}
+      {tenantLoadError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800" role="status">
+          {tenantLoadError} Feature assignment controls are still using the selected tenant ID.
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
