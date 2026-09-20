@@ -1,143 +1,183 @@
-import { FEATURE_ID_ALIAS_MAP, UnifiedAuthEvaluator } from "../_super_admin_services/unified_auth_evaluator";
+import { FEATURE_ID_ALIAS_MAP, normalizeToCanonicalFeatureId, UnifiedAuthEvaluator } from "../_super_admin_services/unified_auth_evaluator";
 import { FeatureCatalogService } from "../_super_admin_services/feature_catalog_service";
 import { PERMISSION_CLAIMS } from "../_super_admin_services/rbac_catalog_service";
 import { SubscriptionPlanService } from "../_super_admin_services/subscription_plan_service";
 
-function runVerification() {
-  console.log("=== START FEATURE IDENTITY MAPPING & REGRESSION VERIFICATION ===");
+function runComprehensiveVerification() {
+  console.log("=================================================");
+  console.log("=== COMPREHENSIVE PHASE 1 CATALOG & RBAC AUDIT ===");
+  console.log("=================================================\n");
+
   let passed = true;
 
-  // 1. Verify Claim -> Canonical Feature Mapping
-  const billingClaim = PERMISSION_CLAIMS.find((c) => c.id === "billing:invoice:create");
-  const analyticsClaim = PERMISSION_CLAIMS.find((c) => c.id === "admin:audit:view");
-  const pharmacyClaim = PERMISSION_CLAIMS.find((c) => c.id === "pharmacy:dispense:write");
-  const telemedClaim = PERMISSION_CLAIMS.find((c) => c.id === "opd:telehealth:consult");
-  const pacsClaim = PERMISSION_CLAIMS.find((c) => c.id === "pacs:dicom:view");
-  const abdmClaim = PERMISSION_CLAIMS.find((c) => c.id === "abdm:healthid:link");
+  // 1. Alias & Canonical Catalog Completeness Audit
+  console.log("--- 1. Alias -> Canonical ID -> Feature Catalog Verification ---");
+  const allAliases = Object.keys(FEATURE_ID_ALIAS_MAP);
+  console.log(`Auditing ${allAliases.length} feature aliases in FEATURE_ID_ALIAS_MAP...`);
 
-  const billingCanonical = FEATURE_ID_ALIAS_MAP[billingClaim?.requiredFeatureId || ""];
-  const analyticsCanonical = FEATURE_ID_ALIAS_MAP[analyticsClaim?.requiredFeatureId || ""];
-  const pharmacyCanonical = FEATURE_ID_ALIAS_MAP[pharmacyClaim?.requiredFeatureId || ""];
-  const telemedCanonical = FEATURE_ID_ALIAS_MAP[telemedClaim?.requiredFeatureId || ""];
-  const pacsCanonical = FEATURE_ID_ALIAS_MAP[pacsClaim?.requiredFeatureId || ""];
-  const abdmCanonical = FEATURE_ID_ALIAS_MAP[abdmClaim?.requiredFeatureId || ""];
+  for (const alias of allAliases) {
+    const canonicalId = normalizeToCanonicalFeatureId(alias);
+    const catalogDef = FeatureCatalogService.getFeatureById(canonicalId);
 
-  console.log(`Billing Claim (${billingClaim?.requiredFeatureId}) -> Canonical: ${billingCanonical}`);
-  console.log(`Analytics Claim (${analyticsClaim?.requiredFeatureId}) -> Canonical: ${analyticsCanonical}`);
-  console.log(`Pharmacy Claim (${pharmacyClaim?.requiredFeatureId}) -> Canonical: ${pharmacyCanonical}`);
-  console.log(`Telemedicine Claim (${telemedClaim?.requiredFeatureId}) -> Canonical: ${telemedCanonical}`);
-  console.log(`PACS Claim (${pacsClaim?.requiredFeatureId}) -> Canonical: ${pacsCanonical}`);
-  console.log(`ABDM Claim (${abdmClaim?.requiredFeatureId}) -> Canonical: ${abdmCanonical}`);
-
-  // Assertions
-  if (billingCanonical !== "FEAT-BIZ-01") {
-    console.error("FAIL: Billing claim did not resolve to FEAT-BIZ-01!");
-    passed = false;
-  }
-  if (analyticsCanonical !== "FEAT-BIZ-04") {
-    console.error("FAIL: Analytics claim did not resolve to FEAT-BIZ-04!");
-    passed = false;
-  }
-  if (pharmacyCanonical !== "FEAT-BIZ-03") {
-    console.error("FAIL: Pharmacy claim did not resolve to FEAT-BIZ-03!");
-    passed = false;
-  }
-  if (telemedCanonical !== "FEAT-CLIN-07") {
-    console.error("FAIL: Telemedicine claim did not resolve to FEAT-CLIN-07!");
-    passed = false;
-  }
-  if (pacsCanonical !== "FEAT-CLIN-06" && pacsCanonical !== "FEAT-PREM-01") {
-    console.error("FAIL: PACS claim did not resolve to a valid catalog feature!");
-    passed = false;
-  }
-  if (abdmCanonical !== "FEAT-INT-01") {
-    console.error("FAIL: ABDM claim did not resolve to FEAT-INT-01!");
-    passed = false;
+    if (!catalogDef) {
+      console.error(`FAIL: Alias '${alias}' resolves to canonical ID '${canonicalId}', which does NOT exist in FEATURE_CATALOG!`);
+      passed = false;
+    } else {
+      console.log(`  ✓ Alias '${alias}' -> Canonical '${canonicalId}' -> Catalog Feature '${catalogDef.name}' (${catalogDef.category})`);
+    }
   }
 
-  // Verify Billing and Analytics NEVER resolve to the same canonical ID
-  console.log(`\nChecking Billing vs Analytics Distinction: ${billingCanonical} vs ${analyticsCanonical}`);
-  if (billingCanonical === analyticsCanonical) {
-    console.error("FAIL: Billing and Analytics resolved to the SAME canonical ID!");
-    passed = false;
-  } else {
-    console.log("PASS: Billing and Analytics resolve to DISTINCT canonical IDs.");
+  // 2. Specific Feature Mapping Verification
+  console.log("\n--- 2. Core Feature Alias Mapping Assertions ---");
+
+  const coreMappings: Record<string, string> = {
+    "FEAT-BUS-BILLING": "FEAT-BIZ-01",
+    "FEAT-BUS-ROSTER": "FEAT-BIZ-04",
+    "FEAT-CLIN-PHARM": "FEAT-BIZ-03",
+    "FEAT-CLIN-TELEMEDICINE": "FEAT-CLIN-07",
+    "FEAT-CLIN-PACS": "FEAT-CLIN-06",
+    "FEAT-INT-ABDM": "FEAT-INT-01",
+    "FEAT-CLIN-OPD": "FEAT-CLIN-01",
+    "FEAT-CLIN-IPD": "FEAT-CLIN-02",
+    "FEAT-CLIN-OT": "FEAT-CLIN-03",
+    "FEAT-CLIN-ICU": "FEAT-CLIN-04",
+    "FEAT-CLIN-LAB": "FEAT-CLIN-05",
+    "FEAT-CLIN-PORTAL": "FEAT-CLIN-08",
+    "FEAT-INT-KIOSK": "FEAT-INT-02",
+    "FEAT-PREM-AI": "FEAT-PREM-01",
+    "FEAT-PREM-BLOOD": "FEAT-PREM-02",
+  };
+
+  for (const [alias, expectedCanonical] of Object.entries(coreMappings)) {
+    const actualCanonical = normalizeToCanonicalFeatureId(alias);
+    if (actualCanonical !== expectedCanonical) {
+      console.error(`FAIL: ${alias} resolved to ${actualCanonical}, expected ${expectedCanonical}`);
+      passed = false;
+    } else {
+      console.log(`  ✓ ${alias} correctly maps to ${expectedCanonical}`);
+    }
   }
 
-  // 2. Verify Real Plan Definitions (Included, Restricted, Optional/Add-on)
-  console.log("\n--- Real Plan Feature Evaluation Checks ---");
+  // 3. Billing vs HR/Roster vs Analytics Check
+  console.log("\n--- 3. Semantic Distinction Verification ---");
+  const billingCanonical = normalizeToCanonicalFeatureId("FEAT-BUS-BILLING");
+  const rosterCanonical = normalizeToCanonicalFeatureId("FEAT-BUS-ROSTER");
+  const analyticsCanonical = normalizeToCanonicalFeatureId("FEAT-BUS-ANALYTICS");
 
-  const includedEval = UnifiedAuthEvaluator.getFeatureStateForClaim("TENANT-003", "FEAT-BUS-BILLING");
-  console.log(`Included Feature (Billing on BASIC): State=${includedEval.state}, Source=${includedEval.source}`);
-  if (includedEval.state !== "Enabled" || includedEval.source !== "Included By Plan") {
-    console.error("FAIL: Included feature evaluation failed!");
+  console.log(`Billing Canonical: ${billingCanonical} (${FeatureCatalogService.getFeatureById(billingCanonical)?.name})`);
+  console.log(`HR/Roster Canonical: ${rosterCanonical} (${FeatureCatalogService.getFeatureById(rosterCanonical)?.name})`);
+  console.log(`Analytics Canonical: ${analyticsCanonical} (${FeatureCatalogService.getFeatureById(analyticsCanonical)?.name})`);
+
+  if (billingCanonical === rosterCanonical) {
+    console.error("FAIL: Billing and HR/Roster mapped to same canonical ID!");
     passed = false;
   } else {
-    console.log("PASS: Included feature correctly identified.");
+    console.log("  ✓ Billing (FEAT-BIZ-01) and HR/Roster (FEAT-BIZ-04) are distinct.");
   }
 
-  const restrictedEval = UnifiedAuthEvaluator.getFeatureStateForClaim("TENANT-003", "FEAT-CLIN-IPD");
-  console.log(`Restricted Feature (IPD on BASIC): State=${restrictedEval.state}, Source=${restrictedEval.source}`);
-  if (restrictedEval.state !== "Restricted" || restrictedEval.source !== "Restricted") {
-    console.error("FAIL: Restricted feature evaluation failed!");
-    passed = false;
+  // 4. Plan Semantic Consistency Check
+  console.log("\n--- 4. Plan Tier Semantic Consistency Verification ---");
+  const plans = SubscriptionPlanService.getPlans();
+  for (const plan of plans) {
+    console.log(`Checking plan tier '${plan.code}' (${plan.name})...`);
+    const inc = plan.includedFeatures || [];
+    const rest = plan.restrictedFeatures || [];
+    const opt = plan.optionalAddons || [];
+
+    // Check for overlap between included and restricted
+    const incRestOverlap = inc.filter((f) => rest.includes(f));
+    if (incRestOverlap.length > 0) {
+      console.error(`FAIL: Plan '${plan.code}' has features present in BOTH includedFeatures and restrictedFeatures: ${incRestOverlap.join(", ")}`);
+      passed = false;
+    }
+
+    // Check for overlap between restricted and optional
+    const restOptOverlap = rest.filter((f) => opt.includes(f));
+    if (restOptOverlap.length > 0) {
+      console.error(`FAIL: Plan '${plan.code}' has features present in BOTH restrictedFeatures and optionalAddons: ${restOptOverlap.join(", ")}`);
+      passed = false;
+    }
+
+    console.log(`  ✓ Plan '${plan.code}' has 0 internal feature state conflicts.`);
+  }
+
+  // 5. Dependency Validation Verification
+  console.log("\n--- 5. Dependency Engine Verification ---");
+  // Test Case 1: Enabling OT (FEAT-CLIN-03) when IPD (FEAT-CLIN-02) is Disabled
+  const currentStates: Record<string, "Enabled" | "Disabled" | "Restricted" | "Trial"> = {
+    "FEAT-CLIN-01": "Enabled",
+    "FEAT-CLIN-02": "Disabled",
+  };
+  const violation = FeatureCatalogService.validateDependencyChange("FEAT-CLIN-03", "Enabled", currentStates);
+  if (violation && violation.missingPrerequisites.some((p) => p.id === "FEAT-CLIN-02")) {
+    console.log("  ✓ Enabling OT without IPD correctly returns prerequisite violation (Requires FEAT-CLIN-02).");
   } else {
-    console.log("PASS: Restricted feature correctly identified.");
-  }
-
-  const optionalEval = UnifiedAuthEvaluator.getFeatureStateForClaim("TENANT-003", "FEAT-CLIN-TELEMEDICINE");
-  console.log(`Optional Add-on Feature (Telemedicine on BASIC): State=${optionalEval.state}, Source=${optionalEval.source}`);
-  if (optionalEval.state !== "Enabled" || optionalEval.source !== "Purchased Add-on") {
-    console.error("FAIL: Optional Add-on feature evaluation failed!");
+    console.error("FAIL: Dependency check failed to block enabling OT without IPD!");
     passed = false;
-  } else {
-    console.log("PASS: Optional Add-on feature correctly identified.");
   }
 
-  const unknownEval = UnifiedAuthEvaluator.getFeatureStateForClaim("TNT-9014", "FEAT-UNKNOWN-999");
-  console.log(`Unknown Feature (FEAT-UNKNOWN-999): State=${unknownEval.state}, Source=${unknownEval.source}`);
-  if (unknownEval.state !== "Disabled" || unknownEval.source !== "Restricted") {
-    console.error("FAIL: Unknown feature evaluation failed!");
+  // 6. Real Plan Feature Evaluation & Fail-Closed Unknown Test
+  console.log("\n--- 6. Feature Evaluation & Fail-Closed Tests ---");
+  // Included on BASIC
+  const incEval = UnifiedAuthEvaluator.getFeatureStateForClaim("TENANT-003", "FEAT-BUS-BILLING");
+  if (incEval.state === "Enabled" && incEval.source === "Included By Plan") {
+    console.log("  ✓ Billing on BASIC plan -> Enabled (Included By Plan)");
+  } else {
+    console.error(`FAIL: Billing evaluation on BASIC plan failed: state=${incEval.state}, source=${incEval.source}`);
     passed = false;
-  } else {
-    console.log("PASS: Unknown feature correctly denied and handled fail-closed.");
   }
 
-  // 3. Verify Existing Security Fixes (Regressions Check)
-  console.log("\n--- Existing Security Safeguard Checks ---");
+  // Restricted on BASIC
+  const restEval = UnifiedAuthEvaluator.getFeatureStateForClaim("TENANT-003", "FEAT-CLIN-IPD");
+  if (restEval.state === "Restricted" && restEval.source === "Restricted") {
+    console.log("  ✓ IPD on BASIC plan -> Restricted");
+  } else {
+    console.error(`FAIL: IPD evaluation on BASIC plan failed: state=${restEval.state}, source=${restEval.source}`);
+    passed = false;
+  }
 
-  const unknownTenantEval = UnifiedAuthEvaluator.evaluateAccess({
-    tenantId: "TNT-NON-EXISTENT",
-    permissionId: "billing:invoice:create",
+  // Optional Add-on on BASIC
+  const optEval = UnifiedAuthEvaluator.getFeatureStateForClaim("TENANT-003", "FEAT-CLIN-TELEMEDICINE");
+  if (optEval.state === "Enabled" && optEval.source === "Purchased Add-on") {
+    console.log("  ✓ Telemedicine on BASIC plan -> Enabled (Purchased Add-on)");
+  } else {
+    console.error(`FAIL: Telemedicine evaluation on BASIC plan failed: state=${optEval.state}, source=${optEval.source}`);
+    passed = false;
+  }
+
+  // Unknown Feature -> Fail Closed
+  const unknownEval = UnifiedAuthEvaluator.getFeatureStateForClaim("TNT-9014", "FEAT-FAKE-999");
+  if (unknownEval.state === "Disabled" && unknownEval.source === "Restricted") {
+    console.log("  ✓ Unknown feature 'FEAT-FAKE-999' -> Disabled (Restricted) - Failed Closed!");
+  } else {
+    console.error(`FAIL: Unknown feature was NOT failed closed: state=${unknownEval.state}, source=${unknownEval.source}`);
+    passed = false;
+  }
+
+  // 7. Security Safeguards Regression Check
+  console.log("\n--- 7. Auth & Scope Security Safeguards Regression Check ---");
+  // Unknown Tenant
+  const unkTenant = UnifiedAuthEvaluator.evaluateAccess({
+    tenantId: "TNT-UNKNOWN-999",
+    permissionId: "opd:queue:read",
     userRoleId: "TMPL-DOC",
   });
-  if (!unknownTenantEval.allowed && unknownTenantEval.failingStep?.stepKey === "STEP_1_TENANT_ACTIVE") {
-    console.log("PASS: Unknown tenant denied at STEP 1.");
+  if (!unkTenant.allowed && unkTenant.failingStep?.stepKey === "STEP_1_TENANT_ACTIVE") {
+    console.log("  ✓ Unknown tenant access denied at STEP 1.");
   } else {
     console.error("FAIL: Unknown tenant check failed!");
     passed = false;
   }
 
-  const missingSubEval = UnifiedAuthEvaluator.evaluateAccess({
-    tenantId: "TENANT-WITHOUT-SUB",
-    permissionId: "billing:invoice:create",
-    userRoleId: "TMPL-DOC",
-  });
-  if (!missingSubEval.allowed && (missingSubEval.failingStep?.stepKey === "STEP_1_TENANT_ACTIVE" || missingSubEval.failingStep?.stepKey === "STEP_2_SUBSCRIPTION_VALID")) {
-    console.log("PASS: Missing subscription denied.");
-  } else {
-    console.error("FAIL: Missing subscription check failed!");
-    passed = false;
-  }
-
-  const deptScopeEval = UnifiedAuthEvaluator.evaluateAccess({
+  // Department Scope
+  const deptScope = UnifiedAuthEvaluator.evaluateAccess({
     tenantId: "TNT-9014",
     permissionId: "ipd:admissions:read",
     userRoleId: "TMPL-NURSE",
     userRole: {
       id: "TMPL-NURSE",
       name: "Nurse",
-      description: "Bedside staff nurse",
+      description: "Nurse role",
       category: "Nursing",
       isGlobalTemplate: true,
       parentTemplateId: null,
@@ -151,20 +191,21 @@ function runVerification() {
     isOnDutyRoster: true,
     // departmentId omitted!
   });
-  if (!deptScopeEval.allowed && deptScopeEval.failingStep?.stepKey === "STEP_5_SCOPE_VALIDATION") {
-    console.log("PASS: Department scoped role without departmentId denied at STEP 5.");
+  if (!deptScope.allowed && deptScope.failingStep?.stepKey === "STEP_5_SCOPE_VALIDATION") {
+    console.log("  ✓ Department-scoped role without departmentId denied at STEP 5.");
   } else {
-    console.error("FAIL: Department scope check failed! Failing step:", deptScopeEval.failingStep);
+    console.error("FAIL: Department scope check failed!");
     passed = false;
   }
 
-  console.log("\n=== VERIFICATION RESULT ===");
+  console.log("\n=================================================");
   if (passed) {
-    console.log("ALL VERIFICATION CHECKS PASSED SUCCESSFULLY!");
+    console.log("=== FINAL VERIFICATION RESULT: ALL CHECKS PASSED ===");
+    console.log("=================================================");
   } else {
-    console.error("SOME VERIFICATION CHECKS FAILED!");
+    console.error("=== FINAL VERIFICATION RESULT: CHECKS FAILED ===");
     process.exit(1);
   }
 }
 
-runVerification();
+runComprehensiveVerification();

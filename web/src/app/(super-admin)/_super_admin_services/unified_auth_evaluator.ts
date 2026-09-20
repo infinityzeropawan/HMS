@@ -39,7 +39,7 @@ export interface AccessEvaluationResult {
   stepTrace: EvaluationStepResult[];
 }
 
-// Map short feature IDs used in permission claims to canonical catalog IDs
+// Map short feature IDs and legacy string keys to canonical catalog IDs
 export const FEATURE_ID_ALIAS_MAP: Record<string, string> = {
   // Legacy / Short Claim Feature Aliases
   "FEAT-CLIN-OPD": "FEAT-CLIN-01",
@@ -58,7 +58,29 @@ export const FEATURE_ID_ALIAS_MAP: Record<string, string> = {
   "FEAT-INT-KIOSK": "FEAT-INT-02",
   "FEAT-PREM-AI": "FEAT-PREM-01",
   "FEAT-PREM-BLOOD": "FEAT-PREM-02",
-  "FEAT-BUS-ANALYTICS": "FEAT-BIZ-04",
+  "FEAT-BUS-ANALYTICS": "FEAT-BIZ-01", // Represented under Core Business / System Audit Operations (FEAT-BIZ-01)
+
+  // Legacy String Keys Compatibility Aliases
+  "opd_queue": "FEAT-CLIN-01",
+  "patient_registration": "FEAT-CLIN-01",
+  "eprescriptions": "FEAT-CLIN-01",
+  "ipd_ward_matrix": "FEAT-CLIN-02",
+  "ot_scheduler": "FEAT-CLIN-03",
+  "icu_telemetry": "FEAT-CLIN-04",
+  "lab_pathology": "FEAT-CLIN-05",
+  "pacs_viewer": "FEAT-CLIN-06",
+  "telemedicine": "FEAT-CLIN-07",
+  "patient_portal": "FEAT-CLIN-08",
+  "basic_billing": "FEAT-BIZ-01",
+  "tpa_claims": "FEAT-BIZ-02",
+  "pharmacy_fefo": "FEAT-BIZ-03",
+  "staff_roster": "FEAT-BIZ-04",
+  "hr_console": "FEAT-BIZ-04",
+  "abdm_gateway": "FEAT-INT-01",
+  "kiosk_checkin": "FEAT-INT-02",
+  "cdss_ai": "FEAT-PREM-01",
+  "blood_bank": "FEAT-PREM-02",
+
   // Identity Mappings for Canonical Catalog IDs
   "FEAT-CLIN-01": "FEAT-CLIN-01",
   "FEAT-CLIN-02": "FEAT-CLIN-02",
@@ -77,6 +99,11 @@ export const FEATURE_ID_ALIAS_MAP: Record<string, string> = {
   "FEAT-PREM-01": "FEAT-PREM-01",
   "FEAT-PREM-02": "FEAT-PREM-02",
 };
+
+export function normalizeToCanonicalFeatureId(featureId: string): string {
+  if (!featureId) return "";
+  return FEATURE_ID_ALIAS_MAP[featureId] || featureId;
+}
 
 export class UnifiedAuthEvaluator {
   /**

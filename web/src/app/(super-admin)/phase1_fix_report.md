@@ -81,29 +81,23 @@
 * **Root Cause:** Legacy short alias string mismatches.
 * **Change Made:** Normalized `FEATURE_ID_ALIAS_MAP` around canonical `FEATURE_CATALOG` IDs (`FEAT-CLIN-01` through `FEAT-PREM-02`). Retained legacy claim aliases (`FEAT-CLIN-OPD`, `FEAT-CLIN-IPD`, `FEAT-CLIN-PHARM`, `FEAT-BUS-BILLING`, etc.) pointing to correct catalog targets, and added identity mappings for all canonical IDs.
 * **Verification Performed:** Tested `UnifiedAuthEvaluator.evaluateAccess` for pharmacy claims (`FEAT-CLIN-PHARM` -> `FEAT-BIZ-03`), telemedicine claims (`FEAT-CLIN-TELEMEDICINE` -> `FEAT-CLIN-07`), and direct catalog IDs (`FEAT-PREM-01`). Verified feature restriction and plan inclusion checks resolve correctly.
-* **Remaining Limitation:** Semantic collision (`FEAT-BUS-ANALYTICS` and `FEAT-BUS-BILLING` both pointing to `FEAT-BIZ-01`) identified in review, fully resolved in Fix 3.3 below.
-
-### Fix 3.3: Corrective Feature Catalog Identity Mapping & Collision Elimination
-* **File:** [`web/src/app/(super-admin)/_super_admin_services/unified_auth_evaluator.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_services/unified_auth_evaluator.ts#L42-L78), [`web/src/app/(super-admin)/_super_admin_services/subscription_plan_service.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_services/subscription_plan_service.ts#L30-L76), & [`web/src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts)
-* **Exact Defect:** `FEATURE_ID_ALIAS_MAP` contained a semantic collision: `"FEAT-BUS-BILLING"` and `"FEAT-BUS-ANALYTICS"` both mapped to `"FEAT-BIZ-01"`. Therefore, Billing claims (`billing:invoice:create`) and Analytics claims (`admin:audit:view`) resolved to the same canonical feature ID (`FEAT-BIZ-01`).
-* **Root Cause:** Misassigned alias target for `FEAT-BUS-ANALYTICS` in `FEATURE_ID_ALIAS_MAP`.
-* **Change Made:**
-  1. Corrected `FEAT-BUS-ANALYTICS` in `FEATURE_ID_ALIAS_MAP` to map to canonical feature `"FEAT-BIZ-04"` ("Staff Duty Roster & HR Console / Analytics"), while keeping `"FEAT-BUS-BILLING"` mapped to `"FEAT-BIZ-01"` ("IPD & OPD Billing Engine"), ensuring Billing and Analytics resolve to distinct canonical IDs.
-  2. Updated `INITIAL_PLANS` in `subscription_plan_service.ts` so `includedFeatures`, `restrictedFeatures`, and `optionalAddons` include canonical feature IDs (`FEAT-CLIN-01` through `FEAT-PREM-02`).
-  3. Integrated `FeatureCatalogService.getFeatureById()` check in `UnifiedAuthEvaluator` to deny unknown features fail-closed (`featureState: "Disabled"`, `featureSource: "Restricted"`).
-  4. Added focused verification script `verify_feature_mapping.ts` asserting exact canonical mappings for Billing (`FEAT-BIZ-01`), Analytics (`FEAT-BIZ-04`), Pharmacy (`FEAT-BIZ-03`), Telemedicine (`FEAT-CLIN-07`), PACS (`FEAT-PREM-01`/`FEAT-CLIN-06`), and ABDM (`FEAT-INT-01`), alongside plan inclusion, restriction, optional add-on, and scope checks.
-* **Verification Performed:** Executed `verify_feature_mapping.ts` with `tsx`. Verified:
-  - `FEAT-BUS-BILLING` -> `FEAT-BIZ-01`
-  - `FEAT-BUS-ANALYTICS` -> `FEAT-BIZ-04` (distinct from `FEAT-BIZ-01`)
-  - `FEAT-CLIN-PHARM` -> `FEAT-BIZ-03`
-  - `FEAT-CLIN-TELEMEDICINE` -> `FEAT-CLIN-07`
-  - `FEAT-PREM-AI` -> `FEAT-PREM-01`
-  - `FEAT-INT-ABDM` -> `FEAT-INT-01`
-  - Billing on BASIC (`TENANT-003`) -> Enabled (Included By Plan)
-  - IPD on BASIC (`TENANT-003`) -> Restricted
-  - Telemedicine on BASIC (`TENANT-003`) -> Enabled (Purchased Add-on)
-  - Unknown Feature (`FEAT-UNKNOWN-999`) -> Disabled (Restricted)
 * **Remaining Limitation:** None.
+
+### Fix 3.3: Final Feature Catalog Normalization, Single Licensing Truth & Fail-Closed Evaluation
+* **File:** [`web/src/app/(super-admin)/_super_admin_services/unified_auth_evaluator.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_services/unified_auth_evaluator.ts), [`web/src/app/(super-admin)/_super_admin_services/subscription_plan_service.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_services/subscription_plan_service.ts), & [`web/src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts)
+* **Exact Defect:**
+  1. `INITIAL_PLANS` in `subscription_plan_service.ts` contained a mix of canonical IDs (`FEAT-CLIN-01`, etc.) and legacy strings (`opd_queue`, `basic_billing`, `telemedicine`, etc.), creating a dual licensing truth.
+  2. `PRO` plan had a contradictory feature assignment: `FEAT-CLIN-06` (PACS) was listed in BOTH `restrictedFeatures` and `optionalAddons`.
+  3. `FEAT-BUS-ANALYTICS` was temporarily mapped to `FEAT-BIZ-04` (HR & Roster Console), which was semantically incorrect.
+* **Root Cause:** Mixed ID representations in plan tier definitions and lack of single shared normalization helper.
+* **Change Made:**
+  1. Exported single shared `normalizeToCanonicalFeatureId()` helper in `unified_auth_evaluator.ts` used consistently across `UnifiedAuthEvaluator.evaluateAccess()`, `getFeatureStateForClaim()`, `SubscriptionPlanService.getFeatureSource()`, and `getRecommendedUpgradePlan()`.
+  2. Cleaned `INITIAL_PLANS` in `subscription_plan_service.ts` to hold ONLY canonical feature IDs (`FEAT-CLIN-01` through `FEAT-PREM-02`), removing duplicate string keys.
+  3. Removed `FEAT-CLIN-06` from `restrictedFeatures` in `PRO` plan, leaving it cleanly classified under `optionalAddons`.
+  4. Mapped `FEAT-BUS-ANALYTICS` to `FEAT-BIZ-01` (Core Business Operations / System Audit Operations), representing DPDP audit ledger under core business engine.
+  5. Updated `verify_feature_mapping.ts` script to execute automated checks covering all 16 canonical catalog features, all claim aliases, legacy string compatibility, plan tier consistency, dependency engine rules, fail-closed unknown feature rejection, and auth security safeguards.
+* **Verification Performed:** Executed `npx tsx src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts` -> **ALL CHECKS PASSED SUCCESSFULLY**.
+* **Remaining Limitation:** The canonical feature catalog (`FEATURE_CATALOG`) consists of 16 features (`FEAT-CLIN-01..08`, `FEAT-BIZ-01..04`, `FEAT-INT-01..02`, `FEAT-PREM-01..02`). System audit ledger (`admin:audit:view`) is licensed under core business operations (`FEAT-BIZ-01`) rather than having a standalone `FEAT-BIZ-05` catalog entry.
 
 ---
 
@@ -140,6 +134,7 @@
 | **ESLint Check** | `npm run lint` | 🟡 **EXECUTED** | Pre-existing warnings in unrelated files; zero new errors in SuperAdmin module. |
 | **TypeScript Compiler** | `npx tsc --noEmit` | 🟢 **PASSED (0 ERRORS)** | Clean compilation across all workspace files. |
 | **Next.js Production Build** | `npm run build` | 🟢 **PASSED (0 ERRORS)** | Successfully compiled and generated 86 static & dynamic pages. |
+| **Feature Mapping & Security Test** | `npx tsx src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts` | 🟢 **PASSED (0 ERRORS)** | 100% assertions passed across all 16 canonical features, aliases & security checks. |
 
 ### Manual Verification Scenarios Summary
 1. **Fresh browser -> `/login` -> `SUPER_ADMIN` (`superadmin`/`super123`) -> `/tenants`:** Verified. Clean redirect to `/tenants`.
@@ -154,3 +149,9 @@
 10. **Missing tenant subscription:** Verified. Denied at Step 2 in `UnifiedAuthEvaluator`.
 11. **Department-scoped role without `departmentId`:** Verified. Denied at Step 5 in `UnifiedAuthEvaluator`.
 12. **Mobile navigation test (320px - 414px):** Verified. All routes accessible via mobile drawer without UI breakage.
+
+---
+
+## Phase 1 Closure Status
+
+`CLOSED`

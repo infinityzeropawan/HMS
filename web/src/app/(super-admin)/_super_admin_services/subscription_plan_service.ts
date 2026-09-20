@@ -1,4 +1,5 @@
 import { FeatureSource } from "../_super_admin_types/feature_management";
+import { normalizeToCanonicalFeatureId } from "./unified_auth_evaluator";
 
 export interface PlanConfig {
   id: string;
@@ -38,9 +39,9 @@ const INITIAL_PLANS: PlanConfig[] = [
     modules: ["OPD Queue", "Patient Reg", "e-Prescriptions", "Basic Billing"],
     sla: "Standard (9x5)",
     status: "ACTIVE",
-    includedFeatures: ["FEAT-CLIN-01", "FEAT-BIZ-01", "FEAT-BIZ-03", "FEAT-BIZ-04", "opd_queue", "patient_registration", "eprescriptions", "basic_billing"],
-    restrictedFeatures: ["FEAT-CLIN-02", "FEAT-CLIN-03", "FEAT-CLIN-04", "FEAT-CLIN-06", "FEAT-INT-01", "FEAT-PREM-01", "FEAT-PREM-02", "ipd_ward_matrix", "ot_scheduler", "pacs_viewer", "telemedicine", "abdm_gateway", "cdss_ai"],
-    optionalAddons: ["FEAT-CLIN-07", "FEAT-CLIN-05", "telemedicine", "lab_pathology"],
+    includedFeatures: ["FEAT-CLIN-01", "FEAT-BIZ-01", "FEAT-BIZ-03", "FEAT-BIZ-04"],
+    restrictedFeatures: ["FEAT-CLIN-02", "FEAT-CLIN-03", "FEAT-CLIN-04", "FEAT-CLIN-06", "FEAT-INT-01", "FEAT-PREM-01", "FEAT-PREM-02"],
+    optionalAddons: ["FEAT-CLIN-07", "FEAT-CLIN-05"],
     description: "Designed for small clinics and outpatient departments.",
   },
   {
@@ -53,9 +54,9 @@ const INITIAL_PLANS: PlanConfig[] = [
     modules: ["OPD Queue", "IPD Ward Matrix", "OT Scheduler", "Pharmacy FEFO", "Lab Pathology", "ABDM Gateway"],
     sla: "Priority 24/7",
     status: "ACTIVE",
-    includedFeatures: ["FEAT-CLIN-01", "FEAT-CLIN-02", "FEAT-CLIN-03", "FEAT-CLIN-05", "FEAT-BIZ-01", "FEAT-BIZ-02", "FEAT-BIZ-03", "FEAT-BIZ-04", "FEAT-INT-01", "opd_queue", "patient_registration", "eprescriptions", "basic_billing", "ipd_ward_matrix", "ot_scheduler", "pharmacy_fefo", "lab_pathology", "abdm_gateway"],
-    restrictedFeatures: ["FEAT-CLIN-06", "FEAT-PREM-01", "FEAT-PREM-02", "pacs_viewer", "cdss_ai", "multi_branch"],
-    optionalAddons: ["FEAT-CLIN-07", "FEAT-CLIN-06", "telemedicine", "pacs_viewer"],
+    includedFeatures: ["FEAT-CLIN-01", "FEAT-CLIN-02", "FEAT-CLIN-03", "FEAT-CLIN-05", "FEAT-BIZ-01", "FEAT-BIZ-02", "FEAT-BIZ-03", "FEAT-BIZ-04", "FEAT-INT-01"],
+    restrictedFeatures: ["FEAT-CLIN-04", "FEAT-PREM-01", "FEAT-PREM-02"],
+    optionalAddons: ["FEAT-CLIN-07", "FEAT-CLIN-06"],
     description: "Ideal for mid-sized multi-specialty hospitals.",
   },
   {
@@ -68,7 +69,7 @@ const INITIAL_PLANS: PlanConfig[] = [
     modules: ["All Modules", "PACS DICOM Viewer", "CDSS AI Assist", "Multi-Branch Network", "DPDP Audit Ledger", "Dedicated Account Manager"],
     sla: "Dedicated 99.99% SLA",
     status: "ACTIVE",
-    includedFeatures: ["FEAT-CLIN-01", "FEAT-CLIN-02", "FEAT-CLIN-03", "FEAT-CLIN-04", "FEAT-CLIN-05", "FEAT-CLIN-06", "FEAT-CLIN-07", "FEAT-CLIN-08", "FEAT-BIZ-01", "FEAT-BIZ-02", "FEAT-BIZ-03", "FEAT-BIZ-04", "FEAT-INT-01", "FEAT-INT-02", "FEAT-PREM-01", "FEAT-PREM-02", "opd_queue", "patient_registration", "eprescriptions", "basic_billing", "ipd_ward_matrix", "ot_scheduler", "pharmacy_fefo", "lab_pathology", "abdm_gateway", "pacs_viewer", "cdss_ai", "multi_branch", "telemedicine"],
+    includedFeatures: ["FEAT-CLIN-01", "FEAT-CLIN-02", "FEAT-CLIN-03", "FEAT-CLIN-04", "FEAT-CLIN-05", "FEAT-CLIN-06", "FEAT-CLIN-07", "FEAT-CLIN-08", "FEAT-BIZ-01", "FEAT-BIZ-02", "FEAT-BIZ-03", "FEAT-BIZ-04", "FEAT-INT-01", "FEAT-INT-02", "FEAT-PREM-01", "FEAT-PREM-02"],
     restrictedFeatures: [],
     optionalAddons: [],
     description: "Full suite for large hospital networks & teaching institutions.",
@@ -134,18 +135,21 @@ export class SubscriptionPlanService {
     return undefined;
   }
 
-
   public static getFeatureSource(planCode: string, featureId: string): FeatureSource {
     const plan = this.getPlan(planCode);
     if (!plan) return "Restricted";
-    if (plan.includedFeatures?.includes(featureId) || plan.modules?.includes("All Modules")) return "Included By Plan";
-    if (plan.optionalAddons?.includes(featureId) || featureId.includes("addon") || featureId.includes("telemedicine")) return "Optional Add-on";
+
+    const catalogId = normalizeToCanonicalFeatureId(featureId);
+    if (plan.includedFeatures?.includes(catalogId) || plan.modules?.includes("All Modules")) return "Included By Plan";
+    if (plan.optionalAddons?.includes(catalogId)) return "Optional Add-on";
+    if (plan.restrictedFeatures?.includes(catalogId)) return "Restricted";
     return "Restricted";
   }
 
   public static getRecommendedUpgradePlan(currentPlanCode: string, featureId: string): PlanConfig | undefined {
+    const catalogId = normalizeToCanonicalFeatureId(featureId);
     return plansStore.find(
-      (p) => p.code !== currentPlanCode && (p.includedFeatures?.includes(featureId) || p.optionalAddons?.includes(featureId))
+      (p) => p.code !== currentPlanCode && (p.includedFeatures?.includes(catalogId) || p.optionalAddons?.includes(catalogId))
     ) || plansStore.find((p) => p.code === "ENTERPRISE");
   }
 
