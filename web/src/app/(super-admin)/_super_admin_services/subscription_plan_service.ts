@@ -1,5 +1,5 @@
 import { FeatureSource } from "../_super_admin_types/feature_management";
-import { normalizeToCanonicalFeatureId } from "./unified_auth_evaluator";
+import { normalizeToCanonicalFeatureId } from "./feature_catalog_service";
 
 export interface PlanConfig {
   id: string;

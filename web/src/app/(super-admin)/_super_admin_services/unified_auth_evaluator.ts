@@ -3,7 +3,13 @@ import { FeatureSource, LicenseState } from "../_super_admin_types/feature_manag
 import { PERMISSION_CLAIMS } from "./rbac_catalog_service";
 import { getPlanByTenant } from "./subscription_plan_service";
 import { getTenantById } from "./tenant_api_service";
-import { FeatureCatalogService } from "./feature_catalog_service";
+import {
+  FeatureCatalogService,
+  FEATURE_ID_ALIAS_MAP,
+  normalizeToCanonicalFeatureId,
+} from "./feature_catalog_service";
+
+export { FEATURE_ID_ALIAS_MAP, normalizeToCanonicalFeatureId };
 
 export type EvaluationStepKey =
   | "STEP_1_TENANT_ACTIVE"
@@ -37,72 +43,6 @@ export interface AccessEvaluationResult {
   featureSource: FeatureSource;
   failingStep?: EvaluationStepResult;
   stepTrace: EvaluationStepResult[];
-}
-
-// Map short feature IDs and legacy string keys to canonical catalog IDs
-export const FEATURE_ID_ALIAS_MAP: Record<string, string> = {
-  // Legacy / Short Claim Feature Aliases
-  "FEAT-CLIN-OPD": "FEAT-CLIN-01",
-  "FEAT-CLIN-IPD": "FEAT-CLIN-02",
-  "FEAT-CLIN-OT": "FEAT-CLIN-03",
-  "FEAT-CLIN-ICU": "FEAT-CLIN-04",
-  "FEAT-CLIN-LAB": "FEAT-CLIN-05",
-  "FEAT-CLIN-PACS": "FEAT-CLIN-06",
-  "FEAT-CLIN-PHARM": "FEAT-BIZ-03",
-  "FEAT-CLIN-TELEMEDICINE": "FEAT-CLIN-07",
-  "FEAT-CLIN-PORTAL": "FEAT-CLIN-08",
-  "FEAT-BUS-BILLING": "FEAT-BIZ-01",
-  "FEAT-BUS-TPA": "FEAT-BIZ-02",
-  "FEAT-BUS-ROSTER": "FEAT-BIZ-04",
-  "FEAT-INT-ABDM": "FEAT-INT-01",
-  "FEAT-INT-KIOSK": "FEAT-INT-02",
-  "FEAT-PREM-AI": "FEAT-PREM-01",
-  "FEAT-PREM-BLOOD": "FEAT-PREM-02",
-  "FEAT-BUS-ANALYTICS": "FEAT-BIZ-01", // Represented under Core Business / System Audit Operations (FEAT-BIZ-01)
-
-  // Legacy String Keys Compatibility Aliases
-  "opd_queue": "FEAT-CLIN-01",
-  "patient_registration": "FEAT-CLIN-01",
-  "eprescriptions": "FEAT-CLIN-01",
-  "ipd_ward_matrix": "FEAT-CLIN-02",
-  "ot_scheduler": "FEAT-CLIN-03",
-  "icu_telemetry": "FEAT-CLIN-04",
-  "lab_pathology": "FEAT-CLIN-05",
-  "pacs_viewer": "FEAT-CLIN-06",
-  "telemedicine": "FEAT-CLIN-07",
-  "patient_portal": "FEAT-CLIN-08",
-  "basic_billing": "FEAT-BIZ-01",
-  "tpa_claims": "FEAT-BIZ-02",
-  "pharmacy_fefo": "FEAT-BIZ-03",
-  "staff_roster": "FEAT-BIZ-04",
-  "hr_console": "FEAT-BIZ-04",
-  "abdm_gateway": "FEAT-INT-01",
-  "kiosk_checkin": "FEAT-INT-02",
-  "cdss_ai": "FEAT-PREM-01",
-  "blood_bank": "FEAT-PREM-02",
-
-  // Identity Mappings for Canonical Catalog IDs
-  "FEAT-CLIN-01": "FEAT-CLIN-01",
-  "FEAT-CLIN-02": "FEAT-CLIN-02",
-  "FEAT-CLIN-03": "FEAT-CLIN-03",
-  "FEAT-CLIN-04": "FEAT-CLIN-04",
-  "FEAT-CLIN-05": "FEAT-CLIN-05",
-  "FEAT-CLIN-06": "FEAT-CLIN-06",
-  "FEAT-CLIN-07": "FEAT-CLIN-07",
-  "FEAT-CLIN-08": "FEAT-CLIN-08",
-  "FEAT-BIZ-01": "FEAT-BIZ-01",
-  "FEAT-BIZ-02": "FEAT-BIZ-02",
-  "FEAT-BIZ-03": "FEAT-BIZ-03",
-  "FEAT-BIZ-04": "FEAT-BIZ-04",
-  "FEAT-INT-01": "FEAT-INT-01",
-  "FEAT-INT-02": "FEAT-INT-02",
-  "FEAT-PREM-01": "FEAT-PREM-01",
-  "FEAT-PREM-02": "FEAT-PREM-02",
-};
-
-export function normalizeToCanonicalFeatureId(featureId: string): string {
-  if (!featureId) return "";
-  return FEATURE_ID_ALIAS_MAP[featureId] || featureId;
 }
 
 export class UnifiedAuthEvaluator {
@@ -211,7 +151,7 @@ export class UnifiedAuthEvaluator {
     let featureSource: FeatureSource = "Included By Plan";
 
     if (requiredFeatureId) {
-      const catalogId = FEATURE_ID_ALIAS_MAP[requiredFeatureId] || requiredFeatureId;
+      const catalogId = normalizeToCanonicalFeatureId(requiredFeatureId);
       const featureDef = FeatureCatalogService.getFeatureById(catalogId);
 
       if (!featureDef) {
@@ -342,7 +282,7 @@ export class UnifiedAuthEvaluator {
     const plan = getPlanByTenant(tenantId);
     if (!plan) return { state: "Disabled", source: "Restricted" };
 
-    const catalogId = FEATURE_ID_ALIAS_MAP[requiredFeatureId] || requiredFeatureId;
+    const catalogId = normalizeToCanonicalFeatureId(requiredFeatureId);
     const featureDef = FeatureCatalogService.getFeatureById(catalogId);
     if (!featureDef) return { state: "Disabled", source: "Restricted" };
 

@@ -1,7 +1,9 @@
-import { FEATURE_ID_ALIAS_MAP, normalizeToCanonicalFeatureId, UnifiedAuthEvaluator } from "../_super_admin_services/unified_auth_evaluator";
-import { FeatureCatalogService } from "../_super_admin_services/feature_catalog_service";
+import * as fs from "fs";
+import * as path from "path";
+import { FEATURE_ID_ALIAS_MAP, normalizeToCanonicalFeatureId, FeatureCatalogService } from "../_super_admin_services/feature_catalog_service";
 import { PERMISSION_CLAIMS } from "../_super_admin_services/rbac_catalog_service";
 import { SubscriptionPlanService } from "../_super_admin_services/subscription_plan_service";
+import { UnifiedAuthEvaluator } from "../_super_admin_services/unified_auth_evaluator";
 
 function runComprehensiveVerification() {
   console.log("=================================================");
@@ -196,6 +198,26 @@ function runComprehensiveVerification() {
   } else {
     console.error("FAIL: Department scope check failed!");
     passed = false;
+  }
+
+  // 8. Service Dependency Cycle Audit
+  console.log("\n--- 8. Service Dependency Cycle Audit ---");
+  const planServicePath = path.join(__dirname, "../_super_admin_services/subscription_plan_service.ts");
+  const planServiceSource = fs.readFileSync(planServicePath, "utf-8");
+  if (planServiceSource.includes("unified_auth_evaluator")) {
+    console.error("FAIL: subscription_plan_service.ts still imports unified_auth_evaluator!");
+    passed = false;
+  } else {
+    console.log("  ✓ subscription_plan_service.ts has 0 imports from unified_auth_evaluator (Circular Dependency Resolved).");
+  }
+
+  const catalogServicePath = path.join(__dirname, "../_super_admin_services/feature_catalog_service.ts");
+  const catalogServiceSource = fs.readFileSync(catalogServicePath, "utf-8");
+  if (catalogServiceSource.includes("unified_auth_evaluator") || catalogServiceSource.includes("subscription_plan_service")) {
+    console.error("FAIL: feature_catalog_service.ts depends on higher-level services!");
+    passed = false;
+  } else {
+    console.log("  ✓ feature_catalog_service.ts is at base architectural layer (0 higher-level dependencies).");
   }
 
   console.log("\n=================================================");

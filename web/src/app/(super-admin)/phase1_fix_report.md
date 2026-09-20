@@ -99,6 +99,18 @@
 * **Verification Performed:** Executed `npx tsx src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts` -> **ALL CHECKS PASSED SUCCESSFULLY**.
 * **Remaining Limitation:** The canonical feature catalog (`FEATURE_CATALOG`) consists of 16 features (`FEAT-CLIN-01..08`, `FEAT-BIZ-01..04`, `FEAT-INT-01..02`, `FEAT-PREM-01..02`). System audit ledger (`admin:audit:view`) is licensed under core business operations (`FEAT-BIZ-01`) rather than having a standalone `FEAT-BIZ-05` catalog entry.
 
+### Fix 3.4: Decoupled Service Architecture & Circular Dependency Elimination
+* **File:** [`web/src/app/(super-admin)/_super_admin_services/feature_catalog_service.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_services/feature_catalog_service.ts), [`web/src/app/(super-admin)/_super_admin_services/subscription_plan_service.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_services/subscription_plan_service.ts), [`web/src/app/(super-admin)/_super_admin_services/unified_auth_evaluator.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_services/unified_auth_evaluator.ts), & [`web/src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts`](file:///home/pawan/Desktop/hospital/web/src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts)
+* **Exact Defect:** Circular dependency between `subscription_plan_service.ts` and `unified_auth_evaluator.ts`. `subscription_plan_service.ts` imported `normalizeToCanonicalFeatureId` from `unified_auth_evaluator.ts`, while `unified_auth_evaluator.ts` imported `getPlanByTenant` from `subscription_plan_service.ts`.
+* **Root Cause:** Placement of core feature alias map and feature ID normalization function inside `unified_auth_evaluator.ts` rather than the base `feature_catalog_service.ts`.
+* **Change Made:**
+  1. Moved `FEATURE_ID_ALIAS_MAP` and `normalizeToCanonicalFeatureId()` helper function to `feature_catalog_service.ts` (base feature licensing domain).
+  2. Updated `subscription_plan_service.ts` to import `normalizeToCanonicalFeatureId()` strictly from `feature_catalog_service.ts`, completely removing its import of `unified_auth_evaluator.ts`.
+  3. Updated `unified_auth_evaluator.ts` to import `FEATURE_ID_ALIAS_MAP` and `normalizeToCanonicalFeatureId()` from `feature_catalog_service.ts` and re-export them for backward compatibility with UI components.
+  4. Added static dependency cycle assertions (Section 8) to `verify_feature_mapping.ts` to enforce that `subscription_plan_service.ts` has 0 imports from `unified_auth_evaluator.ts` and `feature_catalog_service.ts` has 0 higher-level dependencies.
+* **Verification Performed:** Executed `npx tsx src/app/(super-admin)/_super_admin_tests/verify_feature_mapping.ts` -> **ALL 8 AUDIT SECTIONS PASSED (0 ERRORS)**. Executed `npx tsc --noEmit` -> **PASSED (0 ERRORS)**. Executed `npm run build` -> **PASSED (0 ERRORS, 86/86 static pages compiled)**.
+* **Remaining Limitation:** None.
+
 ---
 
 # 4. Branding State & UI Consistency
