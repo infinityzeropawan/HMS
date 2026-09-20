@@ -46,7 +46,7 @@ export const PERMISSION_CLAIMS: PermissionClaim[] = [
   // --- Integrations & ABDM ---
   { id: "abdm:healthid:link", name: "Create & Link ABHA Health ID", description: "Verify patient ABHA number via Aadhaar OTP and generate ABHA card", category: "Integrations & ABDM", requiredFeatureId: "FEAT-INT-ABDM" },
   { id: "abdm:gateway:push", name: "Push Health Records to ABDM Gateway", description: "Bundle FHIR clinical artifacts and upload to ABDM Health Information Exchange", category: "Integrations & ABDM", requiredFeatureId: "FEAT-INT-ABDM" },
-  { id: "pacs:dicom:view", name: "Access PACS DICOM Medical Imaging", description: "Open web-based DICOM viewer to inspect X-Rays, CT Scans, and MRI studies", category: "Integrations & ABDM", requiredFeatureId: "FEAT-PREM-AI" },
+  { id: "pacs:dicom:view", name: "Access PACS DICOM Medical Imaging", description: "Open web-based DICOM viewer to inspect X-Rays, CT Scans, and MRI studies", category: "Integrations & ABDM", requiredFeatureId: "FEAT-CLIN-PACS" },
 
   // --- System Administration ---
   { id: "admin:staff:manage", name: "Manage Hospital Staff & User Credentials", description: "Create staff accounts, assign roles, reset passwords, and toggle active status", category: "System Administration", requiredFeatureId: "FEAT-BUS-BILLING" },

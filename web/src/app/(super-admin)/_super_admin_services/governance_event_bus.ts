@@ -12,7 +12,9 @@ export type GovernanceEventType =
   | "BRANDING_CHANGE"
   | "WHITE_LABEL_CHANGE"
   | "TENANT_SUSPENDED"
-  | "TENANT_RESTORED";
+  | "TENANT_RESTORED"
+  | "SUPPORT_TICKET_UPDATED"
+  | "SUBSCRIPTION_PLAN_MUTATED";
 
 export interface GovernanceEventPayload {
   eventType: GovernanceEventType;

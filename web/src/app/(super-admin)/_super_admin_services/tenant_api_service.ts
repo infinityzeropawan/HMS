@@ -742,6 +742,10 @@ export class TenantApiService {
     return this.tenants[index];
   }
 
+  static getTenantById(id: string): Tenant | undefined {
+    return this.tenants.find((t) => t.id === id);
+  }
+
   static async suspendTenant(
     id: string,
     reason: SuspensionReason,

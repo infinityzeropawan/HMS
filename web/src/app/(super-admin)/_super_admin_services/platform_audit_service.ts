@@ -296,4 +296,54 @@ export class PlatformAuditService {
 
     return { total, critical, warning, info, categoryBreakdown };
   }
+
+  public static searchAuditLogs(params: {
+    searchTerm?: string;
+    tenantId?: string;
+    actor?: string;
+    category?: ExtendedAuditCategory | "ALL";
+    startDate?: string;
+    endDate?: string;
+  }): PlatformAuditEvent[] {
+    return auditLogsStore.filter((log) => {
+      if (params.category && params.category !== "ALL" && log.category !== params.category) {
+        return false;
+      }
+      if (params.tenantId && !log.entity.includes(params.tenantId)) {
+        return false;
+      }
+      if (params.actor && !log.actor.toLowerCase().includes(params.actor.toLowerCase())) {
+        return false;
+      }
+      if (params.searchTerm) {
+        const term = params.searchTerm.toLowerCase();
+        const matchesAction = log.action.toLowerCase().includes(term);
+        const matchesEntity = log.entity.toLowerCase().includes(term);
+        const matchesActor = log.actor.toLowerCase().includes(term);
+        const matchesDetails = log.details.toLowerCase().includes(term);
+        const matchesId = log.id.toLowerCase().includes(term);
+        if (!matchesAction && !matchesEntity && !matchesActor && !matchesDetails && !matchesId) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  public static exportAuditLogsCSV(logs: PlatformAuditEvent[] = auditLogsStore): string {
+    const headers = ["Audit ID", "Timestamp", "Actor", "Role", "Action", "Category", "Target Entity", "IP Address", "Risk Level", "Details"];
+    const rows = logs.map((l) => [
+      l.id,
+      `"${l.timestamp}"`,
+      `"${l.actor}"`,
+      `"${l.actorRole}"`,
+      `"${l.action.replace(/"/g, '""')}"`,
+      l.category,
+      `"${l.entity.replace(/"/g, '""')}"`,
+      l.ipAddress,
+      l.riskLevel,
+      `"${l.details.replace(/"/g, '""')}"`,
+    ]);
+    return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+  }
 }

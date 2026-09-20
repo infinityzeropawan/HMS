@@ -1,3 +1,5 @@
+import { GovernanceEventBus } from "./governance_event_bus";
+
 export interface SupportTicket {
   key: string;
   ticketId: string;
@@ -153,20 +155,62 @@ export class SupportTicketService {
     };
 
     ticketsStore = [newTicket, ...ticketsStore];
+
+    GovernanceEventBus.emit({
+      eventType: "SUPPORT_TICKET_UPDATED",
+      tenantId: ticket.tenantId,
+      tenantName: ticket.tenantName,
+      actor: "Super Admin Ops",
+      actorRole: "SUPER_ADMIN",
+      action: "Created Support Ticket",
+      details: { ticketId: newId, subject: ticket.subject, category: ticket.category, priority: ticket.priority },
+      riskLevel: ticket.priority === "CRITICAL" ? "CRITICAL" : "INFO",
+    });
+
     listeners.forEach((l) => l());
     return newTicket;
   }
 
   public static updateTicketStatus(ticketId: string, status: SupportTicket["status"]): void {
+    const target = ticketsStore.find((t) => t.ticketId === ticketId);
     ticketsStore = ticketsStore.map((t) => (t.ticketId === ticketId ? { ...t, status } : t));
+
+    if (target) {
+      GovernanceEventBus.emit({
+        eventType: "SUPPORT_TICKET_UPDATED",
+        tenantId: target.tenantId,
+        tenantName: target.tenantName,
+        actor: "Super Admin Ops",
+        actorRole: "SUPER_ADMIN",
+        action: `Updated Ticket Status to ${status}`,
+        details: { ticketId, newStatus: status, subject: target.subject },
+        riskLevel: "INFO",
+      });
+    }
+
     listeners.forEach((l) => l());
   }
 
   public static addReply(ticketId: string, sender: string, text: string): void {
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const target = ticketsStore.find((t) => t.ticketId === ticketId);
     ticketsStore = ticketsStore.map((t) =>
       t.ticketId === ticketId ? { ...t, conversation: [...t.conversation, { sender, text, time }] } : t
     );
+
+    if (target) {
+      GovernanceEventBus.emit({
+        eventType: "SUPPORT_TICKET_UPDATED",
+        tenantId: target.tenantId,
+        tenantName: target.tenantName,
+        actor: sender,
+        actorRole: "SUPER_ADMIN",
+        action: "Added Ticket Reply",
+        details: { ticketId, replySnippet: text.substring(0, 50) },
+        riskLevel: "INFO",
+      });
+    }
+
     listeners.forEach((l) => l());
   }
 
