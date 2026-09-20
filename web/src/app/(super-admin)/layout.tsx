@@ -20,22 +20,36 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   const router = useRouter();
   const pathname = usePathname();
   const user = useAuthUserStore((s) => s.user);
+  const _hasHydrated = useAuthUserStore((s) => s._hasHydrated);
+  const setHasHydrated = useAuthUserStore((s) => s.setHasHydrated);
+
+  // Fallback for SSR / initial render if already hydrated
+  useEffect(() => {
+    if (!_hasHydrated && typeof window !== "undefined") {
+      const isAlreadyHydrated = useAuthUserStore.persist?.hasHydrated?.();
+      if (isAlreadyHydrated) {
+        setHasHydrated(true);
+      }
+    }
+  }, [_hasHydrated, setHasHydrated]);
 
   const isAuthorized = user?.role === "SUPER_ADMIN";
 
   useEffect(() => {
-    if (!isAuthorized) {
+    if (_hasHydrated && !isAuthorized) {
       const redirectTarget = pathname && pathname !== "/" ? `?redirect=${encodeURIComponent(pathname)}` : "";
       router.replace(`/login${redirectTarget}`);
     }
-  }, [isAuthorized, pathname, router]);
+  }, [_hasHydrated, isAuthorized, pathname, router]);
 
-  // Avoid flashing privileged UI while the redirect is in flight.
-  if (!isAuthorized) {
+  // Avoid flashing privileged UI while store is rehydrating or redirect is in flight.
+  if (!_hasHydrated || !isAuthorized) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-50">
         <Spin size="large" />
-        <p className="text-sm font-medium text-slate-500">Verifying Super Admin privileges…</p>
+        <p className="text-sm font-medium text-slate-500">
+          {!_hasHydrated ? "Restoring security session…" : "Verifying Super Admin privileges…"}
+        </p>
       </div>
     );
   }

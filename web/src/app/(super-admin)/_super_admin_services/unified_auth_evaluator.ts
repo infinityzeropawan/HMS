@@ -38,18 +38,43 @@ export interface AccessEvaluationResult {
   stepTrace: EvaluationStepResult[];
 }
 
-// Map short feature IDs used in permission claims to catalog IDs if needed
+// Map short feature IDs used in permission claims to canonical catalog IDs
 export const FEATURE_ID_ALIAS_MAP: Record<string, string> = {
+  // Legacy / Short Claim Feature Aliases
   "FEAT-CLIN-OPD": "FEAT-CLIN-01",
   "FEAT-CLIN-IPD": "FEAT-CLIN-02",
   "FEAT-CLIN-OT": "FEAT-CLIN-03",
-  "FEAT-CLIN-PHARM": "FEAT-CLIN-04",
+  "FEAT-CLIN-ICU": "FEAT-CLIN-04",
   "FEAT-CLIN-LAB": "FEAT-CLIN-05",
-  "FEAT-CLIN-TELEMEDICINE": "FEAT-CLIN-06",
-  "FEAT-BUS-BILLING": "FEAT-BUS-01",
+  "FEAT-CLIN-PACS": "FEAT-CLIN-06",
+  "FEAT-CLIN-PHARM": "FEAT-BIZ-03",
+  "FEAT-CLIN-TELEMEDICINE": "FEAT-CLIN-07",
+  "FEAT-CLIN-PORTAL": "FEAT-CLIN-08",
+  "FEAT-BUS-BILLING": "FEAT-BIZ-01",
+  "FEAT-BUS-TPA": "FEAT-BIZ-02",
+  "FEAT-BUS-ROSTER": "FEAT-BIZ-04",
   "FEAT-INT-ABDM": "FEAT-INT-01",
+  "FEAT-INT-KIOSK": "FEAT-INT-02",
   "FEAT-PREM-AI": "FEAT-PREM-01",
-  "FEAT-BUS-ANALYTICS": "FEAT-BUS-03",
+  "FEAT-PREM-BLOOD": "FEAT-PREM-02",
+  "FEAT-BUS-ANALYTICS": "FEAT-BIZ-01",
+  // Identity Mappings for Canonical Catalog IDs
+  "FEAT-CLIN-01": "FEAT-CLIN-01",
+  "FEAT-CLIN-02": "FEAT-CLIN-02",
+  "FEAT-CLIN-03": "FEAT-CLIN-03",
+  "FEAT-CLIN-04": "FEAT-CLIN-04",
+  "FEAT-CLIN-05": "FEAT-CLIN-05",
+  "FEAT-CLIN-06": "FEAT-CLIN-06",
+  "FEAT-CLIN-07": "FEAT-CLIN-07",
+  "FEAT-CLIN-08": "FEAT-CLIN-08",
+  "FEAT-BIZ-01": "FEAT-BIZ-01",
+  "FEAT-BIZ-02": "FEAT-BIZ-02",
+  "FEAT-BIZ-03": "FEAT-BIZ-03",
+  "FEAT-BIZ-04": "FEAT-BIZ-04",
+  "FEAT-INT-01": "FEAT-INT-01",
+  "FEAT-INT-02": "FEAT-INT-02",
+  "FEAT-PREM-01": "FEAT-PREM-01",
+  "FEAT-PREM-02": "FEAT-PREM-02",
 };
 
 export class UnifiedAuthEvaluator {
@@ -63,10 +88,28 @@ export class UnifiedAuthEvaluator {
 
     // Fetch Tenant Context
     const tenant = getTenantById(context.tenantId);
-    const tenantStatus = tenant?.status || "Active";
-    const subscriptionPlan = getPlanByTenant(context.tenantId);
 
     // --- STEP 1: Tenant Active Check ---
+    if (!tenant) {
+      const step1Result: EvaluationStepResult = {
+        stepKey: "STEP_1_TENANT_ACTIVE",
+        stepName: "1. Tenant Active",
+        passed: false,
+        reason: `Tenant ID '${context.tenantId}' was not found. Access denied.`,
+      };
+      trace.push(step1Result);
+      return {
+        allowed: false,
+        permission: claim,
+        requiredFeatureId,
+        featureState: "Disabled",
+        featureSource: "Restricted",
+        failingStep: step1Result,
+        stepTrace: trace,
+      };
+    }
+
+    const tenantStatus = tenant.status;
     const step1Passed = tenantStatus === "Active" || tenantStatus === "Trial";
     const step1Result: EvaluationStepResult = {
       stepKey: "STEP_1_TENANT_ACTIVE",
@@ -90,7 +133,27 @@ export class UnifiedAuthEvaluator {
     }
 
     // --- STEP 2: Subscription Valid Check ---
-    const isPlanExpired = tenant?.expiryDate
+    const subscriptionPlan = getPlanByTenant(context.tenantId);
+    if (!subscriptionPlan) {
+      const step2Result: EvaluationStepResult = {
+        stepKey: "STEP_2_SUBSCRIPTION_VALID",
+        stepName: "2. Subscription Valid",
+        passed: false,
+        reason: `Tenant '${context.tenantId}' has no active subscription plan. Access denied.`,
+      };
+      trace.push(step2Result);
+      return {
+        allowed: false,
+        permission: claim,
+        requiredFeatureId,
+        featureState: "Disabled",
+        featureSource: "Restricted",
+        failingStep: step2Result,
+        stepTrace: trace,
+      };
+    }
+
+    const isPlanExpired = tenant.expiryDate
       ? new Date(tenant.expiryDate).getTime() < new Date().getTime()
       : false;
     const step2Passed = !isPlanExpired;
@@ -99,8 +162,8 @@ export class UnifiedAuthEvaluator {
       stepName: "2. Subscription Valid",
       passed: step2Passed,
       reason: step2Passed
-        ? `Subscription plan '${subscriptionPlan?.name || "Enterprise"}' is active.`
-        : `Subscription expired on ${tenant?.expiryDate}. Renewal required.`,
+        ? `Subscription plan '${subscriptionPlan.name}' is active.`
+        : `Subscription expired on ${tenant.expiryDate}. Renewal required.`,
     };
     trace.push(step2Result);
     if (!step2Passed) {
@@ -121,8 +184,8 @@ export class UnifiedAuthEvaluator {
 
     if (requiredFeatureId) {
       const catalogId = FEATURE_ID_ALIAS_MAP[requiredFeatureId] || requiredFeatureId;
-      const isRestrictedByPlan = subscriptionPlan?.restrictedFeatures?.includes(catalogId) ?? false;
-      const isOptionalAddon = subscriptionPlan?.optionalAddons?.includes(catalogId) ?? false;
+      const isRestrictedByPlan = subscriptionPlan.restrictedFeatures?.includes(catalogId) ?? false;
+      const isOptionalAddon = subscriptionPlan.optionalAddons?.includes(catalogId) ?? false;
 
       if (isRestrictedByPlan) {
         featureState = "Restricted";
@@ -197,14 +260,17 @@ export class UnifiedAuthEvaluator {
       if (scope.requiresOnDutyRoster && !context.isOnDutyRoster && !context.isEmergencyBreakGlass) {
         step5Passed = false;
         step5Reason = "Role requires active on-duty shift roster check-in.";
-      } else if (
-        scope.scopeType === "Department Scoped" &&
-        context.departmentId &&
-        !scope.allowedDepartments.includes("ALL") &&
-        !scope.allowedDepartments.includes(context.departmentId)
-      ) {
-        step5Passed = false;
-        step5Reason = `Role scope restricted to departments [${scope.allowedDepartments.join(", ")}]. Current: '${context.departmentId}'.`;
+      } else if (scope.scopeType === "Department Scoped") {
+        if (!context.departmentId) {
+          step5Passed = false;
+          step5Reason = "Role is department-scoped but no departmentId context was provided.";
+        } else if (
+          !scope.allowedDepartments.includes("ALL") &&
+          !scope.allowedDepartments.includes(context.departmentId)
+        ) {
+          step5Passed = false;
+          step5Reason = `Role scope restricted to departments [${scope.allowedDepartments.join(", ")}]. Current: '${context.departmentId}'.`;
+        }
       }
     }
 
@@ -226,6 +292,7 @@ export class UnifiedAuthEvaluator {
       stepTrace: trace,
     };
   }
+
 
   /**
    * Helper to evaluate feature state and source for a specific claim in a tenant context

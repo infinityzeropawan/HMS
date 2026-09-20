@@ -76,6 +76,8 @@ const INITIAL_PLANS: PlanConfig[] = [
 ];
 
 const INITIAL_TENANT_SUBSCRIPTIONS: TenantSubscription[] = [
+  { key: "0a", tenantId: "TENANT-001", tenantName: "Apollo Super Speciality Hospital", planCode: "ENTERPRISE", billingCycle: "ANNUAL", userSeats: "342 / 500", renewalDate: "2027-04-01", status: "ACTIVE" },
+  { key: "0b", tenantId: "TENANT-002", tenantName: "Fortis Heart & Vascular Institute", planCode: "PRO", billingCycle: "ANNUAL", userSeats: "120 / 200", renewalDate: "2027-05-15", status: "ACTIVE" },
   { key: "1", tenantId: "TNT-9014", tenantName: "Apollo Super Speciality Hospital", planCode: "ENTERPRISE", billingCycle: "ANNUAL", userSeats: "342 / 500", renewalDate: "2027-04-01", status: "ACTIVE" },
   { key: "2", tenantId: "TNT-1042", tenantName: "Fortis Heart & Vascular Institute", planCode: "ENTERPRISE", billingCycle: "ANNUAL", userSeats: "210 / 500", renewalDate: "2027-03-12", status: "ACTIVE" },
   { key: "3", tenantId: "TNT-2088", tenantName: "Max Super Speciality Hospital", planCode: "ENTERPRISE", billingCycle: "ANNUAL", userSeats: "295 / 500", renewalDate: "2027-02-01", status: "ACTIVE" },
@@ -129,8 +131,9 @@ export class SubscriptionPlanService {
     if (sub) {
       return this.getPlan(sub.planCode);
     }
-    return plansStore.find((p) => p.code === "ENTERPRISE");
+    return undefined;
   }
+
 
   public static getFeatureSource(planCode: string, featureId: string): FeatureSource {
     const plan = this.getPlan(planCode);

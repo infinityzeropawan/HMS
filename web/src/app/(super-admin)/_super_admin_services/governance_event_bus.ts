@@ -10,7 +10,9 @@ export type GovernanceEventType =
   | "BREAK_GLASS_ACCESS_USED"
   | "ROLE_PERMISSION_CHANGE"
   | "BRANDING_CHANGE"
-  | "WHITE_LABEL_CHANGE";
+  | "WHITE_LABEL_CHANGE"
+  | "TENANT_SUSPENDED"
+  | "TENANT_RESTORED";
 
 export interface GovernanceEventPayload {
   eventType: GovernanceEventType;
@@ -35,6 +37,10 @@ class GovernanceEventBusSingleton {
     // Map event type to Audit category
     let category: ExtendedAuditCategory = "GOVERNANCE_EVENT";
     switch (payload.eventType) {
+      case "TENANT_SUSPENDED":
+      case "TENANT_RESTORED":
+        category = "SUBSCRIPTION_LIFECYCLE";
+        break;
       case "CONSENT_REVOKED":
       case "CONSENT_EXPIRED":
         category = "CONSENT_EVENT";
@@ -58,6 +64,7 @@ class GovernanceEventBusSingleton {
         category = "WHITE_LABEL_CHANGE";
         break;
     }
+
 
     // 1. Log to Platform Audit Service
     PlatformAuditService.recordAuditEvent({

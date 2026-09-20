@@ -13,6 +13,8 @@ import {
   HealthLevel,
   ServiceDiagnosticIncident,
 } from "../_super_admin_types/tenant_management";
+import { GovernanceEventBus } from "./governance_event_bus";
+
 
 const MOCK_TENANTS: Tenant[] = [
   {
@@ -750,6 +752,8 @@ export class TenantApiService {
     const index = this.tenants.findIndex((t) => t.id === id);
     if (index === -1) throw new Error("Tenant not found");
 
+    const targetTenant = this.tenants[index];
+
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const timeStr = now.toTimeString().slice(0, 8);
@@ -765,14 +769,33 @@ export class TenantApiService {
       reasonNotes,
     };
 
-    const currentHistory = this.tenants[index].suspensionHistory || [];
+    const currentHistory = targetTenant.suspensionHistory || [];
 
-    this.tenants[index] = {
-      ...this.tenants[index],
-      status: "Suspended",
-      healthStatus: "Offline",
+    const updatedTenant = {
+      ...targetTenant,
+      status: "Suspended" as const,
+      healthStatus: "Offline" as const,
       suspensionHistory: [record, ...currentHistory],
     };
+
+    this.tenants[index] = updatedTenant;
+
+    // Dispatch exactly one canonical audit & governance event
+    GovernanceEventBus.emit({
+      eventType: "TENANT_SUSPENDED",
+      tenantId: id,
+      tenantName: targetTenant.hospitalName,
+      actor: adminName,
+      actorRole: "SUPER_ADMIN",
+      action: `Suspended hospital tenant: ${reason}`,
+      riskLevel: "CRITICAL",
+      details: {
+        suspensionId: record.id,
+        reason,
+        reasonNotes,
+        suspendedAt: record.timestamp,
+      },
+    });
 
     return this.tenants[index];
   }
@@ -784,6 +807,8 @@ export class TenantApiService {
     await delay(400);
     const index = this.tenants.findIndex((t) => t.id === id);
     if (index === -1) throw new Error("Tenant not found");
+
+    const targetTenant = this.tenants[index];
 
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
@@ -800,17 +825,35 @@ export class TenantApiService {
       reasonNotes: "Tenant status restored to Active by Super Admin Console",
     };
 
-    const currentHistory = this.tenants[index].suspensionHistory || [];
+    const currentHistory = targetTenant.suspensionHistory || [];
 
-    this.tenants[index] = {
-      ...this.tenants[index],
-      status: "Active",
-      healthStatus: "Healthy",
+    const updatedTenant = {
+      ...targetTenant,
+      status: "Active" as const,
+      healthStatus: "Healthy" as const,
       suspensionHistory: [record, ...currentHistory],
     };
 
+    this.tenants[index] = updatedTenant;
+
+    // Dispatch exactly one canonical audit & governance event
+    GovernanceEventBus.emit({
+      eventType: "TENANT_RESTORED",
+      tenantId: id,
+      tenantName: targetTenant.hospitalName,
+      actor: adminName,
+      actorRole: "SUPER_ADMIN",
+      action: "Restored hospital tenant status to Active",
+      riskLevel: "INFO",
+      details: {
+        restorationId: record.id,
+        restoredAt: record.timestamp,
+      },
+    });
+
     return this.tenants[index];
   }
+
 
   static async toggleTenantModule(id: string, moduleName: string): Promise<string[]> {
     await delay(250);

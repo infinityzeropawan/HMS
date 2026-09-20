@@ -713,10 +713,12 @@ export default function TenantDetailPage({ params }: PageProps) {
                   children: (
                     <div className="pt-2">
                       <LiveBrandingPreviewWorkspace
+                        tenantId={tenant.id}
                         branding={fullBranding}
                         hospitalName={tenant.hospitalName}
                       />
                     </div>
+
                   ),
                 },
                 {

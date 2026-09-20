@@ -27,17 +27,20 @@ import { TenantBrandingConfig } from "../../_super_admin_types/tenant_management
 import { useBrandingStore } from "../../_super_admin_stores/branding_store";
 
 interface LiveBrandingPreviewWorkspaceProps {
+  tenantId?: string;
   branding: TenantBrandingConfig;
   hospitalName: string;
 }
 
 export const LiveBrandingPreviewWorkspace: React.FC<LiveBrandingPreviewWorkspaceProps> = ({
+  tenantId,
   branding,
   hospitalName,
 }) => {
   const [activePreviewMode, setActivePreviewMode] = useState<LivePreviewMode>("login");
-  const storeBranding = useBrandingStore((state) => state.brandingByTenant["TNT-9014"]);
+  const storeBranding = useBrandingStore((state) => (tenantId ? state.brandingByTenant[tenantId] : undefined));
   const activeBranding = storeBranding || branding;
+
 
   const primaryColor = activeBranding.primaryColor || "#0d9488";
   const secondaryColor = activeBranding.secondaryColor || "#0f766e";
