@@ -9,21 +9,21 @@ import { EmrService } from "@/app/(patient)/_patient_services/emr_service";
 import { Patient360DrawerModal } from "../Patient360/Patient360DrawerModal";
 
 export const NurseClinicalAlertsPanel: React.FC = () => {
-  const admissions = useIpdStore((state) => state.admissions);
-  const notifications = useNotificationStore((state) => state.notifications);
+  const admissions = useIpdStore((state) => state.admissions) || [];
+  const notifications = useNotificationStore((state) => state.notifications) || [];
 
   const [selectedUhid, setSelectedUhid] = useState<string | null>(null);
 
   // Critical Patients
   const criticalPatients = admissions.filter(
-    (a) => a.roundStatus === "CRITICAL" || (a.vitals && a.vitals.spO2 < 94)
+    (a) => a?.roundStatus === "CRITICAL" || (a?.vitals && (a.vitals.spO2 || 98) < 94)
   );
 
   // High Risk / Fall Risk Patients
   const fallRiskPatients = admissions.filter(
     (a) =>
-      a.age >= 60 ||
-      (a.primaryDiagnosis &&
+      (a?.age || 0) >= 60 ||
+      (a?.primaryDiagnosis &&
         (a.primaryDiagnosis.toLowerCase().includes("post-op") ||
           a.primaryDiagnosis.toLowerCase().includes("arthroplasty") ||
           a.primaryDiagnosis.toLowerCase().includes("fracture") ||
@@ -32,7 +32,7 @@ export const NurseClinicalAlertsPanel: React.FC = () => {
 
   // Escalated Orders from Notification Store
   const escalatedAlerts = notifications.filter(
-    (n) => n.category === "ESCALATION" || n.priority === "critical"
+    (n) => n?.category === "ESCALATION" || n?.priority === "critical"
   );
 
   return (

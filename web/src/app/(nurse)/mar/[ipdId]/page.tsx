@@ -10,14 +10,15 @@ import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
 
 export default function NurseMarPage() {
   const params = useParams();
-  const ipdId = Array.isArray(params?.ipdId) ? params.ipdId[0] : params?.ipdId || "IPD-2026-0881";
+  const rawId = Array.isArray(params?.ipdId) ? params.ipdId[0] : params?.ipdId;
+  const ipdId = !rawId || rawId === "undefined" ? "IPD-2026-0881" : rawId;
 
-  const admissions = useIpdStore((state) => state.admissions);
+  const admissions = useIpdStore((state) => state.admissions) || [];
   const activeAdmission =
     admissions.find(
       (a) =>
-        (a.admissionNo && a.admissionNo.toLowerCase() === ipdId.toLowerCase()) ||
-        (a.id && a.id.toLowerCase() === ipdId.toLowerCase())
+        (a?.admissionNo && a.admissionNo.toLowerCase() === ipdId.toLowerCase()) ||
+        (a?.id && a.id.toLowerCase() === ipdId.toLowerCase())
     ) || admissions[0];
 
   const patientName = activeAdmission?.patientName || "Inpatient";

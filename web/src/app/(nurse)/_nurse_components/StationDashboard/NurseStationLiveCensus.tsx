@@ -7,15 +7,15 @@ import { useBedStore } from "@/app/(admin)/_admin_stores/admin_bed_store";
 import { BedDouble, Users, AlertTriangle, Pill, ClipboardList } from "lucide-react";
 
 export const NurseStationLiveCensus: React.FC = () => {
-  const admissions = useIpdStore((state) => state.admissions);
-  const beds = useBedStore((state) => state.beds);
+  const admissions = useIpdStore((state) => state.admissions) || [];
+  const beds = useBedStore((state) => state.beds) || [];
 
-  const wardCensus = admissions.filter((a) => a.status !== "DISCHARGED").length;
-  const occupiedBeds = beds.filter((b) => b.status === "OCCUPIED").length || wardCensus;
+  const wardCensus = admissions.filter((a) => a?.status !== "DISCHARGED").length;
+  const occupiedBeds = beds.filter((b) => b?.status === "OCCUPIED").length || wardCensus;
   const criticalCount = admissions.filter(
-    (a) => a.roundStatus === "CRITICAL" || (a.vitals && a.vitals.spO2 < 94)
+    (a) => a?.roundStatus === "CRITICAL" || (a?.vitals && (a.vitals.spO2 || 98) < 94)
   ).length;
-  const dueMedicationsCount = admissions.filter((a) => a.roundStatus === "DUE").length;
+  const dueMedicationsCount = admissions.filter((a) => a?.roundStatus === "DUE").length;
   let pendingOrdersCount = 2;
   if (typeof window !== "undefined") {
     try {
