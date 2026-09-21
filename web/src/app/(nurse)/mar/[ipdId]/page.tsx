@@ -13,9 +13,12 @@ export default function NurseMarPage() {
   const ipdId = Array.isArray(params?.ipdId) ? params.ipdId[0] : params?.ipdId || "IPD-2026-0881";
 
   const admissions = useIpdStore((state) => state.admissions);
-  const activeAdmission = admissions.find(
-    (a) => a.admissionNo.toLowerCase() === ipdId.toLowerCase() || a.id.toLowerCase() === ipdId.toLowerCase()
-  ) || admissions[0];
+  const activeAdmission =
+    admissions.find(
+      (a) =>
+        (a.admissionNo && a.admissionNo.toLowerCase() === ipdId.toLowerCase()) ||
+        (a.id && a.id.toLowerCase() === ipdId.toLowerCase())
+    ) || admissions[0];
 
   const patientName = activeAdmission?.patientName || "Inpatient";
   const bedNumber = activeAdmission?.bedNumber || "Unassigned Bed";

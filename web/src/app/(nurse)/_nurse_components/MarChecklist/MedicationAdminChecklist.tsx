@@ -61,15 +61,18 @@ export const MedicationAdminChecklist: React.FC<MedicationAdminChecklistProps> =
         const encounterStore = useEncounterStore.getState();
         const encounter = encounterStore.getEncounter(uhid);
         if (encounter && encounter.prescriptions && encounter.prescriptions.length > 0) {
-          const docDoses: DoseRecord[] = encounter.prescriptions.map((rx, idx) => ({
-            key: `doc-rx-${idx}-${rx.drugId}`,
-            medName: `${rx.drugName} ${rx.dosage} - ${rx.frequency}`,
-            scheduledTime: rx.frequency.includes("OD") ? "09:00 AM" : rx.frequency.includes("BD") ? "09:00 AM & 21:00 PM" : "STAT / As Needed",
-            status: "SCHEDULED",
-            givenAt: "-",
-            nurse: "-",
-            source: "DOCTOR_PRESCRIPTION",
-          }));
+          const docDoses: DoseRecord[] = encounter.prescriptions.map((rx, idx) => {
+            const freq = rx.frequency || "";
+            return {
+              key: `doc-rx-${idx}-${rx.drugId || idx}`,
+              medName: `${rx.drugName || rx.drugId || "Medication"} ${rx.dosage || ""} - ${freq}`,
+              scheduledTime: freq.includes("OD") ? "09:00 AM" : freq.includes("BD") ? "09:00 AM & 21:00 PM" : "STAT / As Needed",
+              status: "SCHEDULED",
+              givenAt: "-",
+              nurse: "-",
+              source: "DOCTOR_PRESCRIPTION",
+            };
+          });
 
           // Merge without duplicating med names
           const existingNames = new Set(initialDoses.map((d) => d.medName));

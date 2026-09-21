@@ -76,7 +76,7 @@ export const NurseBedMatrixGrid: React.FC = () => {
             <div className="pt-2 border-t border-slate-100/80 flex items-center justify-between text-3xs">
               {bed.currentIpdNo ? (
                 <Link
-                  href={`/mar/${bed.currentIpdNo}`}
+                  href={`/mar/${bed.currentIpdNo || "IPD-2026-0881"}`}
                   onClick={(e) => e.stopPropagation()}
                   className="font-semibold text-teal-700 hover:underline"
                 >

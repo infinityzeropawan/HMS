@@ -70,9 +70,9 @@ export const NurseVitalsEntryConsole: React.FC = () => {
 
   const filteredLogs = vitalsLogs.filter(
     (v) =>
-      v.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.bedNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.uhid.toLowerCase().includes(searchTerm.toLowerCase())
+      (v.patientName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (v.bedNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (v.uhid || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const columns = [
