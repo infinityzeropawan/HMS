@@ -257,6 +257,49 @@ export class StaffUserService {
   }
 
   /**
+   * Bulk lifecycle status transition for multiple staff users
+   */
+  public static bulkUpdateUserStatus(
+    userIds: string[],
+    newStatus: StaffUserStatus,
+    actor: string = "Dr. Rajesh Sharma (Hospital Admin)"
+  ): { updatedCount: number; errors: string[] } {
+    let updatedCount = 0;
+    const errors: string[] = [];
+
+    for (const id of userIds) {
+      const res = this.updateUserStatus(id, newStatus, actor);
+      if (res.success) {
+        updatedCount++;
+      } else if (res.error) {
+        errors.push(res.error);
+      }
+    }
+
+    if (updatedCount > 0) {
+      PlatformAuditService.recordAuditEvent({
+        actor,
+        actorRole: "HOSPITAL_ADMIN",
+        action: `Bulk User Status Update: ${updatedCount} user(s) -> ${newStatus}`,
+        category: "GOVERNANCE_EVENT",
+        entity: `${updatedCount} Hospital Staff Accounts`,
+        ipAddress: "192.168.1.105",
+        riskLevel: newStatus === "DISABLED" || newStatus === "SUSPENDED" ? "WARNING" : "INFO",
+        details: JSON.stringify({
+          event: "Bulk User Status Update",
+          timestamp: new Date().toISOString(),
+          actor,
+          targetCount: updatedCount,
+          newStatus,
+          userIds,
+        }),
+      });
+    }
+
+    return { updatedCount, errors };
+  }
+
+  /**
    * Reassigns RBAC role and permission claims with audit event
    */
   public static reassignRole(

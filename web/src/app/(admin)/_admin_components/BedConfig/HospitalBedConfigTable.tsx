@@ -37,6 +37,10 @@ export function HospitalBedConfigTable() {
   const [selectedCategory, setSelectedCategory] = useState<BedCategory>("GENERAL");
   const [form] = Form.useForm();
 
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [sourceBed, setSourceBed] = useState<HospitalBed | null>(null);
+  const [targetBedId, setTargetBedId] = useState<string>("");
+
   const available = beds.filter((d) => d.status === "VACANT" || d.status === "RESERVED").length;
   const occupied = beds.filter((d) => d.status === "OCCUPIED").length;
   const cleaning = beds.filter((d) => d.status === "CLEANING").length;
@@ -95,27 +99,56 @@ export function HospitalBedConfigTable() {
     }
   };
 
+  const handleCompleteCleaning = (bedId: string) => {
+    try {
+      BedService.completeCleaning(bedId, actorName);
+      message.success("Housekeeping cleaning completed. Bed status restored to VACANT.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Cleaning clearance failed";
+      message.error(msg);
+    }
+  };
+
+  const handleOpenTransfer = (bed: HospitalBed) => {
+    setSourceBed(bed);
+    setTargetBedId("");
+    setTransferModalOpen(true);
+  };
+
+  const handleExecuteTransfer = () => {
+    if (!sourceBed || !targetBedId) {
+      message.warning("Please select a target vacant bed for transfer");
+      return;
+    }
+    try {
+      BedService.transferBed(
+        sourceBed.id,
+        targetBedId,
+        {
+          uhid: sourceBed.currentUhid || "UHID-2026-N/A",
+          ipdNo: sourceBed.currentIpdNo || "IPD-2026-N/A",
+          patientName: sourceBed.currentPatientName || "Inpatient",
+        },
+        actorName
+      );
+      message.success(`Patient transferred successfully.`);
+      setTransferModalOpen(false);
+      setSourceBed(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Bed transfer failed";
+      message.error(msg);
+    }
+  };
+
   const columns: ColumnsType<HospitalBed> = [
     {
-      title: "Bed No.",
+      title: "Bed # & Location",
       dataIndex: "bedNumber",
       key: "bedNumber",
-      render: (v, rec) => (
-        <div>
-          <Typography.Text strong>{v}</Typography.Text>
-          <div className="text-3xs text-slate-400 font-mono">{rec.roomNumber} ({rec.floor})</div>
-        </div>
-      ),
-    },
-    {
-      title: "Ward & Department",
-      key: "ward",
       render: (_, rec) => (
         <div>
-          <div className="font-semibold text-slate-800 text-xs">{rec.wardName}</div>
-          <span className="text-3xs font-mono text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">
-            {rec.departmentCode} — {rec.departmentName}
-          </span>
+          <span className="font-mono font-bold text-slate-900 block">{rec.bedNumber}</span>
+          <span className="text-xs text-slate-500">{rec.wardName} ({rec.roomNumber})</span>
         </div>
       ),
     },
@@ -132,21 +165,39 @@ export function HospitalBedConfigTable() {
       render: (v) => <span className="font-mono font-bold text-slate-800">₹{v?.toLocaleString("en-IN")}/day</span>,
     },
     {
-      title: "Status & Management",
+      title: "Status & Operations",
       key: "status",
       render: (_, rec) => (
-        <Select
-          size="small"
-          value={rec.status}
-          onChange={(val) => handleStatusChange(rec.id, val as BedStatus)}
-          className="w-36 text-xs"
-        >
-          <Select.Option value="VACANT">VACANT</Select.Option>
-          <Select.Option value="OCCUPIED" disabled>OCCUPIED ({rec.currentPatientName || "Patient"})</Select.Option>
-          <Select.Option value="CLEANING">CLEANING</Select.Option>
-          <Select.Option value="MAINTENANCE">MAINTENANCE</Select.Option>
-          <Select.Option value="BLOCKED">BLOCKED</Select.Option>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select
+            size="small"
+            value={rec.status}
+            onChange={(val) => handleStatusChange(rec.id, val as BedStatus)}
+            className="w-36 text-xs"
+          >
+            <Select.Option value="VACANT">VACANT</Select.Option>
+            <Select.Option value="OCCUPIED" disabled>OCCUPIED ({rec.currentPatientName || "Patient"})</Select.Option>
+            <Select.Option value="CLEANING">CLEANING</Select.Option>
+            <Select.Option value="MAINTENANCE">MAINTENANCE</Select.Option>
+            <Select.Option value="BLOCKED">BLOCKED</Select.Option>
+          </Select>
+
+          {rec.status === "CLEANING" && (
+            <Tooltip title="Complete housekeeping & mark bed VACANT">
+              <HmsButton size="sm" variant="emerald" onClick={() => handleCompleteCleaning(rec.id)}>
+                Sanitize & Clear
+              </HmsButton>
+            </Tooltip>
+          )}
+
+          {rec.status === "OCCUPIED" && (
+            <Tooltip title="Transfer patient to another bed">
+              <HmsButton size="sm" variant="secondary" onClick={() => handleOpenTransfer(rec)}>
+                Transfer
+              </HmsButton>
+            </Tooltip>
+          )}
+        </div>
       ),
     },
   ];
@@ -257,6 +308,55 @@ export function HospitalBedConfigTable() {
             <HmsButton variant="emerald" htmlType="submit">Add Bed</HmsButton>
           </div>
         </Form>
+      </Modal>
+
+      {/* Patient Bed Transfer Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-teal-700">
+            <span className="font-bold">Inpatient Bed Transfer Workflow</span>
+          </div>
+        }
+        open={transferModalOpen}
+        onCancel={() => setTransferModalOpen(false)}
+        footer={null}
+        width={500}
+      >
+        {sourceBed && (
+          <div className="space-y-4 mt-2">
+            <div className="p-3 bg-teal-50 rounded-xl border border-teal-200 text-xs">
+              <span className="font-bold text-teal-900 block">Current Source Bed: {sourceBed.bedNumber} ({sourceBed.wardName})</span>
+              <span className="text-teal-700 block mt-0.5">Patient: {sourceBed.currentPatientName || "Inpatient"} | IPD: {sourceBed.currentIpdNo || "N/A"}</span>
+              <span className="text-teal-600 block text-[11px] mt-0.5">Releasing this bed will automatically transition its status to CLEANING for housekeeping.</span>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Select Target Vacant Bed</label>
+              <Select
+                size="large"
+                className="w-full"
+                placeholder="Choose target vacant bed..."
+                value={targetBedId || undefined}
+                onChange={(val) => setTargetBedId(val)}
+                options={beds
+                  .filter((b) => (b.status === "VACANT" || b.status === "RESERVED") && b.id !== sourceBed.id)
+                  .map((b) => ({
+                    value: b.id,
+                    label: `${b.bedNumber} (${b.wardName}) — ${b.category} [₹${b.dailyRate}/day]`,
+                  }))}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <HmsButton variant="secondary" onClick={() => setTransferModalOpen(false)}>
+                Cancel
+              </HmsButton>
+              <HmsButton variant="emerald" onClick={handleExecuteTransfer}>
+                Execute Transfer
+              </HmsButton>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

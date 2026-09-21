@@ -72,7 +72,21 @@ export const StaffUserTable: React.FC<StaffUserTableProps> = ({
   const [targetUserForSafety, setTargetUserForSafety] = useState<StaffUser | null>(null);
   const [safetyCheckResult, setSafetyCheckResult] = useState<UserDeleteSafetyResult | null>(null);
 
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
   const [form] = Form.useForm();
+
+  const handleBulkStatusChange = (status: StaffUserStatus) => {
+    if (selectedRowKeys.length === 0) return;
+    const res = StaffUserService.bulkUpdateUserStatus(selectedRowKeys as string[], status);
+    if (res.updatedCount > 0) {
+      message.success(`Updated ${res.updatedCount} staff user(s) to ${status}`);
+      setSelectedRowKeys([]);
+    }
+    if (res.errors.length > 0) {
+      message.warning(res.errors[0]);
+    }
+  };
 
   React.useEffect(() => {
     if (externalCreateModalOpen) {
@@ -404,10 +418,37 @@ export const StaffUserTable: React.FC<StaffUserTableProps> = ({
         </div>
       </div>
 
+      {/* Bulk Action Banner */}
+      {selectedRowKeys.length > 0 && (
+        <div className="bg-teal-50 p-3 rounded-xl border border-teal-200 flex items-center justify-between text-xs">
+          <span className="font-semibold text-teal-900">
+            {selectedRowKeys.length} staff account(s) selected for bulk operations
+          </span>
+          <div className="flex items-center gap-2">
+            <HmsButton size="sm" variant="emerald" onClick={() => handleBulkStatusChange("ACTIVE")}>
+              Bulk Activate
+            </HmsButton>
+            <HmsButton size="sm" variant="secondary" onClick={() => handleBulkStatusChange("SUSPENDED")}>
+              Bulk Suspend
+            </HmsButton>
+            <HmsButton size="sm" variant="ghost" onClick={() => handleBulkStatusChange("DISABLED")}>
+              Bulk Disable
+            </HmsButton>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="w-full overflow-x-auto">
-          <Table columns={columns} dataSource={filteredUsers} rowKey="id" pagination={{ pageSize: 7 }} scroll={{ x: "max-content" }} />
+          <Table
+            rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+            columns={columns}
+            dataSource={filteredUsers}
+            rowKey="id"
+            pagination={{ pageSize: 7 }}
+            scroll={{ x: "max-content" }}
+          />
         </div>
       </div>
 

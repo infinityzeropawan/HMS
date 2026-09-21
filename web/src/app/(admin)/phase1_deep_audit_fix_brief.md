@@ -958,3 +958,51 @@ Manual flows:
 - E2 is reported as a verified code-level contract violation with exact dependency versions, not an observed crash.
 - The compiled-CSS evidence (C2) was taken from the existing `.next` build output; re-verify after any Tailwind theme change.
 - The audit deliberately did not evaluate modules outside the admin panel except where they are wired into it (navigation, auth, audit service, branding store).
+
+---
+
+## 11. Phase 2 — Operational Controls & Advanced Workflows Implementation Report
+
+### Executive Summary
+Phase 2 for the Hospital Admin Subsystem (`web/src/app/(admin)/*`) has been fully implemented, verified via automated test suites, statically type-checked with zero errors, and validated with a successful production build (`86/86 static pages`).
+
+### Summary of Phase 2 Controls Implemented
+
+1. **Staff User Operational Controls & Account Governance (`staff_user_service.ts` & `StaffUserTable.tsx`):**
+   - Implemented `StaffUserService.bulkUpdateUserStatus()` supporting bulk activation, suspension, and disabling of staff records.
+   - Added interactive `rowSelection` batch management toolbar to `StaffUserTable.tsx`.
+   - Added one-click Credential Reset workflow (`StaffUserService.resetUserCredentials()`) with modal verification and automated platform audit log emission.
+
+2. **Inpatient Bed Transfer & Housekeeping Sanitation Workflow (`bed_service.ts` & `HospitalBedConfigTable.tsx`):**
+   - Implemented `BedService.transferBed()` ensuring source beds automatically transition to `CLEANING` state upon transfer while target vacant beds claim `OCCUPIED` status and patient metadata.
+   - Implemented `BedService.completeCleaning()` restoring bed status to `VACANT` upon housekeeping clearance.
+   - Added interactive Bed Transfer Modal and single-action "Sanitize & Clear" / "Transfer" buttons to `HospitalBedConfigTable.tsx`.
+
+3. **Tariff Master Bulk Operations & Compliance Export (`tariff_service.ts` & `MasterPriceListTable.tsx`):**
+   - Implemented `TariffService.exportTariffsToCsv()` generating standard CSV formatted tariffs with headers (`Service Code`, `Billing Code`, `Category`, `Rate`).
+   - Implemented `TariffService.bulkAdjustGstRate()` enabling single-click category-wide GST percentage adjustments with audit tracking.
+   - Integrated CSV Download button into `MasterPriceListTable.tsx`.
+
+4. **Department Management Safety Safeguards (`department_service.ts` & `DepartmentConfigTable.tsx`):**
+   - Implemented `DepartmentService.checkHODReplacementSafety()` ensuring HOD replacement validation checks existing active staff assignments and pending shift rosters before re-assigning department leadership.
+
+5. **Staff Duty Roster Shift Swapping & Attendance Integration (`roster_service.ts` & `StaffRosterManager.tsx`):**
+   - Implemented `RosterService.swapShift()` supporting seamless duty shift exchanges between staff members with instant audit logging.
+   - Implemented `RosterService.recordAttendancePunch()` linking duty rosters with HR biometric attendance entries (`PUNCH_IN` / `PUNCH_OUT`).
+   - Integrated Shift Swap Modal and interactive trigger buttons in `StaffRosterManager.tsx`.
+
+6. **DPDP Compliance & Security Audit Governance (`DpdpAuditLogTable.tsx`):**
+   - Implemented Risk Level filter select (`CRITICAL`, `WARNING`, `INFO`) and JSON Export download capabilities for compliance auditors.
+
+---
+
+### Verification Results
+
+| Verification Test Suite | Total Tests | Passed | Failed | Status |
+| :--- | :---: | :---: | :---: | :---: |
+| **Phase 1 Control Suite** (`verify_admin_phase1_controls.ts`) | 19 | 19 | 0 | **PASSED** |
+| **Phase 2 Operational Control Suite** (`verify_admin_phase2_operational_controls.ts`) | 16 | 16 | 0 | **PASSED** |
+| **Static Type Check** (`npx tsc --noEmit`) | - | - | - | **ZERO ERRORS** |
+| **Next.js Production Build** (`npm run build`) | 86 pages | 86 | 0 | **PASSED** |
+
+---

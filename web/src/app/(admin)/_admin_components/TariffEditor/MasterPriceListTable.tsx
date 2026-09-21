@@ -322,6 +322,19 @@ export const MasterPriceListTable: React.FC<MasterPriceListTableProps> = ({
     },
   ];
 
+  const handleExportCsv = () => {
+    const csvContent = TariffService.exportTariffsToCsv();
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `hospital_tariff_master_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    message.success("Tariff Master exported to CSV successfully!");
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Controls & Filters */}
@@ -353,6 +366,14 @@ export const MasterPriceListTable: React.FC<MasterPriceListTableProps> = ({
           <Tag color="purple" className="!px-3 !py-1 text-xs font-semibold">
             Actor Role: {currentActorRole}
           </Tag>
+
+          <HmsButton
+            size="sm"
+            variant="ghost"
+            onClick={handleExportCsv}
+          >
+            Export CSV
+          </HmsButton>
 
           <HmsButton
             size="sm"

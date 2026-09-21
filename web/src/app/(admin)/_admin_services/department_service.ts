@@ -254,6 +254,28 @@ export class DepartmentService {
   }
 
   /**
+   * Checks if an outgoing HOD can be replaced safely without leaving unassigned HOD duties in Roster/HR.
+   */
+  public static checkHODReplacementSafety(departmentId: string): { safe: boolean; activeDutyCount: number; warning?: string } {
+    const dept = this.getDepartmentById(departmentId);
+    if (!dept || !dept.hodUserId) return { safe: true, activeDutyCount: 0 };
+
+    const activeRosters = useAdminRosterStore
+      .getState()
+      .rosters.filter((r) => r.userId === dept.hodUserId && r.status === "ON_DUTY");
+
+    if (activeRosters.length > 0) {
+      return {
+        safe: true,
+        activeDutyCount: activeRosters.length,
+        warning: `Outgoing HOD ${dept.headOfDepartment} currently has ${activeRosters.length} active shift(s) ON_DUTY. Reassign shifts after updating HOD.`,
+      };
+    }
+
+    return { safe: true, activeDutyCount: 0 };
+  }
+
+  /**
    * Checks if a department can safely be deleted or if active cross-module references block deletion
    */
   public static checkDeleteSafety(id: string): DeleteSafetyResult {

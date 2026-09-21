@@ -22,7 +22,49 @@ export const StaffRosterManager: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  const [swapModalOpen, setSwapModalOpen] = useState(false);
+  const [swapShift1Id, setSwapShift1Id] = useState<string>("");
+  const [swapShift2Id, setSwapShift2Id] = useState<string>("");
+
   const [form] = Form.useForm();
+
+  const handleExecuteSwap = () => {
+    if (!swapShift1Id || !swapShift2Id) {
+      message.error("Please select two shifts to swap.");
+      return;
+    }
+    if (swapShift1Id === swapShift2Id) {
+      message.error("Please select two different shifts for exchange.");
+      return;
+    }
+    try {
+      RosterService.swapShift(swapShift1Id, swapShift2Id, "Admin Roster Manager");
+      message.success("Shifts swapped successfully between staff members!");
+      setSwapModalOpen(false);
+      setSwapShift1Id("");
+      setSwapShift2Id("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Shift swap failed";
+      message.error(msg);
+    }
+  };
+
+  const handleSimulatePunch = (shift: StaffShiftRoster) => {
+    try {
+      const nowTime = new Date().toTimeString().split(" ")[0].substring(0, 5);
+      RosterService.recordAttendancePunch(
+        shift.staffId,
+        nowTime,
+        `BIO-GATE-${Math.floor(10 + Math.random() * 90)}`,
+        "Admin Biometric Simulator"
+      );
+      message.success(`Biometric clock-in recorded for ${shift.staffName} at ${nowTime}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Punch simulation failed";
+      message.error(msg);
+    }
+  };
 
   const handleStaffSelect = (userId: string) => {
     setSelectedUserId(userId);
@@ -286,6 +328,9 @@ export const StaffRosterManager: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <HmsButton size="sm" variant="secondary" onClick={() => setSwapModalOpen(true)}>
+            Swap Duty Shifts
+          </HmsButton>
           <Tooltip title="Reset roster to standard shift defaults">
             <HmsButton size="sm" variant="ghost" icon={<RefreshCw className="w-3.5 h-3.5" />} onClick={resetToDefaults}>
               Reset
@@ -409,6 +454,66 @@ export const StaffRosterManager: React.FC = () => {
             </HmsButton>
           </div>
         </Form>
+      </Modal>
+
+      {/* Shift Swap Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-teal-700 font-bold">
+            <span>Staff Shift Exchange & Swap Workflow</span>
+          </div>
+        }
+        open={swapModalOpen}
+        onCancel={() => setSwapModalOpen(false)}
+        footer={null}
+        width={540}
+      >
+        <div className="space-y-4 mt-2">
+          <p className="text-xs text-slate-500">
+            Select two scheduled staff shift assignments to exchange between staff members. Cross-module audit logs will record the shift swap event.
+          </p>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">First Staff Member Shift Assignment</label>
+            <Select
+              className="w-full"
+              size="large"
+              placeholder="Select first shift assignment..."
+              value={swapShift1Id || undefined}
+              onChange={(val) => setSwapShift1Id(val)}
+              options={rosters.map((r) => ({
+                value: r.id,
+                label: `${r.staffName} (${r.role}) — ${r.shift} on ${r.dutyDate} [${r.departmentName}]`,
+              }))}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Second Staff Member Shift Assignment</label>
+            <Select
+              className="w-full"
+              size="large"
+              placeholder="Select second shift assignment..."
+              value={swapShift2Id || undefined}
+              onChange={(val) => setSwapShift2Id(val)}
+              options={rosters
+                .filter((r) => r.id !== swapShift1Id)
+                .map((r) => ({
+                  value: r.id,
+                  label: `${r.staffName} (${r.role}) — ${r.shift} on ${r.dutyDate} [${r.departmentName}]`,
+                }))}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <HmsButton variant="secondary" onClick={() => setSwapModalOpen(false)}>
+              Cancel
+            </HmsButton>
+            <HmsButton variant="emerald" onClick={handleExecuteSwap}>
+              Execute Shift Swap
+            </HmsButton>
+          </div>
+        </div>
       </Modal>
     </div>
   );

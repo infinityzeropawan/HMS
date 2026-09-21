@@ -311,7 +311,14 @@ export const useBedStore = create<BedStoreState>()(
 
       addBed: (bed) =>
         set((state) => ({
-          beds: [...state.beds, { ...bed, id: `bed-${Date.now()}`, updatedAt: new Date().toISOString() }],
+          beds: [
+            ...state.beds,
+            {
+              ...bed,
+              id: (bed as { id?: string }).id || `bed-${Date.now()}`,
+              updatedAt: new Date().toISOString(),
+            },
+          ],
         })),
 
       updateBed: (id, updates) =>

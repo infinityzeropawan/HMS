@@ -360,4 +360,42 @@ export class TariffService {
       warnings,
     };
   }
+
+  /**
+   * Generates a CSV string representation of all hospital tariffs for download.
+   */
+  public static exportTariffsToCsv(): string {
+    const tariffs = this.getTariffs();
+    const headers = ["Service Code", "Billing Code", "Service Name", "Category", "Department", "Base Rate (INR)", "GST Rate (%)", "HSN/SAC", "Status"];
+    const rows = tariffs.map((t) => [
+      `"${t.serviceCode}"`,
+      `"${t.billingCode}"`,
+      `"${t.serviceName.replace(/"/g, '""')}"`,
+      `"${t.category}"`,
+      `"${t.departmentName}"`,
+      t.baseRate,
+      t.gstRate,
+      `"${t.hsnSacCode || ""}"`,
+      `"${t.status}"`,
+    ]);
+    return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+  }
+
+  /**
+   * Bulk updates GST rate across a specific tariff category.
+   */
+  public static bulkAdjustGstRate(
+    category: TariffCategory,
+    newGstRate: number,
+    actorName: string,
+    actorRole: string
+  ): { updatedCount: number } {
+    const categoryTariffs = this.getTariffsByCategory(category);
+    let updatedCount = 0;
+    categoryTariffs.forEach((t) => {
+      this.updateTariffPrice(t.id, t.baseRate, newGstRate, actorName, actorRole, `Bulk GST rate adjustment to ${newGstRate}% for ${category}`);
+      updatedCount++;
+    });
+    return { updatedCount };
+  }
 }
