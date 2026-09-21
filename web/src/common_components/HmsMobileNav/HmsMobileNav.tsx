@@ -28,7 +28,8 @@ import {
   SlidersHorizontal,
   Package,
   Video,
-  Database
+  Database,
+  LayoutDashboard
 } from "lucide-react";
 import { HmsButton } from "../HmsButton/HmsButton";
 
@@ -67,8 +68,9 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
   // Corrected role-based navigation items pointing to real app routes
   const roleNavItems: Record<string, NavItem[]> = {
     DOCTOR: [
+      { id: "dashboard", label: "Doctor Dashboard", icon: LayoutDashboard, path: "/doctor", role: ["DOCTOR"] },
       { id: "queue", label: "OPD Queue", icon: Users, path: "/doctor/queue", role: ["DOCTOR"], badge: 3 },
-      { id: "encounter", label: "Encounter Workspace", icon: Stethoscope, path: "/encounter/P-2026-1049", role: ["DOCTOR"] },
+      { id: "encounter", label: "Active OPD Queue", icon: Stethoscope, path: "/doctor/queue", role: ["DOCTOR"] },
       { id: "inpatient", label: "IPD Ward Rounds", icon: BedDouble, path: "/doctor/inpatient", role: ["DOCTOR"] },
       { id: "prescriptions", label: "e-Prescriptions", icon: FileText, path: "/doctor/prescriptions", role: ["DOCTOR"] },
       { id: "lab-results", label: "Lab Inbox", icon: Microscope, path: "/doctor/lab-results", role: ["DOCTOR"] },

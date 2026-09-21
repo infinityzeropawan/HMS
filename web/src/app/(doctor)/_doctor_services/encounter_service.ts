@@ -75,19 +75,24 @@ export class EncounterService {
         localStorage.setItem("hms_encounter_signed", JSON.stringify(existingSigned));
       } catch { /* ignore */ }
 
-      // 2. Dispatch to Pharmacy Queue if prescriptions exist
+      // 2. Dispatch to Pharmacy Queue & Dispense Desk if prescriptions exist
       if (encounter.prescriptions.length > 0) {
         try {
           const rxId = `RX-${Math.floor(9000 + Math.random() * 1000)}`;
-          const existingRx = JSON.parse(localStorage.getItem("hms_pharmacy_queue") || "[]");
-          existingRx.unshift({
+          const rxRecord = {
             rxId,
             uhid: encounter.uhid,
             patientName: encounter.patientName,
             meds: encounter.prescriptions.map((p) => `${p.drugName} (${p.dosage} ${p.frequency})`).join(", "),
             status: "PENDING",
             createdAt: new Date().toISOString(),
-          });
+          };
+          const existingDispense = JSON.parse(localStorage.getItem("hms_pharmacy_dispense") || "[]");
+          existingDispense.unshift(rxRecord);
+          localStorage.setItem("hms_pharmacy_dispense", JSON.stringify(existingDispense));
+          
+          const existingRx = JSON.parse(localStorage.getItem("hms_pharmacy_queue") || "[]");
+          existingRx.unshift(rxRecord);
           localStorage.setItem("hms_pharmacy_queue", JSON.stringify(existingRx));
         } catch { /* ignore */ }
       }
@@ -116,9 +121,9 @@ export class EncounterService {
             patientName: encounter.patientName,
             phone: "+91 98765 43210",
             ageGender: encounter.ageGender,
-            departmentId: "CARDIOLOGY",
+            departmentId: "dept-101",
             departmentCode: "CARD-01",
-            departmentName: encounter.departmentName || "Cardiology",
+            departmentName: encounter.departmentName || "Cardiology & Cardiac Sciences",
             doctorId: encounter.doctorId || "DOC-101",
             doctorName: encounter.doctorName || "Dr. Rajesh Sharma",
             opdRoom: "OPD 3",
@@ -167,7 +172,7 @@ export class EncounterService {
             patientName: encounter.patientName,
             recipientRole: "PATIENT",
             recipientContact: "+91 98765 43210",
-            templateKey: "PATIENT_DISCHARGE",
+            templateKey: "TPL_PATIENT_DISCHARGE",
             templateVariables: {
               patientName: encounter.patientName,
               doctorName: encounter.doctorName,

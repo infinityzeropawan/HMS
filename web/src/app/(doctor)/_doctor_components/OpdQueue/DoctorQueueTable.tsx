@@ -7,6 +7,9 @@ import { Stethoscope, PhoneCall, CheckCircle, XCircle, Clock, User } from "lucid
 import { useAppointmentStore } from "@/app/(reception)/_reception_stores/appointment_store";
 import { DoctorWorkspaceService } from "../../_doctor_services/doctor_workspace_service";
 import { EmrService } from "@/app/(patient)/_patient_services/emr_service";
+import { PatientRegistryService } from "@/app/(reception)/_reception_services/patient_registry_service";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+import { todayLocalDate } from "@/app/(reception)/_reception_utils/date_utils";
 
 export type QueueStatus = "WAITING" | "CALLING" | "CONSULTING" | "COMPLETED" | "NO_SHOW";
 
@@ -36,6 +39,7 @@ interface DoctorQueueTableProps {
 export const DoctorQueueTable: React.FC<DoctorQueueTableProps> = ({ onQueueChange }) => {
   const storeAppointments = useAppointmentStore((s) => s.appointments);
   const updateStoreStatus = useAppointmentStore((s) => s.updateStatus);
+  const user = useAuthUserStore((s) => s.user);
 
   const [queue, setQueue] = useState<QueuePatient[]>([]);
 
@@ -46,20 +50,34 @@ export const DoctorQueueTable: React.FC<DoctorQueueTableProps> = ({ onQueueChang
       return;
     }
 
-    const mapped: QueuePatient[] = storeAppointments.map((a, idx) => {
+    const today = todayLocalDate();
+    // Filter for today's appointments (or fallback if all in demo are for today)
+    const todayAppointments = storeAppointments.filter((a) => !a.date || a.date === today);
+    const targetAppointments = todayAppointments.length > 0 ? todayAppointments : storeAppointments;
+
+    const mapped: QueuePatient[] = targetAppointments.map((a, idx) => {
       let qStatus: QueueStatus = "WAITING";
       if (a.status === "IN_CONSULTATION") qStatus = "CONSULTING";
       else if (a.status === "COMPLETED") qStatus = "COMPLETED";
       else if (a.status === "CANCELLED") qStatus = "NO_SHOW";
       else if (a.status === "WAITING" || a.status === "RESCHEDULED") qStatus = "WAITING";
 
+      const patientRecord = PatientRegistryService.findByUhid(a.uhid);
+      let vitalsStr = "BP: 120/80 | Temp: 98.6°F | SpO₂: 98%";
+      if (patientRecord && (patientRecord.systolicBp || patientRecord.temperatureF)) {
+        const bp = patientRecord.systolicBp ? `${patientRecord.systolicBp}/${patientRecord.diastolicBp || 80}` : "120/80";
+        const temp = patientRecord.temperatureF ? `${patientRecord.temperatureF}°F` : "98.6°F";
+        const spo2 = patientRecord.spo2 ? `${patientRecord.spo2}%` : "98%";
+        vitalsStr = `BP: ${bp} | Temp: ${temp} | SpO₂: ${spo2}`;
+      }
+
       return {
         key: a.id || `q-${idx}`,
         tokenNo: a.tokenNo || `T-${String(idx + 1).padStart(2, "0")}`,
         uhid: a.uhid,
         name: a.patientName,
-        ageGender: a.ageGender || "45 / M",
-        vitals: "BP: 130/85 | Temp: 98.6°F | O₂: 98%",
+        ageGender: a.ageGender || (patientRecord ? PatientRegistryService.toAgeGender(patientRecord) : "45 / Male"),
+        vitals: vitalsStr,
         status: qStatus,
         waitMins: 10 + (idx * 5),
       };

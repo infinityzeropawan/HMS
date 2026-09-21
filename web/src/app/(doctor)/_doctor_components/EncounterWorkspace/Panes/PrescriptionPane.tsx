@@ -5,9 +5,10 @@ import { Table, Alert, message, Modal, Select, Form, Input, Tag } from "antd";
 import { Pill, Printer, CheckCircle, ShieldAlert, Plus, Send, Trash2, AlertTriangle, Info, ShieldCheck, Package } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsAiGeneratedBadge } from "@/common_components/HmsAiBadge/HmsAiGeneratedBadge";
-import { PrescriptionItem } from "../../../_doctor_schemas/encounter_schema";
+import { PrescriptionItem } from "../../../_doctor_types/encounter_types";
 import { EncounterService } from "../../../_doctor_services/encounter_service";
 import { DoctorWorkspaceService } from "../../../_doctor_services/doctor_workspace_service";
+import { useEncounterStore } from "../../../_doctor_stores/encounter_store";
 import { PatientProfileService } from "@/app/(patient)/_patient_services/patient_profile_service";
 import { CdssService } from "@/app/(cdss)/_cdss_services/cdss_service";
 import { useCdssStore } from "@/app/(cdss)/_cdss_stores/cdss_store";
@@ -159,11 +160,17 @@ export const PrescriptionPane: React.FC<PrescriptionPaneProps> = ({ patientUhid 
   const selectedDrugId = Form.useWatch("drugId", form);
   const selectedStockInfo = useMemo(() => checkPharmacyInventory(selectedDrugId), [selectedDrugId]);
 
-  const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([
-    { drugId: "DRUG-001", drugName: "Tab Sorbitrate 5mg",  dosage: "5mg",  frequency: "1-0-1", durationDays: 5,  instructions: "Sublingual after meals"       },
-    { drugId: "DRUG-002", drugName: "Tab Ecosprin 75mg",   dosage: "75mg", frequency: "0-0-1", durationDays: 30, instructions: "At bedtime with water"         },
-    { drugId: "DRUG-003", drugName: "Tab Amlodipine 5mg",  dosage: "5mg",  frequency: "1-0-0", durationDays: 30, instructions: "In the morning before meals"   },
-  ]);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>(() => {
+    const enc = useEncounterStore.getState().getEncounter(patientUhid);
+    return enc && enc.prescriptions.length > 0 ? enc.prescriptions : [];
+  });
+
+  useEffect(() => {
+    const enc = useEncounterStore.getState().getEncounter(patientUhid);
+    if (enc && enc.prescriptions.length > 0) {
+      setPrescriptions(enc.prescriptions);
+    }
+  }, [patientUhid]);
 
   // Workspace context for safety checks
   const wsCtx = useMemo(() => {
@@ -216,7 +223,7 @@ export const PrescriptionPane: React.FC<PrescriptionPaneProps> = ({ patientUhid 
     if (!isSigned) { message.error("Sign the encounter first before sending to pharmacy."); return; }
     const rxId = `RX-${Math.floor(9000 + Math.random() * 1000)}`;
     const profile = PatientProfileService.getPatientProfile(patientUhid);
-    const existing = JSON.parse(localStorage.getItem("hms_pharmacy_queue") || "[]");
+    const existing = JSON.parse(localStorage.getItem("hms_pharmacy_dispense") || "[]");
     existing.unshift({
       rxId,
       uhid: patientUhid,
@@ -225,9 +232,9 @@ export const PrescriptionPane: React.FC<PrescriptionPaneProps> = ({ patientUhid 
       status: "PENDING",
       createdAt: new Date().toISOString(),
     });
-    localStorage.setItem("hms_pharmacy_queue", JSON.stringify(existing));
+    localStorage.setItem("hms_pharmacy_dispense", JSON.stringify(existing));
     setSentToPharmacy(true);
-    message.success(`e-Prescription ${rxId} sent to Pharmacy Queue!`);
+    message.success(`e-Prescription ${rxId} sent to Pharmacy Dispensing Desk!`);
   };
 
   // Prescription Safety Interceptor pre-check + Pharmacy Inventory Validation

@@ -20,9 +20,20 @@ import {
   Activity,
   Plus,
 } from "lucide-react";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+import { useAppointmentStore } from "@/app/(reception)/_reception_stores/appointment_store";
+import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
 import { DoctorQueueTable } from "../_doctor_components/OpdQueue/DoctorQueueTable";
 
 export default function DoctorMainDashboard() {
+  const user = useAuthUserStore((s) => s.user);
+  const appointments = useAppointmentStore((s) => s.appointments);
+  const admissions = useIpdStore((s) => s.admissions);
+
+  const doctorName = user?.username || "Dr. Rajesh Sharma, MD (Cardiology)";
+  const waitingTokens = appointments.filter((a) => a.status === "WAITING" || a.status === "IN_CONSULTATION").length;
+  const ipdRoundsDue = admissions.filter((a) => a.status !== "DISCHARGED").length;
+
   return (
     <HmsAppShell title="Doctor Clinical Workspace">
       <div className="max-w-7xl mx-auto space-y-6 pb-8">
@@ -34,7 +45,7 @@ export default function DoctorMainDashboard() {
                 <Stethoscope className="w-3.5 h-3.5" /> Doctor Clinical Workspace
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Dr. Rajesh Sharma, MD (Cardiology)
+                {doctorName}
               </h1>
               <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
                 OPD Room 104 | Morning Clinic Shift (09:00 AM - 01:00 PM) | ABDM Health Stack & CDSS Active
@@ -62,7 +73,7 @@ export default function DoctorMainDashboard() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">OPD Patients Waiting</p>
-                <h3 className="text-2xl font-bold text-teal-800 mt-1">4 Tokens Active</h3>
+                <h3 className="text-2xl font-bold text-teal-800 mt-1">{waitingTokens} Tokens Active</h3>
                 <p className="text-3xs text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
                   <Clock className="w-3 h-3" /> ~12 Min Avg Consult
                 </p>
@@ -75,7 +86,7 @@ export default function DoctorMainDashboard() {
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Inpatient Rounds Due</p>
-                <h3 className="text-2xl font-bold text-purple-800 mt-1">3 Patients</h3>
+                <h3 className="text-2xl font-bold text-purple-800 mt-1">{ipdRoundsDue} Patients</h3>
                 <p className="text-3xs text-slate-500 mt-0.5">ICU-01, Ward 3B, Deluxe 402</p>
               </div>
               <BedDouble className="w-8 h-8 text-purple-500" />

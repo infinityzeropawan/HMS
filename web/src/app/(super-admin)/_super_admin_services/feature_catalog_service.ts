@@ -26,7 +26,7 @@ export const FEATURE_CATALOG: FeatureDefinition[] = [
       ],
       blockedRoutes: [
         { path: "/opd", label: "OPD Dashboard" },
-        { path: "/opd/queue", label: "OPD Queue Management" },
+        { path: "/doctor/queue", label: "OPD Queue Management" },
         { path: "/opd/prescriptions", label: "Prescription Management" },
         { path: "/opd/encounters", label: "Encounter Workspace" },
       ],

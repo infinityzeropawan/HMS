@@ -4,7 +4,7 @@ export const PrescriptionItemSchema = z.object({
   drugId: z.string(),
   drugName: z.string().min(1, "Drug name is required"),
   dosage: z.string().min(1, "Dosage is required (e.g. 500mg)"),
-  frequency: z.enum(["1-0-1", "1-0-0", "0-0-1", "1-1-1", "QID", "PRN"]),
+  frequency: z.enum(["1-0-1", "1-0-0", "0-0-1", "1-1-0", "0-1-1", "1-1-1", "SOS", "BD", "TDS", "QID", "PRN"]),
   durationDays: z.number().min(1).max(180),
   instructions: z.string().optional(),
 });

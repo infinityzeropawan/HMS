@@ -9,13 +9,15 @@ import {
   RadiologyOrderInput,
   FollowUpInput,
 } from "../_doctor_types/encounter_types";
+import { PatientRegistryService } from "@/app/(reception)/_reception_services/patient_registry_service";
 
 interface EncounterStoreState {
   encounters: Record<string, ClinicalEncounter>;
   activeEncounterUhid: string | null;
-  setActiveEncounter: (uhid: string) => void;
+  setActiveEncounter: (uhid: string | null) => void;
   getEncounter: (uhid: string) => ClinicalEncounter | null;
   saveDraft: (uhid: string, updates: Partial<ClinicalEncounter>) => void;
+  setDiagnoses: (uhid: string, diagnoses: string[]) => void;
   addPrescription: (uhid: string, item: PrescriptionItem) => void;
   removePrescription: (uhid: string, drugId: string) => void;
   addLabOrder: (uhid: string, order: LabOrderInput) => void;
@@ -24,27 +26,39 @@ interface EncounterStoreState {
   signEncounter: (uhid: string) => ClinicalEncounter | null;
 }
 
-const createBlankEncounter = (uhid: string): ClinicalEncounter => {
+const createBlankEncounter = (
+  uhid: string,
+  patientName?: string,
+  ageGender?: string
+): ClinicalEncounter => {
   const ts = new Date().toISOString();
+  let resolvedName = patientName;
+  let resolvedAgeGender = ageGender;
+
+  if (!resolvedName || !resolvedAgeGender) {
+    const p = PatientRegistryService.findByUhid(uhid);
+    if (p) {
+      resolvedName = resolvedName || p.fullName;
+      resolvedAgeGender = resolvedAgeGender || PatientRegistryService.toAgeGender(p);
+    }
+  }
+
   return {
     id: `enc-${Date.now()}`,
     encounterId: `ENC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
     uhid,
-    patientName: "Sunil Verma",
-    ageGender: "45 / M",
+    patientName: resolvedName || "Inpatient / OPD Patient",
+    ageGender: resolvedAgeGender || "N/A",
     doctorId: "DOC-101",
     doctorName: "Dr. Rajesh Sharma",
-    departmentName: "Cardiology",
+    departmentName: "Cardiology & Cardiac Sciences",
     chiefComplaints: "",
     subjectiveNotes: "",
     objectiveNotes: "",
     assessmentNotes: "",
     planNotes: "",
-    icd10Diagnoses: ["I20.9 - Angina pectoris, unspecified"],
-    prescriptions: [
-      { drugId: "DRUG-001", drugName: "Tab Sorbitrate 5mg", dosage: "5mg", frequency: "1-0-1", durationDays: 5, instructions: "Sublingual after meals" },
-      { drugId: "DRUG-002", drugName: "Tab Ecosprin 75mg", dosage: "75mg", frequency: "0-0-1", durationDays: 30, instructions: "At bedtime with water" },
-    ],
+    icd10Diagnoses: [],
+    prescriptions: [],
     labOrders: [],
     radiologyOrders: [],
     followUp: null,
@@ -83,6 +97,17 @@ export const useEncounterStore = create<EncounterStoreState>()(
               [uhid]: updated,
             },
           };
+        }),
+
+      setDiagnoses: (uhid, diagnoses) =>
+        set((state) => {
+          const current = state.encounters[uhid] || createBlankEncounter(uhid);
+          const updated: ClinicalEncounter = {
+            ...current,
+            icd10Diagnoses: diagnoses,
+            updatedAt: new Date().toISOString(),
+          };
+          return { encounters: { ...state.encounters, [uhid]: updated } };
         }),
 
       addPrescription: (uhid, item) =>

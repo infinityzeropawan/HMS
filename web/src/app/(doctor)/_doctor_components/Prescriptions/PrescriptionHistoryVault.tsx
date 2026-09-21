@@ -18,7 +18,7 @@ interface PrescriptionRecord {
 }
 
 export const PrescriptionHistoryVault: React.FC = () => {
-  const [prescriptions] = useState<PrescriptionRecord[]>([
+  const [prescriptions, setPrescriptions] = useState<PrescriptionRecord[]>([
     {
       id: "rx-1",
       rxNumber: "RX-2026-8812",
@@ -64,6 +64,33 @@ export const PrescriptionHistoryVault: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRx, setSelectedRx] = useState<PrescriptionRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const storedEnters = JSON.parse(localStorage.getItem("hms_encounter_signed") || "[]");
+        if (storedEnters.length > 0) {
+          const mapped: PrescriptionRecord[] = storedEnters.map((enc: any, idx: number) => ({
+            id: enc.encounterId || `rx-signed-${idx}`,
+            rxNumber: `RX-2026-${Math.floor(8800 + Math.random() * 1000)}`,
+            uhid: enc.uhid,
+            date: (enc.signedAt || new Date().toISOString()).split("T")[0],
+            diagnosis: enc.diagnoses?.map((d: any) => d.description || d.code).join(", ") || "OPD Clinical Consultation",
+            medicines: enc.prescriptions?.map((p: any) => `${p.drugName} ${p.dosage || ""} — ${p.frequency || "1-0-1"}`) || ["Standard Medication"],
+            signatureHash: `SHA256: ${Math.random().toString(36).substring(2, 10)}...`,
+            status: "SIGNED" as const,
+          }));
+
+          setPrescriptions((prev) => {
+            const map = new Map<string, PrescriptionRecord>();
+            prev.forEach((item) => map.set(item.id, item));
+            mapped.forEach((item) => map.set(item.id, item));
+            return Array.from(map.values());
+          });
+        }
+      } catch { /* ignore */ }
+    }
+  }, []);
 
   const filteredRx = prescriptions.filter((p) => {
     const profile = PatientProfileService.getPatientProfile(p.uhid);
@@ -178,8 +205,8 @@ export const PrescriptionHistoryVault: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-        <Table columns={columns} dataSource={filteredRx} rowKey="id" pagination={{ pageSize: 8 }} />
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
+        <Table columns={columns} dataSource={filteredRx} rowKey="id" pagination={{ pageSize: 8 }} scroll={{ x: "max-content" }} />
       </div>
 
       {/* Prescription Preview Modal */}

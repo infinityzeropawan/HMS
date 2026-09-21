@@ -8,14 +8,24 @@ import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { CdssService } from "@/app/(cdss)/_cdss_services/cdss_service";
 import { DoctorOrderService } from "@/app/(doctor)/_doctor_services/doctor_order_service";
 
+import { useEncounterStore } from "../../../_doctor_stores/encounter_store";
+
 interface DiagnosisPaneProps {
   patientUhid?: string;
 }
 
 export const DiagnosisPane: React.FC<DiagnosisPaneProps> = ({ patientUhid = "P-2026-1049" }) => {
-  const [selectedDiagnoses, setSelectedDiagnoses] = useState<string[]>([
-    "I20.9 - Angina pectoris, unspecified",
-  ]);
+  const [selectedDiagnoses, setSelectedDiagnoses] = useState<string[]>(() => {
+    const enc = useEncounterStore.getState().getEncounter(patientUhid);
+    return enc && enc.icd10Diagnoses.length > 0
+      ? enc.icd10Diagnoses
+      : ["I20.9 - Angina pectoris, unspecified"];
+  });
+
+  const handleDiagnosisChange = (newValues: string[]) => {
+    setSelectedDiagnoses(newValues);
+    useEncounterStore.getState().setDiagnoses(patientUhid, newValues);
+  };
 
   const icd10Options = [
     { value: "I20.9 - Angina pectoris, unspecified", label: "I20.9 - Angina pectoris, unspecified" },
@@ -97,7 +107,7 @@ export const DiagnosisPane: React.FC<DiagnosisPaneProps> = ({ patientUhid = "P-2
           className="w-full"
           placeholder="Search ICD-10 Code or Disease Name..."
           value={selectedDiagnoses}
-          onChange={(vals) => setSelectedDiagnoses(vals)}
+          onChange={handleDiagnosisChange}
           options={icd10Options}
           size="large"
         />

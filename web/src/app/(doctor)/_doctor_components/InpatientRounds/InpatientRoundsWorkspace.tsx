@@ -6,18 +6,29 @@ import { BedDouble, Stethoscope, CheckCircle2, AlertTriangle, FileText, Activity
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { useIpdStore, IpdAdmissionRecord } from "@/app/(ipd)/_ipd_stores/ipd_store";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 
 export const InpatientRoundsWorkspace: React.FC = () => {
   const admissions = useIpdStore((state) => state.admissions);
   const addRoundNote = useIpdStore((state) => state.addRoundNote);
   const resetToDefaults = useIpdStore((state) => state.resetToDefaults);
+  const user = useAuthUserStore((state) => state.user);
 
   const [selectedPatient, setSelectedPatient] = useState<IpdAdmissionRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [roundNoteInput, setRoundNoteInput] = useState("");
   const [dischargeReadyInput, setDischargeReadyInput] = useState(false);
 
-  const activeInpatients = admissions.filter((a) => a.status !== "DISCHARGED");
+  const doctorName = user?.username || "Dr. Rajesh Sharma";
+
+  // Filter active inpatients and prioritize those assigned to current attending doctor
+  const activeInpatients = admissions
+    .filter((a) => a.status !== "DISCHARGED")
+    .sort((a, b) => {
+      const aIsMine = a.attendingDoctor?.toLowerCase().includes(doctorName.toLowerCase()) ? 1 : 0;
+      const bIsMine = b.attendingDoctor?.toLowerCase().includes(doctorName.toLowerCase()) ? 1 : 0;
+      return bIsMine - aIsMine;
+    });
 
   const handleOpenRoundModal = (patient: IpdAdmissionRecord) => {
     setSelectedPatient(patient);

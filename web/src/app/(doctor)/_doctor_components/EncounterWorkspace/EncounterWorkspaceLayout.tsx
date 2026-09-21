@@ -1,149 +1,134 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { SoapPane } from "./Panes/SoapPane";
 import { DiagnosisPane } from "./Panes/DiagnosisPane";
 import { PrescriptionPane } from "./Panes/PrescriptionPane";
 import { DiagnosticsOrderPane } from "./Panes/DiagnosticsOrderPane";
 import { DoctorClinicalAlertsPanel } from "./DoctorClinicalAlertsPanel";
 import { FollowUpModal } from "./FollowUpModal";
-import { Activity, ArrowLeft, Calendar, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react";
+import { Activity, ArrowLeft, Calendar, ShieldAlert } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { EncounterService } from "../../_doctor_services/encounter_service";
-import { PatientContextProvider, usePatientContext } from "@/app/(patient)/_patient_context/PatientContext";
-import { Tag } from "antd";
+import { useEncounterStore } from "../../_doctor_stores/encounter_store";
+import { PatientProfileService } from "@/app/(patient)/_patient_services/patient_profile_service";
+import { PatientRegistryService } from "@/app/(reception)/_reception_services/patient_registry_service";
+import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
 
 interface EncounterWorkspaceLayoutProps {
   patientUhid: string;
 }
 
-const InnerWorkspaceLayout: React.FC<{ patientUhid: string }> = ({ patientUhid }) => {
-  const { profile, patient360, flags } = usePatientContext();
+export function EncounterWorkspaceLayout({
+  patientUhid = "P-2026-1049",
+}: EncounterWorkspaceLayoutProps) {
+  const profile = PatientProfileService.getPatientProfile(patientUhid);
+  const patientName = profile.fullName || "Sunil Verma";
+  const ageGender = `${profile.age || 45} / ${profile.gender === "MALE" ? "M" : "F"}`;
 
   const [activePane, setActivePane] = useState<"NOTES" | "DIAGNOSTICS">("NOTES");
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
-  const [showAlertsPanel, setShowAlertsPanel] = useState(true);
 
-  const patientName = profile.fullName || "Sunil Verma";
-  const ageGender = `${profile.age || 45}${profile.gender?.[0]?.toUpperCase() || "M"}`;
-  const initials = patientName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) || "SV";
+  const vitals = useMemo(() => {
+    const p = PatientRegistryService.findByUhid(profile.uhid);
+    if (p?.systolicBp && p?.diastolicBp) {
+      return {
+        bp: `${p.systolicBp}/${p.diastolicBp}`,
+        temp: p.temperatureF ? `${p.temperatureF}°F` : "98.6°F",
+        pulse: p.pulseRate ? `${p.pulseRate} BPM` : "74 BPM",
+      };
+    }
+    const ipd = useIpdStore.getState().admissions.find((a) => a.uhid === profile.uhid);
+    if (ipd?.vitals) {
+      return {
+        bp: ipd.vitals.bp,
+        temp: ipd.vitals.temp,
+        pulse: `${ipd.vitals.pulse} BPM`,
+      };
+    }
+    return { bp: "120/80", temp: "98.6°F", pulse: "72 BPM" };
+  }, [profile.uhid]);
 
   useEffect(() => {
+    useEncounterStore.getState().setActiveEncounter(profile.uhid);
     EncounterService.getOrCreateEncounter(profile.uhid, patientName, ageGender);
   }, [profile.uhid, patientName, ageGender]);
 
   return (
-    <div className="flex flex-col min-h-screen lg:h-screen bg-slate-100">
-      {/* Top Patient Info Header Bar */}
-      <header className="bg-slate-900 text-white px-4 sm:px-6 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 shadow-md">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <HmsButton href="/doctor/queue" icon={<ArrowLeft className="w-4 h-4" />} variant="secondary" size="sm">
-            Queue
-          </HmsButton>
-          <div className="flex items-center gap-2 border-l border-slate-700 pl-3 sm:pl-4">
-            <div className="w-9 h-9 rounded-full bg-teal-500 flex items-center justify-center font-bold text-white text-sm">
-              {initials}
-            </div>
+    <HmsAppShell title={`Clinical Encounter — ${patientName} (${profile.uhid})`}>
+      <div className="flex flex-col min-h-screen bg-slate-100 -m-4 sm:-m-6">
+        {/* Header Bar */}
+        <header className="bg-slate-900 text-white px-4 sm:px-6 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 shadow-md">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <HmsButton href="/doctor/queue" icon={<ArrowLeft className="w-4 h-4" />} variant="secondary" size="sm">
+              Queue
+            </HmsButton>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-white">{patientName} &bull; {ageGender}</h2>
-                <Tag color="cyan" className="text-[10px] py-0 px-1.5">{profile.mrn}</Tag>
-                {flags.highRisk && <Tag color="error" className="text-[10px] py-0 px-1.5 font-bold">HIGH RISK</Tag>}
-                {flags.allergyAlert && <Tag color="warning" className="text-[10px] py-0 px-1.5 font-bold">ALLERGY ALERT</Tag>}
+                <h1 className="text-lg font-bold text-white tracking-wide">{patientName}</h1>
+                <span className="bg-teal-500/20 text-teal-300 font-mono text-xs px-2 py-0.5 rounded border border-teal-500/30">
+                  {profile.uhid}
+                </span>
               </div>
-              <p className="text-xs text-slate-400">
-                UHID: <span className="font-mono font-semibold text-teal-300">{profile.uhid}</span> | OPD Clinic 3
+              <p className="text-xs text-slate-400 mt-0.5">
+                {ageGender} | Blood: <strong className="text-rose-400">{profile.bloodGroup || "O+"}</strong> | Vitals: BP {vitals.bp}, Pulse {vitals.pulse}, Temp {vitals.temp}
               </p>
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-slate-300">
-          <div className="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-md">
-            <Activity className="w-4 h-4 text-emerald-400" />
-            <span>BP: <strong>130/85</strong> mmHg</span>
-          </div>
-          <div className="bg-slate-800 px-2.5 py-1 rounded-md">Temp: <strong>98.6°F</strong></div>
-          <div className="bg-slate-800 px-2.5 py-1 rounded-md">Pulse: <strong>74 BPM</strong></div>
-          <div className="bg-slate-800 px-2.5 py-1 rounded-md">Blood: <strong>{profile.bloodGroup?.replace("_", " ") || "O+"}</strong></div>
-
-          <div className="flex items-center gap-2 border-l border-slate-700 pl-3">
-            <button
-              onClick={() => setShowAlertsPanel((prev) => !prev)}
-              className={`text-xs px-2.5 py-1 rounded font-semibold transition-colors flex items-center gap-1 ${
-                showAlertsPanel ? "bg-rose-900/60 text-rose-200 border border-rose-700" : "bg-slate-800 text-slate-300"
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Clinical Alerts</span>
-              {showAlertsPanel ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            </button>
-
-            <button
-              onClick={() => setActivePane(activePane === "NOTES" ? "DIAGNOSTICS" : "NOTES")}
-              className={`text-xs px-2.5 py-1 rounded font-semibold transition-colors ${
-                activePane === "DIAGNOSTICS" ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-              }`}
-            >
-              {activePane === "NOTES" ? "Order Lab/Rad Scans" : "View Clinical Notes"}
-            </button>
-
-            <HmsButton
-              variant="emerald"
-              size="sm"
-              icon={<Calendar className="w-3.5 h-3.5" />}
-              onClick={() => setFollowUpModalOpen(true)}
-            >
-              Follow-up
+          <div className="flex items-center gap-2">
+            <DoctorClinicalAlertsPanel uhid={profile.uhid} />
+            <HmsButton size="sm" variant="secondary" icon={<Calendar className="w-4 h-4" />} onClick={() => setFollowUpModalOpen(true)}>
+              Schedule Revisit
             </HmsButton>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main Responsive Grid Layout */}
-      <main className="flex-1 p-4 overflow-y-auto lg:overflow-hidden space-y-4">
-        {/* Collapsible Clinical Alerts Panel */}
-        {showAlertsPanel && (
-          <div className="shrink-0">
-            <DoctorClinicalAlertsPanel uhid={profile.uhid} />
-          </div>
-        )}
+        {/* Tab Switcher */}
+        <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2 flex gap-2">
+          <button
+            onClick={() => setActivePane("NOTES")}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              activePane === "NOTES" ? "bg-teal-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            SOAP Notes & Rx
+          </button>
+          <button
+            onClick={() => setActivePane("DIAGNOSTICS")}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              activePane === "DIAGNOSTICS" ? "bg-teal-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            Orders & Diagnostics
+          </button>
+        </div>
 
         {/* Panes */}
-        {activePane === "NOTES" ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100%-1rem)]">
-            <SoapPane />
-            <DiagnosisPane patientUhid={profile.uhid} />
-            <PrescriptionPane patientUhid={profile.uhid} />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100%-1rem)]">
-            <DiagnosticsOrderPane patientUhid={profile.uhid} />
-            <PrescriptionPane patientUhid={profile.uhid} />
-          </div>
-        )}
-      </main>
+        <div className="p-4 sm:p-6 flex-1">
+          {activePane === "NOTES" ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <SoapPane />
+              <DiagnosisPane patientUhid={profile.uhid} />
+              <PrescriptionPane patientUhid={profile.uhid} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <DiagnosticsOrderPane patientUhid={profile.uhid} />
+              <PrescriptionPane patientUhid={profile.uhid} />
+            </div>
+          )}
+        </div>
 
-      {/* Follow-up Revisit Modal */}
-      <FollowUpModal
-        patientUhid={profile.uhid}
-        patientName={patientName}
-        open={followUpModalOpen}
-        onClose={() => setFollowUpModalOpen(false)}
-      />
-    </div>
+        {/* Follow-up Revisit Modal */}
+        <FollowUpModal
+          patientUhid={profile.uhid}
+          patientName={patientName}
+          open={followUpModalOpen}
+          onClose={() => setFollowUpModalOpen(false)}
+        />
+      </div>
+    </HmsAppShell>
   );
-};
-
-export const EncounterWorkspaceLayout: React.FC<EncounterWorkspaceLayoutProps> = ({ patientUhid }) => {
-  return (
-    <PatientContextProvider initialUhid={patientUhid}>
-      <InnerWorkspaceLayout patientUhid={patientUhid} />
-    </PatientContextProvider>
-  );
-};
+}

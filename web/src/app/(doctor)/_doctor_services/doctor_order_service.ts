@@ -81,7 +81,7 @@ export class DoctorOrderService {
           resultValue: "Awaiting Processing",
           normalRange: "Pending",
           orderDate: new Date().toISOString().split("T")[0],
-          status: "PENDING_LAB_PROCESSING",
+          status: "PENDING_DOCTOR_REVIEW",
           urgency: request.urgency || "ROUTINE",
           notes: request.clinicalNotes,
         });

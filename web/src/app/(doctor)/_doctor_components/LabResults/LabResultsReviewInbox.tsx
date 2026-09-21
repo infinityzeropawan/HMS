@@ -84,9 +84,15 @@ export const LabResultsReviewInbox: React.FC = () => {
   const handleSignOff = () => {
     if (!selectedResult) return;
     const profile = PatientProfileService.getPatientProfile(selectedResult.uhid);
-    setResults((prev) =>
-      prev.map((r) => (r.id === selectedResult.id ? { ...r, status: "VERIFIED" } : r))
-    );
+    const updated = results.map((r) => (r.id === selectedResult.id ? { ...r, status: "VERIFIED" as const } : r));
+    setResults(updated);
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("hms_lab_orders", JSON.stringify(updated));
+      } catch { /* ignore */ }
+    }
+
     message.success(`Diagnostic report for ${profile.fullName} verified and signed off!`);
     setModalOpen(false);
   };
@@ -239,8 +245,8 @@ export const LabResultsReviewInbox: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-        <Table columns={columns} dataSource={filteredResults} rowKey="id" pagination={false} />
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
+        <Table columns={columns} dataSource={filteredResults} rowKey="id" pagination={false} scroll={{ x: "max-content" }} />
       </div>
 
       {/* Review Modal */}

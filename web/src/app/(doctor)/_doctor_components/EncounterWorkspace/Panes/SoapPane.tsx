@@ -5,7 +5,7 @@ import { Form, Input, message } from "antd";
 import { FileText, Save, CheckCircle } from "lucide-react";
 import { HmsAiGeneratedBadge } from "@/common_components/HmsAiBadge/HmsAiGeneratedBadge";
 
-const STORAGE_KEY = "hms_soap_draft";
+import { useEncounterStore } from "../../../_doctor_stores/encounter_store";
 
 interface SoapValues {
   chiefComplaints: string;
@@ -29,27 +29,55 @@ const TEMPLATES: Record<string, SoapValues> = {
   },
 };
 
-export const SoapPane: React.FC = () => {
+interface SoapPaneProps {
+  uhid?: string;
+}
+
+export const SoapPane: React.FC<SoapPaneProps> = ({ uhid }) => {
+  const activeUhid = useEncounterStore((s) => s.activeEncounterUhid);
+  const targetUhid = uhid || activeUhid || "P-2026-1049";
+  const storageKey = `hms_soap_draft_${targetUhid}`;
+
   const [form]         = Form.useForm<SoapValues>();
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load draft from localStorage on mount
+  // Load draft from encounter store or localStorage on mount/UHID change
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const draft = JSON.parse(raw) as { values: SoapValues; savedAt: string };
-        form.setFieldsValue(draft.values);
-        setSavedAt(draft.savedAt);
+      const existingEncounter = useEncounterStore.getState().getEncounter(targetUhid);
+      if (existingEncounter && (existingEncounter.chiefComplaints || existingEncounter.subjectiveNotes)) {
+        form.setFieldsValue({
+          chiefComplaints: existingEncounter.chiefComplaints,
+          subjectiveNotes: existingEncounter.subjectiveNotes,
+          objectiveNotes: existingEncounter.objectiveNotes,
+          assessmentNotes: existingEncounter.assessmentNotes,
+        });
+      } else {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+          const draft = JSON.parse(raw) as { values: SoapValues; savedAt: string };
+          form.setFieldsValue(draft.values);
+          setSavedAt(draft.savedAt);
+        }
       }
     } catch { /* ignore */ }
-  }, [form]);
+  }, [form, targetUhid, storageKey]);
 
   const saveDraft = (values: Partial<SoapValues>) => {
     const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ values, savedAt: ts }));
+    localStorage.setItem(storageKey, JSON.stringify({ values, savedAt: ts }));
+    
+    // Sync directly to encounter store so signing captures full notes
+    useEncounterStore.getState().saveDraft(targetUhid, {
+      chiefComplaints: values.chiefComplaints || "",
+      subjectiveNotes: values.subjectiveNotes || "",
+      objectiveNotes: values.objectiveNotes || "",
+      assessmentNotes: values.assessmentNotes || "",
+      planNotes: values.assessmentNotes || "",
+    });
+
     setSavedAt(ts);
     setIsDirty(false);
   };
