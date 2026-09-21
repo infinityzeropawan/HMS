@@ -24,6 +24,8 @@ export interface HospitalAppointment {
   slot: string; // e.g. "10:30 AM"
   status: AppointmentStatus;
   bookedAt: string;
+  /** Set by the self-check-in kiosk when the patient arrives at the OPD. */
+  checkedInAt?: string;
   cancelReason?: string;
   rescheduledFromSlot?: string;
 }

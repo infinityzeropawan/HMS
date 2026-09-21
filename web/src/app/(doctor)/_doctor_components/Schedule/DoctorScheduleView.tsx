@@ -1,21 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { Tag, Switch, message } from "antd";
-import { Calendar, Clock, MapPin, CheckCircle2, AlertTriangle, Lock, Unlock, Stethoscope, UserCheck } from "lucide-react";
-import { HmsButton } from "@/common_components/HmsButton/HmsButton";
-import { HmsCard } from "@/common_components/HmsCard/HmsCard";
+import { Calendar, Clock, MapPin, CheckCircle2, Lock, UserCheck } from "lucide-react";
 import { useRosterStore } from "@/app/(admin)/_admin_stores/admin_roster_store";
-import { RosterService } from "@/app/(admin)/_admin_services/roster_service";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 
-interface ScheduleSlot {
-  day: string;
-  shift: string;
-  hours: string;
-  room: string;
-  totalTokens: number;
-  isBlocked: boolean;
-}
 
 export const DoctorScheduleView: React.FC = () => {
   const doctorShifts = useRosterStore((state) =>
@@ -23,6 +13,20 @@ export const DoctorScheduleView: React.FC = () => {
   );
   const blockedSlots = useRosterStore((state) => state.blockedSlots) || {};
   const toggleStoreSlotBlock = useRosterStore((state) => state.toggleSlotBlock);
+
+  // Canonical staff id of the signed-in doctor (e.g. "DOC-101"); never hard-code a doctor.
+  const doctorStaffId = useAuthUserStore((state) => state.user?.userId) || "DOC-101";
+
+  /**
+   * Per-doctor clinic-day block. The legacy doctor-agnostic key (`dayName`) is only honoured
+   * for DOC-101 — the doctor the old UI toggled for — so one doctor can no longer block the
+   * whole hospital's OPD.
+   */
+  const isDayBlocked = (dayName: string): boolean => {
+    const perDoctorKey = blockedSlots[`${doctorStaffId}-${dayName}`];
+    const legacyKey = doctorStaffId === "DOC-101" ? blockedSlots[dayName] : undefined;
+    return Boolean(perDoctorKey || legacyKey);
+  };
 
   const baseSlots = [
     { day: "Monday", shift: "Morning OPD", hours: "09:00 AM - 01:00 PM", room: "OPD Clinic Room 104", totalTokens: 20 },
@@ -34,10 +38,11 @@ export const DoctorScheduleView: React.FC = () => {
   ];
 
   const handleToggleSlot = (dayName: string) => {
-    const isCurrentlyBlocked = !!(blockedSlots[`DOC-101-${dayName}`] || blockedSlots[dayName]);
-    toggleStoreSlotBlock(dayName, "DOC-101");
+    const isCurrentlyBlocked = isDayBlocked(dayName);
+    toggleStoreSlotBlock(dayName, doctorStaffId);
     message.info(!isCurrentlyBlocked ? `Clinic slot for ${dayName} BLOCKED in Roster Master.` : `Clinic slot for ${dayName} UNBLOCKED.`);
   };
+
 
   return (
     <div className="space-y-6">
@@ -80,7 +85,7 @@ export const DoctorScheduleView: React.FC = () => {
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {baseSlots.map((slot, idx) => {
-          const isBlocked = !!(blockedSlots[`DOC-101-${slot.day}`] || blockedSlots[slot.day]);
+          const isBlocked = isDayBlocked(slot.day);
           return (
             <div
               key={idx}

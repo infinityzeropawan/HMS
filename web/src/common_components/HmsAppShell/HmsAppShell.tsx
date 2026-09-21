@@ -26,12 +26,22 @@ export const HmsAppShell: React.FC<HmsAppShellProps> = ({
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthUserStore((s) => s.user);
+  const hasHydrated = useAuthUserStore((s) => s._hasHydrated);
   const logout = useAuthUserStore((s) => s.logout);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
+
+  // Route guard: every console (including the reception desk) requires a session.
+  // Previously the shell silently impersonated a DOCTOR when no session existed.
+  React.useEffect(() => {
+    if (hasHydrated && !user) {
+      router.replace("/login");
+    }
+  }, [hasHydrated, user, router]);
 
   const userRole = user?.role || "DOCTOR";
   const userName = user?.username || "Hospital Staff";
   const hospitalName = user?.hospitalName || "HMS Medical Center";
+
 
   const handleLogout = () => {
     logout();
@@ -47,6 +57,15 @@ export const HmsAppShell: React.FC<HmsAppShellProps> = ({
   const breadcrumbText = pathSegments.length > 0 
     ? pathSegments[0].replace(/-/g, " ").toUpperCase() 
     : "DASHBOARD";
+
+  // Avoid flashing the console (or the default role navigation) before hydration / redirect.
+  if (!hasHydrated || !user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <p className="text-xs text-slate-400 uppercase tracking-wider">Redirecting to sign in…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row font-sans text-slate-900">

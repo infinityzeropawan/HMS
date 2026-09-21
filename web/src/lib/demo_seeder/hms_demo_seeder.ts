@@ -1,5 +1,10 @@
 "use client";
 
+import { useAppointmentStore } from "@/app/(reception)/_reception_stores/appointment_store";
+import { useReceptionVisitStore } from "@/app/(reception)/_reception_stores/reception_visit_store";
+import type { ReceptionVisit } from "@/app/(reception)/_reception_types/visit_types";
+import { todayLocalDate } from "@/app/(reception)/_reception_utils/date_utils";
+
 /**
  * Enterprise HMS Universal Demo Data Seeder
  * Populates complete schema-compliant mock data into browser localStorage
@@ -81,13 +86,53 @@ export const DEMO_PATIENTS = [
   },
 ];
 
-export const DEMO_APPOINTMENTS = [
-  { tokenNo: "T-01", patientSearch: "Sunil Verma (P-2026-1049)", department: "Cardiology", doctorId: "DOC-101", doctorName: "Dr. Rajesh Sharma", slot: "10:30 AM", status: "WAITING" },
-  { tokenNo: "T-02", patientSearch: "Anjali Gupta (P-2026-1052)", department: "Pediatrics", doctorId: "DOC-102", doctorName: "Dr. Priya Nair", slot: "10:45 AM", status: "IN_CONSULTATION" },
-  { tokenNo: "T-03", patientSearch: "Ramesh Kumar (P-2026-1058)", department: "Cardiology", doctorId: "DOC-101", doctorName: "Dr. Rajesh Sharma", slot: "11:00 AM", status: "WAITING" },
-  { tokenNo: "T-04", patientSearch: "Priya Sharma (P-2026-1062)", department: "Endocrinology", doctorId: "DOC-103", doctorName: "Dr. Ananya Roy", slot: "11:15 AM", status: "WAITING" },
-  { tokenNo: "T-05", patientSearch: "Meena Joshi (P-2026-1065)", department: "Orthopedics", doctorId: "DOC-102", doctorName: "Dr. Priya Nair", slot: "11:30 AM", status: "WAITING" },
+/**
+ * Demo front-desk triage visits (the OPD vs IPD decision records of the reception desk).
+ * Tokens/appointments themselves are seeded from the appointment store defaults so the
+ * reception console, doctor queue and kiosk all read the same live queue.
+ */
+export const DEMO_RECEPTION_VISITS: ReceptionVisit[] = [
+  {
+    id: "visit-demo-101",
+    uhid: "P-2026-1049",
+    patientName: "Sunil Verma",
+    ageGender: "45 / Male",
+    phone: "9876543210",
+    visitDate: todayLocalDate(),
+    registeredAt: new Date().toISOString(),
+    triagePriority: "P2_EMERGENT",
+    vitals: { systolicBp: 168, diastolicBp: 104, pulseRate: 108, temperatureF: 99.2, weightKg: 82, spo2: 95 },
+    disposition: "PENDING",
+  },
+  {
+    id: "visit-demo-102",
+    uhid: "P-2026-1052",
+    patientName: "Anjali Gupta",
+    ageGender: "32 / Female",
+    phone: "9811122334",
+    visitDate: todayLocalDate(),
+    registeredAt: new Date().toISOString(),
+    triagePriority: "P4_STANDARD",
+    vitals: { systolicBp: 118, diastolicBp: 76, pulseRate: 78, temperatureF: 98.4, weightKg: 61, spo2: 99 },
+    disposition: "OPD",
+    dispositionNote: "Stable vitals, continue OPD review.",
+    dispositionAt: new Date().toISOString(),
+    decidedBy: "Reception Desk",
+  },
+  {
+    id: "visit-demo-103",
+    uhid: "P-2026-1058",
+    patientName: "Ramesh Kumar",
+    ageGender: "58 / Male",
+    phone: "9922233445",
+    visitDate: todayLocalDate(),
+    registeredAt: new Date().toISOString(),
+    triagePriority: "P4_STANDARD",
+    vitals: { systolicBp: 132, diastolicBp: 86, pulseRate: 84, temperatureF: 97.8, weightKg: 74, spo2: 98 },
+    disposition: "PENDING",
+  },
 ];
+
 
 export const DEMO_CONTROLLED_DRUGS = [
   {
@@ -231,14 +276,35 @@ export function seedAllDemoData(): boolean {
 
   try {
     localStorage.setItem("hms_patients", JSON.stringify(DEMO_PATIENTS));
-    localStorage.setItem("hms_appointments", JSON.stringify(DEMO_APPOINTMENTS));
     localStorage.setItem("hms_controlled_drugs", JSON.stringify(DEMO_CONTROLLED_DRUGS));
     localStorage.setItem("hms_pharmacy_dispense", JSON.stringify(DEMO_PHARMACY_DISPENSE));
     localStorage.setItem("hms_invoices", JSON.stringify(DEMO_INVOICES));
     localStorage.setItem("hms_network_transfers", JSON.stringify(DEMO_NETWORK_TRANSFERS));
     localStorage.setItem("hms_last_uhid_seq", "1065");
-    localStorage.setItem("hms_last_token_num", "5");
     localStorage.setItem("hms_last_invoice_seq", "1053");
+
+    // Reception OPD queue + front-desk triage visits live in zustand persist stores.
+    // The appointment store defaults are reset into the persisted state so the reception
+    // console, doctor queue and kiosk all read the same live queue.
+    useAppointmentStore.getState().resetToDefaults();
+    const appointmentState = useAppointmentStore.getState();
+    localStorage.setItem(
+      "hms_appointment_store",
+      JSON.stringify({
+        state: {
+          appointments: appointmentState.appointments,
+          lastTokenSeqByDate: appointmentState.lastTokenSeqByDate,
+        },
+        version: 0,
+      })
+    );
+
+    useReceptionVisitStore.getState().resetToDefaults();
+    localStorage.setItem(
+      "hms_reception_visits_store",
+      JSON.stringify({ state: { visits: DEMO_RECEPTION_VISITS }, version: 0 })
+    );
+
     return true;
   } catch (err) {
     console.error("Failed to seed demo data to localStorage", err);
@@ -252,14 +318,15 @@ export function clearAllDemoData(): boolean {
   try {
     const keysToClear = [
       "hms_patients",
-      "hms_appointments",
+      "hms_appointment_store",
+      "hms_reception_visits_store",
       "hms_controlled_drugs",
       "hms_pharmacy_dispense",
       "hms_invoices",
       "hms_network_transfers",
       "hms_last_uhid_seq",
-      "hms_last_token_num",
       "hms_last_invoice_seq",
+      "hms_last_registered_uhid",
       "hms_controlled_drugs",
       "hms_super_subscription_plans",
       "hms_super_platform_audit",
@@ -267,6 +334,11 @@ export function clearAllDemoData(): boolean {
     ];
 
     keysToClear.forEach((key) => localStorage.removeItem(key));
+
+    // Reset the in-memory reception stores so a later mutation cannot re-persist old data.
+    useAppointmentStore.getState().resetToDefaults();
+    useReceptionVisitStore.getState().resetToDefaults();
+
     return true;
   } catch (err) {
     console.error("Failed to clear localStorage demo data", err);
@@ -282,7 +354,13 @@ export function getStorageStats(): SchemaSectionStat[] {
       const raw = localStorage.getItem(key);
       if (!raw) return 0;
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.length : 1;
+      if (Array.isArray(parsed)) return parsed.length;
+      // zustand persist payloads: { state: { <collection>: [...] } }
+      if (parsed && typeof parsed === "object" && parsed.state) {
+        const collection = Object.values(parsed.state).find((value) => Array.isArray(value));
+        if (Array.isArray(collection)) return collection.length;
+      }
+      return 1;
     } catch {
       return 0;
     }
@@ -290,7 +368,8 @@ export function getStorageStats(): SchemaSectionStat[] {
 
   return [
     { key: "hms_patients", name: "Patients & UHID Demographics", count: getItemCount("hms_patients"), description: "Patient records, ABHA IDs, Aadhaar link" },
-    { key: "hms_appointments", name: "OPD Queue & Appointments", count: getItemCount("hms_appointments"), description: "Queue tokens, doctor slots, consultation status" },
+    { key: "hms_appointment_store", name: "OPD Queue & Appointments", count: getItemCount("hms_appointment_store"), description: "Queue tokens, doctor slots, consultation status" },
+    { key: "hms_reception_visits_store", name: "Reception Triage Visits (OPD vs IPD)", count: getItemCount("hms_reception_visits_store"), description: "Triage vitals, priority and care disposition" },
     { key: "hms_pharmacy_dispense", name: "Pharmacy Dispensing Queue", count: getItemCount("hms_pharmacy_dispense"), description: "e-Prescriptions, FEFO batches, itemized bills" },
     { key: "hms_controlled_drugs", name: "Schedule H/H1/X Vault Register", count: getItemCount("hms_controlled_drugs"), description: "CDSCO narcotic logs, prescriber NMC #, pharmacist sign-off" },
     { key: "hms_invoices", name: "GST Tax Invoices & Receipts", count: getItemCount("hms_invoices"), description: "Billing line items, CGST/SGST breakdown, cashier receipts" },

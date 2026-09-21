@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { Table, Tag, Input, Modal, message, Calendar as AntCalendar, Tabs, Tooltip } from "antd";
+import { Table, Tag, Input, Modal, message, Calendar as AntCalendar, Tabs, Tooltip, Segmented } from "antd";
 import {
   UserPlus,
   Calendar as CalendarIcon,
@@ -20,19 +20,47 @@ import {
   List,
   Stethoscope,
   AlertTriangle,
+  ClipboardList,
 } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { AppointmentBookingDrawer } from "../_reception_components/AppointmentBooking/AppointmentBookingDrawer";
 import { RescheduleAppointmentModal } from "../_reception_components/AppointmentBooking/RescheduleAppointmentModal";
+import { PatientDispositionModal } from "../_reception_components/Disposition/PatientDispositionModal";
 import { useAppointmentStore } from "../_reception_stores/appointment_store";
+import { useReceptionVisitStore } from "../_reception_stores/reception_visit_store";
 import { AppointmentService } from "../_reception_services/appointment_service";
+import { ReceptionDoctorService } from "../_reception_services/reception_doctor_service";
 import { HospitalAppointment } from "../_reception_types/appointment_types";
+import {
+  DISPOSITION_COLORS,
+  ReceptionVisit,
+  TRIAGE_PRIORITY_COLORS,
+  TRIAGE_PRIORITY_LABELS,
+} from "../_reception_types/visit_types";
 import { useI18n } from "@/i18n/_i18n_context/I18nContext";
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
-import dayjs, { Dayjs } from "dayjs";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+import type { Dayjs } from "dayjs";
+import { formatDisplayDate, todayLocalDate } from "../_reception_utils/date_utils";
+
+type QueueScope = "TODAY" | "UPCOMING" | "ALL";
+
+const STATUS_COLORS: Record<string, string> = {
+  WAITING: "orange",
+  IN_CONSULTATION: "green",
+  COMPLETED: "blue",
+  CANCELLED: "red",
+  RESCHEDULED: "purple",
+};
 
 export default function ReceptionDashboard() {
+  const { t } = useI18n();
+  const hospitalName = useAuthUserStore((s) => s.user?.hospitalName) || "HMS Medical Center";
+
+  const appointments = useAppointmentStore((s) => s.appointments);
+  const visits = useReceptionVisitStore((s) => s.visits);
+
   const [bookingDrawerOpen, setBookingDrawerOpen] = useState(false);
   const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<HospitalAppointment | null>(null);
@@ -42,13 +70,44 @@ export default function ReceptionDashboard() {
   const [selectedSlip, setSelectedSlip] = useState<HospitalAppointment | null>(null);
   const [slipModalOpen, setSlipModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"LIST" | "CALENDAR" | "DOCTORS">("LIST");
-  const { t } = useI18n();
+  const [queueScope, setQueueScope] = useState<QueueScope>("TODAY");
+  const [dispositionTarget, setDispositionTarget] = useState<HospitalAppointment | null>(null);
+  const [dispositionModalOpen, setDispositionModalOpen] = useState(false);
 
-  const { appointments, updateStatus, cancelAppointment } = useAppointmentStore();
+  const today = todayLocalDate();
 
-  const handleCheckIn = (id: string) => {
-    updateStatus(id, "IN_CONSULTATION");
-    message.success("Patient status updated to IN CONSULTATION!");
+  // Date-scoped queues: previously every appointment ever booked was counted as "today".
+  const todayAppointments = useMemo(
+    () => appointments.filter((a) => a.date === today),
+    [appointments, today]
+  );
+  const upcomingAppointments = useMemo(
+    () => appointments.filter((a) => a.date > today),
+    [appointments, today]
+  );
+  const scopedAppointments =
+    queueScope === "TODAY"
+      ? todayAppointments
+      : queueScope === "UPCOMING"
+        ? upcomingAppointments
+        : appointments;
+
+  // Latest triage visit per patient (drives the OPD vs IPD decision tags)
+  const visitByUhid = useMemo(() => {
+    const map = new Map<string, ReceptionVisit>();
+    visits.forEach((visit) => {
+      if (!map.has(visit.uhid)) map.set(visit.uhid, visit);
+    });
+    return map;
+  }, [visits]);
+
+  const handleCheckIn = (appointment: HospitalAppointment) => {
+    const res = AppointmentService.callPatientIn(appointment.id);
+    if (res.success) {
+      message.success(res.message);
+    } else {
+      message.error(res.message);
+    }
   };
 
   const handlePrintSlip = (app: HospitalAppointment) => {
@@ -69,7 +128,10 @@ export default function ReceptionDashboard() {
 
   const handleConfirmCancel = () => {
     if (!selectedAppointment) return;
-    const res = AppointmentService.cancel(selectedAppointment.id, cancelReason || "Patient requested cancellation");
+    const res = AppointmentService.cancel(
+      selectedAppointment.id,
+      cancelReason || "Patient requested cancellation"
+    );
     if (res.success) {
       message.success(res.message);
       setCancelModalOpen(false);
@@ -78,14 +140,27 @@ export default function ReceptionDashboard() {
     }
   };
 
-  const filteredAppointments = appointments.filter(
-    (item) =>
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.uhid.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tokenNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.doctorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.departmentName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handlePrintSlipNow = () => {
+    if (!selectedSlip) return;
+    try {
+      window.print();
+      message.success(`Token slip ${selectedSlip.tokenNo} sent to the printer.`);
+    } catch {
+      message.error("Printing is not available in this browser context.");
+    }
+  };
+
+  const filteredAppointments = scopedAppointments.filter((item) => {
+    const query = searchQuery.toLowerCase();
+    if (!query) return true;
+    return (
+      item.patientName.toLowerCase().includes(query) ||
+      item.uhid.toLowerCase().includes(query) ||
+      item.tokenNo.toLowerCase().includes(query) ||
+      item.doctorName.toLowerCase().includes(query) ||
+      item.departmentName.toLowerCase().includes(query)
+    );
+  });
 
   const columns = [
     {
@@ -105,15 +180,32 @@ export default function ReceptionDashboard() {
       render: (val: string) => <span className="font-mono text-xs">{val}</span>,
     },
     {
-      title: "Patient Name",
+      title: "Patient & Triage",
       dataIndex: "patientName",
       key: "patientName",
-      render: (val: string, record: HospitalAppointment) => (
-        <div>
-          <strong className="text-slate-900 block">{val}</strong>
-          <span className="text-[11px] text-slate-500">{record.ageGender}</span>
-        </div>
-      ),
+      render: (val: string, record: HospitalAppointment) => {
+        const visit = visitByUhid.get(record.uhid);
+        return (
+          <div>
+            <strong className="text-slate-900 block">{val}</strong>
+            <span className="text-[11px] text-slate-500">{record.ageGender}</span>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {visit && (
+                <Tag color={TRIAGE_PRIORITY_COLORS[visit.triagePriority]} className="text-3xs m-0">
+                  {TRIAGE_PRIORITY_LABELS[visit.triagePriority].split("·")[0].trim()}
+                </Tag>
+              )}
+              {visit && visit.disposition !== "PENDING" && (
+                <Tag color={DISPOSITION_COLORS[visit.disposition]} className="text-3xs m-0">
+                  {visit.disposition === "IPD_ADMITTED"
+                    ? `IPD ${visit.ipdBedNumber || ""}`
+                    : visit.disposition}
+                </Tag>
+              )}
+            </div>
+          </div>
+        );
+      },
     },
     {
       title: "Doctor & Room",
@@ -121,7 +213,9 @@ export default function ReceptionDashboard() {
       render: (_: unknown, record: HospitalAppointment) => (
         <div>
           <span className="font-semibold text-slate-800 block text-xs">{record.doctorName}</span>
-          <span className="text-[11px] text-purple-700 font-mono">{record.departmentName} ({record.opdRoom})</span>
+          <span className="text-[11px] text-purple-700 font-mono">
+            {record.departmentCode} ({record.opdRoom})
+          </span>
         </div>
       ),
     },
@@ -131,7 +225,7 @@ export default function ReceptionDashboard() {
       render: (_: unknown, record: HospitalAppointment) => (
         <div>
           <span className="font-medium text-slate-800 block text-xs">{record.slot}</span>
-          <span className="text-[11px] text-slate-500 font-mono">{record.date}</span>
+          <span className="text-[11px] text-slate-500 font-mono">{formatDisplayDate(record.date)}</span>
         </div>
       ),
     },
@@ -139,70 +233,82 @@ export default function ReceptionDashboard() {
       title: t.status || "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: string) => {
-        const colorMap: Record<string, string> = {
-          WAITING: "orange",
-          IN_CONSULTATION: "green",
-          COMPLETED: "blue",
-          CANCELLED: "red",
-          RESCHEDULED: "purple",
-        };
-        return <Tag color={colorMap[status] || "default"}>{status}</Tag>;
-      },
+      render: (status: string) => <Tag color={STATUS_COLORS[status] || "default"}>{status}</Tag>,
     },
     {
       title: "Actions",
       key: "actions",
-      render: (_: unknown, record: HospitalAppointment) => (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {record.status === "WAITING" && (
-            <HmsButton
-              size="sm"
-              variant="emerald"
-              icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-              onClick={() => handleCheckIn(record.id)}
-            >
-              Call In
-            </HmsButton>
-          )}
-          <HmsButton
-            size="sm"
-            variant="secondary"
-            icon={<Printer className="w-3.5 h-3.5" />}
-            onClick={() => handlePrintSlip(record)}
-          >
-            Slip
-          </HmsButton>
-          {record.status !== "CANCELLED" && (
-            <>
-              <Tooltip title="Reschedule Appointment">
+      render: (_: unknown, record: HospitalAppointment) => {
+        const isToday = record.date === today;
+        const visit = visitByUhid.get(record.uhid);
+        const alreadyAdmitted = visit?.disposition === "IPD_ADMITTED";
+
+        return (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {isToday && record.status === "WAITING" && (
+              <HmsButton
+                size="sm"
+                variant="emerald"
+                icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                onClick={() => handleCheckIn(record)}
+              >
+                Call In
+              </HmsButton>
+            )}
+            {record.status !== "CANCELLED" && record.status !== "COMPLETED" && !alreadyAdmitted && (
+              <Tooltip title="Record OPD vs IPD decision">
                 <HmsButton
                   size="sm"
                   variant="secondary"
-                  icon={<RefreshCw className="w-3.5 h-3.5 text-amber-600" />}
-                  onClick={() => handleOpenReschedule(record)}
-                />
+                  icon={<ClipboardList className="w-3.5 h-3.5 text-purple-600" />}
+                  onClick={() => {
+                    setDispositionTarget(record);
+                    setDispositionModalOpen(true);
+                  }}
+                >
+                  Disposition
+                </HmsButton>
               </Tooltip>
-              <Tooltip title="Cancel Appointment">
-                <HmsButton
-                  size="sm"
-                  variant="danger"
-                  icon={<XCircle className="w-3.5 h-3.5" />}
-                  onClick={() => handleOpenCancel(record)}
-                />
-              </Tooltip>
-            </>
-          )}
-        </div>
-      ),
+            )}
+            <HmsButton
+              size="sm"
+              variant="secondary"
+              icon={<Printer className="w-3.5 h-3.5" />}
+              onClick={() => handlePrintSlip(record)}
+            >
+              Slip
+            </HmsButton>
+            {record.status !== "CANCELLED" && record.status !== "COMPLETED" && (
+              <>
+                <Tooltip title="Reschedule Appointment">
+                  <HmsButton
+                    size="sm"
+                    variant="secondary"
+                    icon={<RefreshCw className="w-3.5 h-3.5 text-amber-600" />}
+                    onClick={() => handleOpenReschedule(record)}
+                  />
+                </Tooltip>
+                <Tooltip title="Cancel Appointment">
+                  <HmsButton
+                    size="sm"
+                    variant="danger"
+                    icon={<XCircle className="w-3.5 h-3.5" />}
+                    onClick={() => handleOpenCancel(record)}
+                  />
+                </Tooltip>
+              </>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
-  // Calendar Cell Renderer
-  const dateCellRender = (value: Dayjs) => {
+  // Calendar cell renderer (antd 5 `cellRender`; `dateCellRender` is deprecated)
+  const cellRender = (value: Dayjs, info: { type: string }) => {
+    if (info.type !== "date") return null;
     const dateStr = value.format("YYYY-MM-DD");
     const dayApps = appointments.filter((a) => a.date === dateStr);
-
     if (dayApps.length === 0) return null;
 
     return (
@@ -220,21 +326,19 @@ export default function ReceptionDashboard() {
     );
   };
 
-  const doctorList = [
-    { id: "DOC-101", name: "Dr. Rajesh Sharma", dept: "Cardiology", room: "OPD 3" },
-    { id: "DOC-102", name: "Dr. Priya Nair", dept: "Orthopedics", room: "OPD 1" },
-    { id: "DOC-103", name: "Dr. Vikram Seth", dept: "General Medicine", room: "OPD 5" },
-    { id: "DOC-104", name: "Dr. Ananya Ray", dept: "Pediatrics", room: "OPD 2" },
-  ];
+  // Doctor availability is sourced from the staff master (single doctor master, no duplicates).
+  const doctors = ReceptionDoctorService.getDoctors();
 
   return (
     <HmsAppShell title="Reception & OPD Desk Console">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6 print:hidden">
         {/* Banner Header & Action Toolbar */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pb-4 border-b border-slate-200">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900">OPD Patient Registration & Queue Dispatch</h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Real-time OPD Token Queue, Appointments & Patient Desk</p>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Entry point of the hospital: register, triage, issue the OPD token and record the OPD vs IPD decision
+            </p>
           </div>
           <div className="flex flex-wrap gap-2.5 items-center">
             <HmsButton href="/patients/register" variant="emerald" size="md" icon={<UserPlus className="w-4 h-4" />}>
@@ -262,7 +366,7 @@ export default function ReceptionDashboard() {
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-sm">Patient Registration</h3>
-              <p className="text-xs text-slate-500">Demographics, Vitals & ABHA Link</p>
+              <p className="text-xs text-slate-500">Demographics, Triage Vitals &amp; Priority</p>
             </div>
           </Link>
 
@@ -288,18 +392,20 @@ export default function ReceptionDashboard() {
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-sm">Branch Patient Transfers</h3>
-              <p className="text-xs text-slate-500">Inter-Hospital Ambulance & Referrals</p>
+              <p className="text-xs text-slate-500">Inter-Hospital Ambulance &amp; Referrals</p>
             </div>
           </Link>
         </div>
 
-        {/* KPI Counter Cards */}
+
+        {/* KPI Counter Cards — scoped to today's OPD (previously counted every booking ever made) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <HmsCard elevated>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500 uppercase font-semibold">Today&apos;s OPD Queue Total</p>
-                <h3 className="text-2xl font-bold text-teal-700 mt-1">{appointments.length} Patients</h3>
+                <p className="text-xs text-slate-500 uppercase font-semibold">Today&apos;s OPD Queue ({formatDisplayDate(today)})</p>
+                <h3 className="text-2xl font-bold text-teal-700 mt-1">{todayAppointments.length} Patients</h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">{upcomingAppointments.length} upcoming bookings</p>
               </div>
               <Users className="w-8 h-8 text-teal-500" />
             </div>
@@ -308,9 +414,9 @@ export default function ReceptionDashboard() {
           <HmsCard elevated>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500 uppercase font-semibold">Waiting in OPD</p>
+                <p className="text-xs text-slate-500 uppercase font-semibold">Waiting in OPD Today</p>
                 <h3 className="text-2xl font-bold text-amber-600 mt-1">
-                  {appointments.filter((q) => q.status === "WAITING").length} Waiting
+                  {todayAppointments.filter((q) => q.status === "WAITING").length} Waiting
                 </h3>
               </div>
               <Clock className="w-8 h-8 text-amber-500" />
@@ -320,9 +426,9 @@ export default function ReceptionDashboard() {
           <HmsCard elevated>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500 uppercase font-semibold">In Consultation</p>
+                <p className="text-xs text-slate-500 uppercase font-semibold">In Consultation Today</p>
                 <h3 className="text-2xl font-bold text-emerald-600 mt-1">
-                  {appointments.filter((q) => q.status === "IN_CONSULTATION").length} Active
+                  {todayAppointments.filter((q) => q.status === "IN_CONSULTATION").length} Active
                 </h3>
               </div>
               <Activity className="w-8 h-8 text-emerald-500" />
@@ -351,7 +457,16 @@ export default function ReceptionDashboard() {
           {/* Tab Content: List View */}
           {activeTab === "LIST" && (
             <div className="space-y-4">
-              <div className="flex justify-end">
+              <div className="flex flex-col sm:flex-row justify-between gap-3">
+                <Segmented
+                  value={queueScope}
+                  onChange={(value) => setQueueScope(value as QueueScope)}
+                  options={[
+                    { value: "TODAY", label: `Today (${todayAppointments.length})` },
+                    { value: "UPCOMING", label: `Upcoming (${upcomingAppointments.length})` },
+                    { value: "ALL", label: `All (${appointments.length})` },
+                  ]}
+                />
                 <Input
                   prefix={<Search className="w-4 h-4 text-slate-400" />}
                   placeholder="Search Token, Patient, UHID, Doctor, or Department..."
@@ -361,7 +476,13 @@ export default function ReceptionDashboard() {
                   allowClear
                 />
               </div>
-              <Table columns={columns} dataSource={filteredAppointments} rowKey="id" pagination={{ pageSize: 10 }} scroll={{ x: true }} />
+              <Table
+                columns={columns}
+                dataSource={filteredAppointments}
+                rowKey="id"
+                pagination={{ pageSize: 10 }}
+                scroll={{ x: true }}
+              />
             </div>
           )}
 
@@ -372,17 +493,17 @@ export default function ReceptionDashboard() {
                 <span>Interactive Calendar View — Click cells to review scheduled OPD consultations per day.</span>
                 <Tag color="blue">Total Booked: {appointments.length}</Tag>
               </div>
-              <AntCalendar dateCellRender={dateCellRender} className="bg-white p-2 rounded-lg" />
+              <AntCalendar cellRender={cellRender} className="bg-white p-2 rounded-lg" />
             </div>
           )}
 
-          {/* Tab Content: Doctor Availability View */}
+
+          {/* Tab Content: Doctor Availability View (sourced from the staff master) */}
           {activeTab === "DOCTORS" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {doctorList.map((doc) => {
-                const today = new Date().toISOString().split("T")[0];
+              {doctors.map((doc) => {
                 const avail = AppointmentService.checkDoctorAvailability(doc.id, today);
-                const docApps = appointments.filter((a) => a.doctorId === doc.id);
+                const docApps = todayAppointments.filter((a) => a.doctorId === doc.id);
 
                 return (
                   <div key={doc.id} className="p-4 border border-slate-200 rounded-xl bg-white shadow-xs space-y-3">
@@ -393,11 +514,11 @@ export default function ReceptionDashboard() {
                         </div>
                         <div>
                           <h4 className="font-bold text-slate-900 text-sm">{doc.name}</h4>
-                          <p className="text-xs text-slate-500">{doc.dept} • {doc.room}</p>
+                          <p className="text-xs text-slate-500">{doc.departmentName} • {doc.room}</p>
                         </div>
                       </div>
                       <Tag color={avail.available ? "green" : "volcano"}>
-                        {avail.available ? "AVAILABLE" : "ON LEAVE / OFF"}
+                        {avail.available ? "AVAILABLE" : "NOT AVAILABLE"}
                       </Tag>
                     </div>
 
@@ -410,7 +531,7 @@ export default function ReceptionDashboard() {
 
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
                       <span>Scheduled Today: <strong>{docApps.length} Patients</strong></span>
-                      <span className="font-mono text-teal-700">Next Slot: 10:30 AM</span>
+                      <span className="font-mono text-teal-700">Next Slot: {docApps[0]?.slot || "—"}</span>
                     </div>
                   </div>
                 );
@@ -419,10 +540,18 @@ export default function ReceptionDashboard() {
           )}
         </div>
 
+
         {/* Appointment Booking Drawer */}
         <AppointmentBookingDrawer
           open={bookingDrawerOpen}
           onClose={() => setBookingDrawerOpen(false)}
+        />
+
+        {/* OPD vs IPD Disposition Modal */}
+        <PatientDispositionModal
+          appointment={dispositionTarget}
+          open={dispositionModalOpen}
+          onClose={() => setDispositionModalOpen(false)}
         />
 
         {/* Reschedule Modal */}
@@ -463,6 +592,7 @@ export default function ReceptionDashboard() {
           </div>
         </Modal>
 
+
         {/* Print OPD Token Slip Modal */}
         {selectedSlip && (
           <Modal
@@ -478,26 +608,23 @@ export default function ReceptionDashboard() {
               <button
                 key="close"
                 onClick={() => setSlipModalOpen(false)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-semibold cursor-pointer mr-2"
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-semibold cursor-pointer mr-2 print:hidden"
               >
                 Close
               </button>,
               <button
                 key="print"
-                onClick={() => {
-                  message.success(`Token slip for ${selectedSlip.tokenNo} sent to thermal receipt printer!`);
-                  setSlipModalOpen(false);
-                }}
-                className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-xs cursor-pointer"
+                onClick={handlePrintSlipNow}
+                className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg text-xs cursor-pointer print:hidden"
               >
-                🖨 Print Thermal Receipt
+                🖨 Print Token Slip
               </button>,
             ]}
             width={440}
           >
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl my-3 space-y-3 font-mono text-xs">
+            <div id="hms-opd-token-slip" className="p-4 bg-slate-50 border border-slate-200 rounded-xl my-3 space-y-3 font-mono text-xs">
               <div className="text-center border-b border-dashed border-slate-300 pb-3 space-y-0.5">
-                <h3 className="font-bold text-slate-900 text-sm uppercase">HMS MEDICAL CENTER</h3>
+                <h3 className="font-bold text-slate-900 text-sm uppercase">{hospitalName}</h3>
                 <p className="text-[11px] text-slate-500">OPD Consultation Queue Slip</p>
                 <p className="text-[10px] text-slate-400">{new Date().toLocaleString()}</p>
               </div>
@@ -517,6 +644,10 @@ export default function ReceptionDashboard() {
                   <span>{selectedSlip.uhid}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span>Age / Gender:</span>
+                  <span>{selectedSlip.ageGender}</span>
+                </div>
+                <div className="flex justify-between">
                   <span>Specialist Doctor:</span>
                   <strong className="text-purple-800">{selectedSlip.doctorName}</strong>
                 </div>
@@ -526,7 +657,7 @@ export default function ReceptionDashboard() {
                 </div>
                 <div className="flex justify-between">
                   <span>Appt Time Slot:</span>
-                  <span>{selectedSlip.date} at {selectedSlip.slot}</span>
+                  <span>{formatDisplayDate(selectedSlip.date)} at {selectedSlip.slot}</span>
                 </div>
               </div>
 

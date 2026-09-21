@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
-import { Modal, Form, Input, Select, Tag, Alert, message } from "antd";
+import React, { useEffect, useState } from "react";
+import { Modal, Form, Input, Select, Tag, Alert } from "antd";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { Clock, Calendar, AlertTriangle, RefreshCw } from "lucide-react";
 import { HospitalAppointment } from "../../_reception_types/appointment_types";
 import { AppointmentService } from "../../_reception_services/appointment_service";
+import { todayLocalDate } from "../../_reception_utils/date_utils";
 
 interface RescheduleAppointmentModalProps {
   appointment: HospitalAppointment | null;
@@ -14,16 +15,6 @@ interface RescheduleAppointmentModalProps {
   onSuccess?: () => void;
 }
 
-const AVAILABLE_SLOTS = [
-  "09:30 AM",
-  "10:00 AM",
-  "10:30 AM",
-  "11:15 AM",
-  "02:00 PM",
-  "03:30 PM",
-  "04:15 PM",
-];
-
 export const RescheduleAppointmentModal: React.FC<RescheduleAppointmentModalProps> = ({
   appointment,
   open,
@@ -31,22 +22,44 @@ export const RescheduleAppointmentModal: React.FC<RescheduleAppointmentModalProp
   onSuccess,
 }) => {
   const [form] = Form.useForm();
-  const [selectedDate, setSelectedDate] = useState(
-    appointment?.date || new Date().toISOString().split("T")[0]
-  );
+  const [selectedDate, setSelectedDate] = useState(todayLocalDate());
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Re-sync whenever a different appointment is opened: the previous implementation kept the
+  // first appointment's date in state (stale availability banner + wrong slot list).
+  useEffect(() => {
+    if (!open || !appointment) return;
+    setSubmitError(null);
+    setSelectedDate(appointment.date);
+    form.setFieldsValue({
+      date: appointment.date,
+      slot: appointment.slot,
+    });
+  }, [open, appointment, form]);
+
 
   if (!appointment) return null;
 
-  const availability = AppointmentService.checkDoctorAvailability(appointment.doctorId, selectedDate);
+  const availability = AppointmentService.checkDoctorAvailability(
+    appointment.doctorId,
+    selectedDate
+  );
+
+  const slots = AppointmentService.getAvailableSlots(
+    appointment.doctorId,
+    selectedDate,
+    appointment.id
+  );
 
   const handleReschedule = (values: { date: string; slot: string }) => {
     const res = AppointmentService.reschedule(appointment.id, values.date, values.slot);
     if (res.success) {
-      message.success(res.message);
+      form.resetFields();
       if (onSuccess) onSuccess();
       onClose();
     } else {
-      message.error(res.message);
+      // Errors are surfaced by the service (unavailable doctor / slot already booked / same slot)
+      setSubmitError(res.message);
     }
   };
 
@@ -67,6 +80,9 @@ export const RescheduleAppointmentModal: React.FC<RescheduleAppointmentModalProp
         <div><strong>Patient:</strong> {appointment.patientName} ({appointment.uhid})</div>
         <div><strong>Doctor:</strong> {appointment.doctorName} ({appointment.departmentName})</div>
         <div><strong>Current Slot:</strong> {appointment.date} at {appointment.slot}</div>
+        {appointment.rescheduledFromSlot && (
+          <div className="text-amber-700"><strong>Previously:</strong> {appointment.rescheduledFromSlot}</div>
+        )}
       </div>
 
       <Form
@@ -82,6 +98,7 @@ export const RescheduleAppointmentModal: React.FC<RescheduleAppointmentModalProp
           <Input
             type="date"
             size="large"
+            min={todayLocalDate()}
             prefix={<Calendar className="w-4 h-4 text-slate-400 mr-1" />}
             onChange={(e) => setSelectedDate(e.target.value)}
           />
@@ -89,7 +106,7 @@ export const RescheduleAppointmentModal: React.FC<RescheduleAppointmentModalProp
 
         {!availability.available && (
           <Alert
-            message="Doctor Unavailable on Selected Date"
+            message="Doctor unavailable on selected date"
             description={availability.reason}
             type="warning"
             showIcon
@@ -99,21 +116,40 @@ export const RescheduleAppointmentModal: React.FC<RescheduleAppointmentModalProp
         )}
 
         <Form.Item label="New Time Slot" name="slot" rules={[{ required: true }]}>
-          <Select placeholder="Select Time Slot" size="large" disabled={!availability.available}>
-            {AVAILABLE_SLOTS.map((s) => (
-              <Select.Option key={s} value={s}>
-                <span className="flex items-center justify-between w-full">
+          <Select
+            placeholder="Select time slot"
+            size="large"
+            disabled={!availability.available}
+            options={slots.map((s) => ({
+              value: s.slot,
+              disabled: s.taken || s.past,
+              label: (
+                <span className="flex items-center justify-between gap-2 w-full">
                   <span className="flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" /> {s}
+                    <Clock className="w-3.5 h-3.5 text-slate-400" /> {s.slot}
                   </span>
-                  <Tag color={s === appointment.slot ? "blue" : "green"}>
-                    {s === appointment.slot ? "Current" : "Available"}
-                  </Tag>
+                  {appointment.date === selectedDate && s.slot === appointment.slot ? (
+                    <Tag color="blue">Current</Tag>
+                  ) : s.taken ? (
+                    <Tag color="red">Booked</Tag>
+                  ) : (
+                    <Tag color="green">Available</Tag>
+                  )}
                 </span>
-              </Select.Option>
-            ))}
-          </Select>
+              ),
+            }))}
+          />
         </Form.Item>
+
+        {submitError && (
+          <Alert
+            message="Reschedule failed"
+            description={submitError}
+            type="error"
+            showIcon
+            className="mb-4"
+          />
+        )}
 
         <div className="flex justify-end gap-2 mt-6">
           <HmsButton onClick={onClose} variant="secondary">
@@ -132,3 +168,4 @@ export const RescheduleAppointmentModal: React.FC<RescheduleAppointmentModalProp
     </Modal>
   );
 };
+

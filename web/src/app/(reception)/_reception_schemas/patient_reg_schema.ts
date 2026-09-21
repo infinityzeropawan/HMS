@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const TRIAGE_PRIORITY_VALUES = ["P1_CRITICAL", "P2_EMERGENT", "P3_URGENT", "P4_STANDARD"] as const;
+
 export const PatientRegSchema = z.object({
   fullName: z.string().min(2, "Full Name is required"),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]),
@@ -17,9 +19,13 @@ export const PatientRegSchema = z.object({
   pulseRate: z.number().min(30).max(220).optional(),
   temperatureF: z.number().min(90).max(110).optional(),
   weightKg: z.number().min(1).max(300).optional(),
+  spo2: z.number().min(50).max(100).optional(),
+  // Reception triage priority (drives the OPD vs IPD / emergency decision)
+  triagePriority: z.enum(TRIAGE_PRIORITY_VALUES).optional(),
   // Insurance
   insuranceProvider: z.string().optional(),
   policyNumber: z.string().optional(),
 });
 
 export type PatientRegInput = z.infer<typeof PatientRegSchema>;
+

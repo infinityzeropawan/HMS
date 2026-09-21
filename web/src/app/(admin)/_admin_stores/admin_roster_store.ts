@@ -9,7 +9,14 @@ export type { StaffShiftRoster, StaffRoleCategory };
 
 interface RosterStoreState {
   rosters: StaffShiftRoster[];
+  /**
+   * Clinic-day blocks keyed as `${staffId}-${dayName}` (e.g. "DOC-101-Wednesday").
+   * A legacy doctor-agnostic key (`dayName`) still exists in browsers that used the old
+   * implementation; it is only honoured for "DOC-101" (the doctor the legacy UI toggled for)
+   * and is deleted on the next toggle.
+   */
   blockedSlots: Record<string, boolean>;
+
   addShift: (shift: Omit<StaffShiftRoster, "id">) => void;
   updateShift: (id: string, updates: Partial<StaffShiftRoster>) => void;
   updateShiftStatus: (id: string, status: StaffShiftRoster["status"]) => void;
@@ -176,23 +183,24 @@ export const useRosterStore = create<RosterStoreState>()(
       toggleSlotBlock: (dayName, doctorId = "DOC-101") =>
         set((state) => {
           const keySpecific = `${doctorId}-${dayName}`;
-          const keyGeneric = dayName;
-          const currentVal = !!(state.blockedSlots?.[keySpecific] || state.blockedSlots?.[keyGeneric]);
-          return {
-            blockedSlots: {
-              ...(state.blockedSlots || {}),
-              [keySpecific]: !currentVal,
-              [keyGeneric]: !currentVal,
-            },
-          };
+          const blockedSlots = { ...(state.blockedSlots || {}) };
+          const currentVal = !!blockedSlots[keySpecific];
+
+          blockedSlots[keySpecific] = !currentVal;
+          // The legacy implementation also wrote a doctor-agnostic key which blocked every
+          // doctor for that weekday. Drop it whenever a block is toggled.
+          delete blockedSlots[dayName];
+
+          return { blockedSlots };
         }),
 
       isSlotBlocked: (dayName, doctorId = "DOC-101") => {
         const state = get();
         const keySpecific = `${doctorId}-${dayName}`;
-        const keyGeneric = dayName;
-        return !!(state.blockedSlots?.[keySpecific] || state.blockedSlots?.[keyGeneric]);
+        const legacyGenericKey = doctorId === "DOC-101" && !!state.blockedSlots?.[dayName];
+        return !!(state.blockedSlots?.[keySpecific] || legacyGenericKey);
       },
+
 
       resetToDefaults: () => set({ rosters: DEFAULT_ROSTERS, blockedSlots: {} }),
     }),

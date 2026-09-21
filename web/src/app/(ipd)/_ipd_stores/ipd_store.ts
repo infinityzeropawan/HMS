@@ -33,7 +33,10 @@ export interface IpdAdmissionRecord {
 
 interface IpdStoreState {
   admissions: IpdAdmissionRecord[];
-  addAdmission: (admission: Omit<IpdAdmissionRecord, "id" | "admissionNo" | "status">) => void;
+  addAdmission: (
+    admission: Omit<IpdAdmissionRecord, "id" | "admissionNo" | "status">
+  ) => IpdAdmissionRecord;
+
   updateAdmissionStatus: (admissionNoOrId: string, status: IpdAdmissionRecord["status"]) => void;
   transferPatientBed: (admissionNoOrId: string, newBedNumber: string, newWardName: string) => void;
   addRoundNote: (admissionNoOrId: string, note: string, dischargeReady?: boolean) => void;
@@ -115,23 +118,23 @@ export const useIpdStore = create<IpdStoreState>()(
     (set) => ({
       admissions: DEFAULT_ADMISSIONS,
 
-      addAdmission: (admission) =>
-        set((state) => ({
-          admissions: [
-            {
-              ...admission,
-              id: `adm-${Date.now()}`,
-              admissionNo: `IPD-2026-${Math.floor(Math.random() * 9000 + 1000)}`,
-              status: "ADMITTED",
-              primaryDiagnosis: admission.primaryDiagnosis || "General Admission",
-              attendingNurse: admission.attendingNurse || "Duty Nurse",
-              vitals: admission.vitals || { bp: "120/80", pulse: 72, spO2: 98, temp: "98.6 °F" },
-              roundStatus: "DUE",
-              dischargeReady: false,
-            },
-            ...state.admissions,
-          ],
-        })),
+      addAdmission: (admission) => {
+        const newAdmission: IpdAdmissionRecord = {
+          ...admission,
+          id: `adm-${Date.now()}`,
+          admissionNo: `IPD-2026-${Math.floor(Math.random() * 9000 + 1000)}`,
+          status: "ADMITTED",
+          primaryDiagnosis: admission.primaryDiagnosis || "General Admission",
+          attendingNurse: admission.attendingNurse || "Duty Nurse",
+          vitals: admission.vitals || { bp: "120/80", pulse: 72, spO2: 98, temp: "98.6 °F" },
+          roundStatus: "DUE",
+          dischargeReady: false,
+        };
+
+        set((state) => ({ admissions: [newAdmission, ...state.admissions] }));
+        return newAdmission;
+      },
+
 
       updateAdmissionStatus: (admissionNoOrId, status) =>
         set((state) => ({

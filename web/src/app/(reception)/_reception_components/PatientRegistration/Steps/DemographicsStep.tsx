@@ -4,6 +4,8 @@ import React from "react";
 import { Form, Input, Select, Row, Col } from "antd";
 import { User, Phone, Mail, IdCard, MapPin } from "lucide-react";
 
+import { todayLocalDate } from "../../../_reception_utils/date_utils";
+
 export const DemographicsStep: React.FC = () => {
   return (
     <div className="space-y-4">
@@ -40,7 +42,8 @@ export const DemographicsStep: React.FC = () => {
             name="dob"
             rules={[{ required: true, message: "DOB is required" }]}
           >
-            <Input type="date" size="large" />
+            {/* Future dates are impossible — the patient age/token derive from this field */}
+            <Input type="date" size="large" max={todayLocalDate()} />
           </Form.Item>
         </Col>
       </Row>

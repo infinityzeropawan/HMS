@@ -1,27 +1,33 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const SESSION_COOKIE = "hms_user_auth_session";
+
+/** Pages reachable without a session: the login screen and the self-service kiosk terminal. */
+const PUBLIC_PATHS = new Set(["/login", "/checkin"]);
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Publicly accessible paths that bypass auth checks
   const isPublicPath =
-    pathname === "/login" ||
-    pathname === "/checkin" ||
+    PUBLIC_PATHS.has(pathname) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.includes(".");
 
-  // Check auth session indicator from cookie or header if present
-  const authSessionCookie = request.cookies.get("hms_user_auth_session")?.value;
+  // The session cookie mirrors the client session store (written on login, cleared on logout).
+  // Previously the cookie was never written, so this guard never fired and every console —
+  // including the reception desk — was reachable without authentication.
+  const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
 
-  if (!isPublicPath && !authSessionCookie) {
-    // If no cookie exists, client-side Zustand store will handle redirection via HmsAppShell
-    return NextResponse.next();
+  if (!isPublicPath && !hasSession) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   return NextResponse.next();
 }
+
+
 
 export const config = {
   matcher: [
