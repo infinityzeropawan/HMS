@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Table, Tag, Modal, Form, Input, Select, InputNumber, message } from "antd";
 import { Droplet, Plus, RefreshCw, Activity, ArrowUpRight, ArrowDownRight, Scale } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
@@ -25,7 +25,7 @@ export const NurseFluidBalanceChart: React.FC = () => {
   const admissions = useIpdStore((state) => state.admissions);
   const currentUser = useAuthUserStore((state) => state.user);
 
-  const [entries, setEntries] = useState<FluidEntry[]>([
+  const defaultEntries: FluidEntry[] = [
     {
       id: "fl-1",
       patientName: admissions[0]?.patientName || "Sunil Verma",
@@ -59,10 +59,35 @@ export const NurseFluidBalanceChart: React.FC = () => {
       outputDrainMl: 0,
       recordedBy: currentUser?.username ? `Nurse ${currentUser.username}` : "Nurse Duty Station",
     },
-  ]);
+  ];
 
+  const [entries, setEntries] = useState<FluidEntry[]>(defaultEntries);
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("hms_nurse_fluid_logs");
+        if (saved) {
+          setEntries(JSON.parse(saved));
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  const saveFluidEntries = (updated: FluidEntry[]) => {
+    setEntries(updated);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("hms_nurse_fluid_logs", JSON.stringify(updated));
+      } catch {
+        /* ignore */
+      }
+    }
+  };
 
   const totalIntake = entries.reduce((acc, e) => acc + e.intakeIvMl + e.intakeOralMl, 0);
   const totalOutput = entries.reduce((acc, e) => acc + e.outputUrineMl + e.outputDrainMl, 0);
@@ -96,15 +121,18 @@ export const NurseFluidBalanceChart: React.FC = () => {
       recordedBy: nurseTitle,
     };
 
-    setEntries((prev) => [newEntry, ...prev]);
+    const updated = [newEntry, ...entries];
+    saveFluidEntries(updated);
 
-    // Find admission for store persistence
+    // Find admission for store persistence via addNurseLog
     const targetAdmission = admissions.find((a) => a.patientName === newEntry.patientName || a.bedNumber === newEntry.bedNumber);
     if (targetAdmission) {
       try {
-        useIpdStore.getState().addRoundNote(
+        useIpdStore.getState().addNurseLog(
           targetAdmission.admissionNo,
-          `[24-Hr Fluid Balance Logged] Net Balance: ${net >= 0 ? `+${net}` : net} mL (Intake: ${inTotal} mL, Output: ${outTotal} mL) - Logged by ${nurseTitle}`
+          `[24-Hr Fluid Balance Logged] Net Balance: ${net >= 0 ? `+${net}` : net} mL (Intake: ${inTotal} mL, Output: ${outTotal} mL) - Logged by ${nurseTitle}`,
+          "FLUID",
+          nurseTitle
         );
       } catch {
         /* store fallback */
@@ -130,7 +158,7 @@ export const NurseFluidBalanceChart: React.FC = () => {
       }),
     });
 
-    message.success(`Fluid I/O logged for ${newEntry.patientName} (${newEntry.bedNumber}). EMR Timeline updated.`);
+    message.success(`Fluid I/O logged for ${newEntry.patientName} (${newEntry.bedNumber}). Nurse log updated.`);
     form.resetFields();
     setModalOpen(false);
   };
@@ -160,7 +188,7 @@ export const NurseFluidBalanceChart: React.FC = () => {
       render: (_: unknown, record: FluidEntry) => (
         <div className="text-xs font-mono font-bold text-blue-800">
           IV: {record.intakeIvMl} mL | Oral: {record.intakeOralMl} mL
-          <span className="block text-3xs text-blue-600">Total In: {record.intakeIvMl + record.intakeOralMl} mL</span>
+          <span className="block text-[10px] text-blue-600">Total In: {record.intakeIvMl + record.intakeOralMl} mL</span>
         </div>
       ),
     },
@@ -170,7 +198,7 @@ export const NurseFluidBalanceChart: React.FC = () => {
       render: (_: unknown, record: FluidEntry) => (
         <div className="text-xs font-mono font-bold text-purple-800">
           Urine: {record.outputUrineMl} mL | Drain: {record.outputDrainMl} mL
-          <span className="block text-3xs text-purple-600">Total Out: {record.outputUrineMl + record.outputDrainMl} mL</span>
+          <span className="block text-[10px] text-purple-600">Total Out: {record.outputUrineMl + record.outputDrainMl} mL</span>
         </div>
       ),
     },
@@ -241,8 +269,39 @@ export const NurseFluidBalanceChart: React.FC = () => {
         </HmsButton>
       </div>
 
-      {/* Table */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+      {/* Smartphone Mobile Cards */}
+      <div className="block sm:hidden space-y-3">
+        {entries.map((e) => {
+          const net = (e.intakeIvMl + e.intakeOralMl) - (e.outputUrineMl + e.outputDrainMl);
+          return (
+            <div key={e.id} className="p-4 bg-white rounded-2xl border border-slate-200 space-y-2 text-xs shadow-xs">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">{e.bedNumber}</span>
+                  <h4 className="font-bold text-slate-900 text-sm mt-1">{e.patientName}</h4>
+                </div>
+                <Tag color={net >= 0 ? "emerald" : "rose"} className="font-bold text-xs font-mono">
+                  {net >= 0 ? `+${net}` : net} mL
+                </Tag>
+              </div>
+              <p className="text-slate-500 font-mono text-[11px]">Shift: {e.timeSlot}</p>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 font-mono text-xs">
+                <div className="bg-blue-50/70 p-2 rounded-lg text-blue-900">
+                  <span className="font-bold block text-[10px] text-blue-600 uppercase">Intake</span>
+                  IV: {e.intakeIvMl} mL | Oral: {e.intakeOralMl} mL
+                </div>
+                <div className="bg-purple-50/70 p-2 rounded-lg text-purple-900">
+                  <span className="font-bold block text-[10px] text-purple-600 uppercase">Output</span>
+                  Urine: {e.outputUrineMl} mL | Drain: {e.outputDrainMl} mL
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop / Tablet Table */}
+      <div className="hidden sm:block bg-white p-6 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
         <Table columns={columns} dataSource={entries} rowKey="id" pagination={false} />
       </div>
 
@@ -319,3 +378,4 @@ export const NurseFluidBalanceChart: React.FC = () => {
     </div>
   );
 };
+

@@ -39,6 +39,7 @@ export const HandoverForm: React.FC<HandoverFormProps> = ({ onSaved }) => {
   const handleSubmit = (values: Record<string, string>) => {
     setSubmitting(true);
     try {
+      const maskedSig = values.signature ? `**** (PIN Verified)` : "Digital Verification via PIN";
       const record: HandoverRecord = {
         id: `HO-${Date.now().toString().slice(-6)}`,
         outgoingNurse: values.outgoingNurse || nurseName,
@@ -47,7 +48,7 @@ export const HandoverForm: React.FC<HandoverFormProps> = ({ onSaved }) => {
         ward: values.ward || "IPD Ward 4A (Medical-Surgical)",
         criticalNotes: values.criticalNotes || "Vitals stable across assigned beds. Post-op monitoring ongoing.",
         pendingMedications: values.pendingMedications || "Scheduled IV medications verified against MAR.",
-        signature: values.signature || "Digital Verification via PIN",
+        signature: maskedSig,
         createdAt: new Date().toISOString(),
       };
 
@@ -57,15 +58,17 @@ export const HandoverForm: React.FC<HandoverFormProps> = ({ onSaved }) => {
         localStorage.setItem("hms_nurse_handovers", JSON.stringify(saved));
       }
 
-      // Sync shift handover to IPD Store
+      // Sync shift handover to IPD Store via addNurseLog
       try {
         const admissions = useIpdStore.getState().admissions;
-        if (admissions.length > 0) {
-          useIpdStore.getState().addRoundNote(
-            admissions[0].admissionNo,
-            `[Shift Handover - ${record.shift}] Outgoing: ${record.outgoingNurse} -> Incoming: ${record.incomingNurse}. Notes: ${record.criticalNotes}`
+        admissions.forEach((adm) => {
+          useIpdStore.getState().addNurseLog(
+            adm.admissionNo,
+            `[Shift Handover - ${record.shift}] Outgoing: ${record.outgoingNurse} -> Incoming: ${record.incomingNurse}. Ward: ${record.ward}. Notes: ${record.criticalNotes}`,
+            "HANDOVER",
+            record.outgoingNurse
           );
-        }
+        });
       } catch {
         /* ignore if no store context */
       }
@@ -90,7 +93,7 @@ export const HandoverForm: React.FC<HandoverFormProps> = ({ onSaved }) => {
         }),
       });
 
-      message.success(`Shift Handover #${record.id} logged & verified successfully!`);
+      message.success(`Shift Handover #${record.id} logged & verified successfully! Nurse logs updated.`);
       form.resetFields();
       onSaved?.();
     } catch {

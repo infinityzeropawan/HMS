@@ -61,22 +61,24 @@ export const NurseBedOperationsPanel: React.FC = () => {
       </div>
 
       {cleaning > 0 && (
-        <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 flex justify-between items-center text-xs">
+        <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-600" />
+            <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
             <span><strong className="text-amber-900">{cleaning} Beds Awaiting Housekeeping Sign-off</strong> (Sanitization in progress)</span>
           </div>
-          {beds.filter((b) => b.status === "CLEANING").map((b) => (
-            <HmsButton
-              key={b.id}
-              size="sm"
-              variant="secondary"
-              icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-              onClick={() => handleCompleteCleaning(b.id)}
-            >
-              Mark {b.bedNumber} Sanitized
-            </HmsButton>
-          ))}
+          <div className="flex flex-wrap gap-2">
+            {beds.filter((b) => b.status === "CLEANING").map((b) => (
+              <HmsButton
+                key={b.id}
+                size="sm"
+                variant="secondary"
+                icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                onClick={() => handleCompleteCleaning(b.id)}
+              >
+                Mark {b.bedNumber} Sanitized
+              </HmsButton>
+            ))}
+          </div>
         </div>
       )}
     </div>

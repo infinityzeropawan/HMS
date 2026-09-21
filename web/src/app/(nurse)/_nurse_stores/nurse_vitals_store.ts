@@ -89,16 +89,17 @@ export const useNurseVitalsStore = create<NurseVitalsStoreState>()(
       vitalsLogs: DEFAULT_VITALS,
 
       addVitalsRecord: (record) => {
-        const isAbnormal =
-          record.spO2Percent < 95 ||
-          record.bpSystolic > 140 ||
-          record.temperatureFahrenheit > 100.4 ||
-          record.pulseRate > 100;
+        const warnings: string[] = [];
+        if (record.spO2Percent < 95) warnings.push(`Low SpO2 (${record.spO2Percent}%)`);
+        if (record.bpSystolic > 140 || record.bpDiastolic > 90) warnings.push(`High BP (${record.bpSystolic}/${record.bpDiastolic})`);
+        if (record.bpSystolic < 90) warnings.push(`Low BP (${record.bpSystolic}/${record.bpDiastolic})`);
+        if (record.temperatureFahrenheit > 100.4) warnings.push(`High Fever (${record.temperatureFahrenheit}°F)`);
+        if (record.temperatureFahrenheit < 96.0) warnings.push(`Hypothermia (${record.temperatureFahrenheit}°F)`);
+        if (record.pulseRate > 100) warnings.push(`Tachycardia (${record.pulseRate} BPM)`);
+        if (record.pulseRate < 60) warnings.push(`Bradycardia (${record.pulseRate} BPM)`);
+        if (record.respirationRate > 22) warnings.push(`Tachypnoea (${record.respirationRate}/min)`);
 
-        let warning = "";
-        if (record.spO2Percent < 95) warning += `Low SpO2 (${record.spO2Percent}%) `;
-        if (record.bpSystolic > 140) warning += `High BP (${record.bpSystolic}/${record.bpDiastolic}) `;
-        if (record.temperatureFahrenheit > 100.4) warning += `Fever (${record.temperatureFahrenheit}°F)`;
+        const isAbnormal = warnings.length > 0;
 
         set((state) => ({
           vitalsLogs: [
@@ -106,7 +107,7 @@ export const useNurseVitalsStore = create<NurseVitalsStoreState>()(
               ...record,
               id: `vit-${Date.now()}`,
               isAbnormal,
-              abnormalWarning: isAbnormal ? warning.trim() : undefined,
+              abnormalWarning: isAbnormal ? warnings.join(" • ") : undefined,
             },
             ...state.vitalsLogs,
           ],

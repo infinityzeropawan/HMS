@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Tag, Badge } from "antd";
-import { ShieldAlert, AlertTriangle, Pill, Flame, User, ArrowRight } from "lucide-react";
+import { Tag } from "antd";
+import { ShieldAlert, AlertTriangle, Pill, Flame } from "lucide-react";
 import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
 import { useNotificationStore } from "@/lib/notification_store/notification.store";
+import { EmrService } from "@/app/(patient)/_patient_services/emr_service";
 import { Patient360DrawerModal } from "../Patient360/Patient360DrawerModal";
 
 export const NurseClinicalAlertsPanel: React.FC = () => {
@@ -19,7 +20,15 @@ export const NurseClinicalAlertsPanel: React.FC = () => {
   );
 
   // High Risk / Fall Risk Patients
-  const fallRiskPatients = admissions.filter((a) => a.age > 60 || a.primaryDiagnosis?.toLowerCase().includes("op"));
+  const fallRiskPatients = admissions.filter(
+    (a) =>
+      a.age >= 60 ||
+      (a.primaryDiagnosis &&
+        (a.primaryDiagnosis.toLowerCase().includes("post-op") ||
+          a.primaryDiagnosis.toLowerCase().includes("arthroplasty") ||
+          a.primaryDiagnosis.toLowerCase().includes("fracture") ||
+          a.primaryDiagnosis.toLowerCase().includes("stroke")))
+  );
 
   // Escalated Orders from Notification Store
   const escalatedAlerts = notifications.filter(
@@ -32,7 +41,7 @@ export const NurseClinicalAlertsPanel: React.FC = () => {
         <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
           <ShieldAlert className="w-5 h-5 text-rose-600" /> Ward Clinical Alerts Command Center
         </h3>
-        <span className="text-3xs font-mono font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+        <span className="text-xs font-mono font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full">
           {criticalPatients.length + escalatedAlerts.length} Active Ward Alerts
         </span>
       </div>
@@ -55,9 +64,14 @@ export const NurseClinicalAlertsPanel: React.FC = () => {
                 >
                   <div>
                     <span className="font-bold text-slate-900">{p.patientName}</span>
-                    <span className="block text-3xs font-mono text-slate-400">Bed {p.bedNumber} &bull; SpO2: <strong className="text-rose-600">{p.vitals?.spO2 || 91}%</strong></span>
+                    <span className="block text-xs font-mono text-slate-500">
+                      Bed {p.bedNumber} &bull; SpO2:{" "}
+                      <strong className="text-rose-600">
+                        {p.vitals?.spO2 !== undefined ? `${p.vitals.spO2}%` : "Pending Check"}
+                      </strong>
+                    </span>
                   </div>
-                  <Tag color="error" className="text-3xs font-bold font-mono">CRITICAL</Tag>
+                  <Tag color="error" className="text-xs font-bold font-mono">CRITICAL</Tag>
                 </div>
               ))
             ) : (
@@ -74,19 +88,29 @@ export const NurseClinicalAlertsPanel: React.FC = () => {
             </span>
           </div>
           <div className="space-y-1.5">
-            {fallRiskPatients.slice(0, 2).map((p) => (
-              <div
-                key={p.id}
-                onClick={() => setSelectedUhid(p.uhid)}
-                className="p-2 rounded-lg bg-white border border-amber-200 cursor-pointer hover:border-amber-400 transition-all flex justify-between items-center text-xs"
-              >
-                <div>
-                  <span className="font-bold text-slate-900">{p.patientName} ({p.age}Y)</span>
-                  <span className="block text-3xs font-mono text-slate-400">Bed {p.bedNumber} &bull; Penicillin Allergy Watch</span>
+            {fallRiskPatients.slice(0, 3).map((p) => {
+              const profile = EmrService.getPatientEmrProfile(p.uhid);
+              const allergyText =
+                profile.snapshot.allergies && profile.snapshot.allergies.length > 0
+                  ? profile.snapshot.allergies.map((a: { allergen: string }) => a.allergen).join(", ")
+                  : "NKDA";
+
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => setSelectedUhid(p.uhid)}
+                  className="p-2 rounded-lg bg-white border border-amber-200 cursor-pointer hover:border-amber-400 transition-all flex justify-between items-center text-xs"
+                >
+                  <div>
+                    <span className="font-bold text-slate-900">{p.patientName} ({p.age}Y)</span>
+                    <span className="block text-xs font-mono text-slate-500">
+                      Bed {p.bedNumber} &bull; Allergy: {allergyText}
+                    </span>
+                  </div>
+                  <Tag color="warning" className="text-xs font-bold font-mono">FALL RISK</Tag>
                 </div>
-                <Tag color="warning" className="text-3xs font-bold font-mono">FALL RISK</Tag>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -98,16 +122,20 @@ export const NurseClinicalAlertsPanel: React.FC = () => {
             </span>
           </div>
           <div className="space-y-1.5">
-            {escalatedAlerts.slice(0, 2).map((n) => (
-              <div
-                key={n.id}
-                onClick={() => setSelectedUhid(n.patientId || admissions[0]?.uhid)}
-                className="p-2 rounded-lg bg-white border border-purple-200 cursor-pointer hover:border-purple-400 transition-all text-xs"
-              >
-                <div className="font-bold text-purple-950 truncate">{n.title}</div>
-                <p className="text-3xs text-slate-600 line-clamp-1 mt-0.5">{n.body}</p>
-              </div>
-            ))}
+            {escalatedAlerts.length > 0 ? (
+              escalatedAlerts.slice(0, 3).map((n) => (
+                <div
+                  key={n.id}
+                  onClick={() => setSelectedUhid(n.patientId || admissions[0]?.uhid)}
+                  className="p-2 rounded-lg bg-white border border-purple-200 cursor-pointer hover:border-purple-400 transition-all text-xs"
+                >
+                  <div className="font-bold text-purple-950 truncate">{n.title}</div>
+                  <p className="text-xs text-slate-600 line-clamp-1 mt-0.5">{n.body}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-slate-500 italic">No escalated doctor alerts.</p>
+            )}
           </div>
         </div>
       </div>

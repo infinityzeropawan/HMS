@@ -32,19 +32,20 @@ export const NurseVitalsEntryConsole: React.FC = () => {
 
   const handleFinish = (values: Record<string, unknown>) => {
     const nurseTitle = currentUser?.username ? `Nurse ${currentUser.username}` : "Nurse Duty Station";
+    const activeAdm = admissions.find((a) => a.admissionNo === values.ipdId || a.patientName === values.patientName);
     const payload = {
-      ipdId: (values.ipdId as string) || "IPD-2026-0881",
-      uhid: (values.uhid as string) || "P-2026-9912",
-      patientName: values.patientName as string,
-      bedNumber: values.bedNumber as string,
-      bpSystolic: Number(values.bpSystolic) || 120,
-      bpDiastolic: Number(values.bpDiastolic) || 80,
-      pulseRate: Number(values.pulseRate) || 72,
-      spO2Percent: Number(values.spO2Percent) || 98,
-      temperatureFahrenheit: Number(values.temperatureFahrenheit) || 98.6,
+      ipdId: (values.ipdId as string) || activeAdm?.admissionNo || "IPD-2026-0881",
+      uhid: (values.uhid as string) || activeAdm?.uhid || "P-2026-9912",
+      patientName: (values.patientName as string) || activeAdm?.patientName || "Inpatient",
+      bedNumber: (values.bedNumber as string) || activeAdm?.bedNumber || "WARD-01",
+      bpSystolic: Number(values.bpSystolic),
+      bpDiastolic: Number(values.bpDiastolic),
+      pulseRate: Number(values.pulseRate),
+      spO2Percent: Number(values.spO2Percent),
+      temperatureFahrenheit: Number(values.temperatureFahrenheit),
       respirationRate: Number(values.respirationRate) || 16,
       painScore: Number(values.painScore) || 0,
-      recordedAt: new Date().toLocaleString(),
+      recordedAt: new Date().toISOString(),
       recordedBy: nurseTitle,
     };
 
@@ -84,7 +85,7 @@ export const NurseVitalsEntryConsole: React.FC = () => {
             {record.bedNumber}
           </span>
           <h4 className="font-bold text-slate-900 text-sm mt-1">{record.patientName}</h4>
-          <p className="text-3xs text-slate-400 font-mono">UHID: {record.uhid} | {record.ipdId}</p>
+          <p className="text-xs text-slate-400 font-mono">UHID: {record.uhid} | {record.ipdId}</p>
         </div>
       ),
     },
@@ -130,8 +131,8 @@ export const NurseVitalsEntryConsole: React.FC = () => {
       title: "Recorded At & By",
       key: "recorded",
       render: (_: unknown, record: NurseVitalsRecord) => (
-        <div className="text-3xs text-slate-500 font-mono space-y-0.5">
-          <div><Clock className="w-3 h-3 inline text-slate-400 mr-1" />{record.recordedAt}</div>
+        <div className="text-xs text-slate-500 font-mono space-y-0.5">
+          <div><Clock className="w-3 h-3 inline text-slate-400 mr-1" />{record.recordedAt.includes("T") ? new Date(record.recordedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : record.recordedAt}</div>
           <div><User className="w-3 h-3 inline text-slate-400 mr-1" />{record.recordedBy}</div>
         </div>
       ),
@@ -142,12 +143,12 @@ export const NurseVitalsEntryConsole: React.FC = () => {
       render: (_: unknown, record: NurseVitalsRecord) => {
         if (record.isAbnormal) {
           return (
-            <Tag color="rose" className="font-bold text-3xs flex items-center gap-1">
+            <Tag color="rose" className="font-bold text-xs flex items-center gap-1">
               <AlertTriangle className="w-3 h-3" /> ABNORMAL WARNING
             </Tag>
           );
         }
-        return <Tag color="emerald" className="font-bold text-3xs">NORMAL VITALS</Tag>;
+        return <Tag color="emerald" className="font-bold text-xs">NORMAL VITALS</Tag>;
       },
     },
   ];
@@ -182,8 +183,36 @@ export const NurseVitalsEntryConsole: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+      {/* Smartphone Mobile Cards */}
+      <div className="block sm:hidden space-y-3">
+        {filteredLogs.map((log) => (
+          <div
+            key={log.id}
+            className={`p-4 rounded-2xl border space-y-2 text-xs shadow-xs ${
+              log.isAbnormal ? "bg-rose-50/70 border-rose-200" : "bg-white border-slate-200"
+            }`}
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">{log.bedNumber}</span>
+                <h4 className="font-bold text-slate-900 text-sm mt-1">{log.patientName}</h4>
+              </div>
+              <Tag color={log.isAbnormal ? "error" : "success"} className="font-bold text-xs font-mono">
+                {log.isAbnormal ? "WARNING" : "NORMAL"}
+              </Tag>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-slate-800 font-mono pt-1 text-xs">
+              <div>BP: <strong>{log.bpSystolic}/{log.bpDiastolic}</strong></div>
+              <div>Pulse: <strong>{log.pulseRate} bpm</strong></div>
+              <div>SpO2: <strong className={log.spO2Percent < 95 ? "text-rose-600" : "text-emerald-700"}>{log.spO2Percent}%</strong></div>
+              <div>Temp: <strong>{log.temperatureFahrenheit}°F</strong></div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop / Tablet Table */}
+      <div className="hidden sm:block bg-white p-6 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
         <Table columns={columns} dataSource={filteredLogs} rowKey="id" pagination={{ pageSize: 8 }} />
       </div>
 
@@ -198,10 +227,11 @@ export const NurseVitalsEntryConsole: React.FC = () => {
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         footer={null}
-        width={560}
+        width="100%"
+        className="max-w-xl"
       >
         <Form form={form} layout="vertical" onFinish={handleFinish} className="mt-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Form.Item label="Patient Name" name="patientName" rules={[{ required: true }]}>
               <Select placeholder="Select Inpatient" size="large" onChange={handlePatientSelect}>
                 {admissions.map((a) => (
@@ -217,7 +247,7 @@ export const NurseVitalsEntryConsole: React.FC = () => {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Form.Item label="UHID" name="uhid">
               <Input placeholder="P-2026-XXXX" />
             </Form.Item>
@@ -226,7 +256,7 @@ export const NurseVitalsEntryConsole: React.FC = () => {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Form.Item label="BP Systolic (mmHg)" name="bpSystolic" rules={[{ required: true }]}>
               <InputNumber min={60} max={250} className="w-full" size="large" />
             </Form.Item>
@@ -236,7 +266,7 @@ export const NurseVitalsEntryConsole: React.FC = () => {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Form.Item label="Pulse Rate (bpm)" name="pulseRate" rules={[{ required: true }]}>
               <InputNumber min={30} max={220} className="w-full" size="large" />
             </Form.Item>
@@ -250,7 +280,7 @@ export const NurseVitalsEntryConsole: React.FC = () => {
             </Form.Item>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Form.Item label="Respiration Rate (/min)" name="respirationRate" initialValue={16}>
               <InputNumber min={8} max={40} className="w-full" />
             </Form.Item>

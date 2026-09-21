@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Table, Tag, Modal, Input, message } from "antd";
-import { ClipboardList, CheckCircle2, Clock, AlertTriangle, User, BedDouble, Check, Play, AlertOctagon } from "lucide-react";
+import { ClipboardList, CheckCircle2, Clock, AlertTriangle, User, Check, Play, AlertOctagon, ExternalLink } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
-import { HmsCard } from "@/common_components/HmsCard/HmsCard";
 import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
 import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+import { useEncounterStore } from "@/app/(doctor)/_doctor_stores/encounter_store";
 import { useNotificationStore } from "@/lib/notification_store/notification.store";
 import { PlatformAuditService } from "@/app/(super-admin)/_super_admin_services/platform_audit_service";
+import { Patient360DrawerModal } from "../Patient360/Patient360DrawerModal";
 
 export type OrderExecutionStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "ESCALATED";
 
@@ -37,94 +38,162 @@ export const NurseDoctorOrdersWorklist: React.FC = () => {
   const currentUser = useAuthUserStore((state) => state.user);
   const nurseName = currentUser?.username ? `Nurse ${currentUser.username}` : "Nurse Duty Station";
 
-  const [orders, setOrders] = useState<NurseDoctorOrder[]>([
-    {
-      orderId: "ORD-2026-101",
-      patientUhid: admissions[0]?.uhid || "P-2026-9912",
-      ipdId: admissions[0]?.admissionNo || "IPD-2026-0881",
-      bedNumber: admissions[0]?.bedNumber || "ICU-BED-01",
-      patientName: admissions[0]?.patientName || "Sunil Verma",
-      doctorId: "DOC-102",
-      doctorName: admissions[0]?.attendingDoctor || "Dr. Rajesh Sharma",
-      orderText: "Administer Inj. Heparin 5000 IU IV Bolus stat. Repeat ABG in 2 hours.",
-      priority: "URGENT_STAT",
-      category: "MEDICATION",
-      assignedNurse: nurseName,
-      orderedAt: "2026-09-16 09:30 AM",
-      status: "PENDING",
-    },
-    {
-      orderId: "ORD-2026-102",
-      patientUhid: admissions[1]?.uhid || "P-2026-9944",
-      ipdId: admissions[1]?.admissionNo || "IPD-2026-0895",
-      bedNumber: admissions[1]?.bedNumber || "WARD-3B-04",
-      patientName: admissions[1]?.patientName || "Anita Roy",
-      doctorId: "DOC-105",
-      doctorName: admissions[1]?.attendingDoctor || "Dr. Manoj Patil",
-      orderText: "Perform sterile surgical dressing change on Right Knee operative wound.",
-      priority: "HIGH",
-      category: "DRESSING",
-      assignedNurse: nurseName,
-      orderedAt: "2026-09-16 10:15 AM",
-      status: "IN_PROGRESS",
-    },
-    {
-      orderId: "ORD-2026-103",
-      patientUhid: admissions[2]?.uhid || "P-2026-9978",
-      ipdId: admissions[2]?.admissionNo || "IPD-2026-0902",
-      bedNumber: admissions[2]?.bedNumber || "DELUXE-402",
-      patientName: admissions[2]?.patientName || "Rajesh Kulkarni",
-      doctorId: "DOC-108",
-      doctorName: admissions[2]?.attendingDoctor || "Dr. Priya Nair",
-      orderText: "Collect repeat Venous Blood Sample for Serum Potassium & Creatinine re-check.",
-      priority: "URGENT_STAT",
-      category: "LAB_SPECIMEN",
-      assignedNurse: nurseName,
-      orderedAt: "2026-09-16 08:45 AM",
-      status: "COMPLETED",
-      completedAt: "2026-09-16 09:00 AM",
-      completedBy: nurseName,
-    },
-  ]);
+  const [orders, setOrders] = useState<NurseDoctorOrder[]>([]);
+  const [patient360Modal, setPatient360Modal] = useState<{ open: boolean; uhid?: string; ipdId?: string }>({
+    open: false,
+  });
 
   const [escalateModalOpen, setEscalateModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<NurseDoctorOrder | null>(null);
   const [escalationReason, setEscalationReason] = useState("");
 
+  useEffect(() => {
+    // 1. Initial base orders from admissions
+    let baseOrders: NurseDoctorOrder[] = [
+      {
+        orderId: "ORD-2026-101",
+        patientUhid: admissions[0]?.uhid || "P-2026-9912",
+        ipdId: admissions[0]?.admissionNo || "IPD-2026-0881",
+        bedNumber: admissions[0]?.bedNumber || "ICU-BED-01",
+        patientName: admissions[0]?.patientName || "Sunil Verma",
+        doctorId: "DOC-101",
+        doctorName: admissions[0]?.attendingDoctor || "Dr. Rajesh Sharma",
+        orderText: "Administer Inj. Heparin 5000 IU IV Bolus stat. Repeat ABG in 2 hours.",
+        priority: "URGENT_STAT",
+        category: "MEDICATION",
+        assignedNurse: nurseName,
+        orderedAt: "2026-09-16 09:30 AM",
+        status: "PENDING",
+      },
+      {
+        orderId: "ORD-2026-102",
+        patientUhid: admissions[1]?.uhid || "P-2026-9944",
+        ipdId: admissions[1]?.admissionNo || "IPD-2026-0895",
+        bedNumber: admissions[1]?.bedNumber || "WARD-3B-04",
+        patientName: admissions[1]?.patientName || "Anita Roy",
+        doctorId: "DOC-102",
+        doctorName: admissions[1]?.attendingDoctor || "Dr. Manoj Patil",
+        orderText: "Perform sterile surgical dressing change on Right Knee operative wound.",
+        priority: "HIGH",
+        category: "DRESSING",
+        assignedNurse: nurseName,
+        orderedAt: "2026-09-16 10:15 AM",
+        status: "IN_PROGRESS",
+      },
+      {
+        orderId: "ORD-2026-103",
+        patientUhid: admissions[2]?.uhid || "P-2026-9978",
+        ipdId: admissions[2]?.admissionNo || "IPD-2026-0902",
+        bedNumber: admissions[2]?.bedNumber || "DELUXE-402",
+        patientName: admissions[2]?.patientName || "Rajesh Kulkarni",
+        doctorId: "DOC-103",
+        doctorName: admissions[2]?.attendingDoctor || "Dr. Priya Nair",
+        orderText: "Collect repeat Venous Blood Sample for Serum Potassium & Creatinine re-check.",
+        priority: "URGENT_STAT",
+        category: "LAB_SPECIMEN",
+        assignedNurse: nurseName,
+        orderedAt: "2026-09-16 08:45 AM",
+        status: "COMPLETED",
+        completedAt: "2026-09-16 09:00 AM",
+        completedBy: nurseName,
+      },
+    ];
+
+    // Load persisted order updates from localStorage
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("hms_nurse_orders");
+        if (saved) {
+          const savedOrders: NurseDoctorOrder[] = JSON.parse(saved);
+          const savedMap = new Map(savedOrders.map((o) => [o.orderId, o]));
+          baseOrders = baseOrders.map((o) => savedMap.get(o.orderId) || o);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // Merge signed Doctor encounter orders
+    try {
+      const encounterStore = useEncounterStore.getState();
+      admissions.forEach((adm) => {
+        const enc = encounterStore.getEncounter(adm.uhid);
+        if (enc) {
+          // Merge Lab Orders
+          enc.labOrders?.forEach((lab, idx) => {
+            const orderId = `doc-lab-${enc.id}-${idx}`;
+            if (!baseOrders.some((o) => o.orderId === orderId)) {
+              baseOrders.unshift({
+                orderId,
+                patientUhid: adm.uhid,
+                ipdId: adm.admissionNo,
+                bedNumber: adm.bedNumber,
+                patientName: adm.patientName,
+                doctorId: enc.doctorId || "DOC-101",
+                doctorName: enc.doctorName || adm.attendingDoctor,
+                orderText: `Lab Requisition: ${lab.testName} (${lab.category || "PATHOLOGY"}) - ${lab.clinicalNotes || "Routine"}`,
+                priority: lab.urgency === "STAT" ? "URGENT_STAT" : lab.urgency === "URGENT" ? "HIGH" : "ROUTINE",
+                category: "LAB_SPECIMEN",
+                assignedNurse: nurseName,
+                orderedAt: enc.createdAt ? new Date(enc.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Today",
+                status: "PENDING",
+              });
+            }
+          });
+        }
+      });
+    } catch {
+      /* ignore */
+    }
+
+    setOrders(baseOrders);
+  }, [admissions, nurseName]);
+
+  const saveOrders = (updated: NurseDoctorOrder[]) => {
+    setOrders(updated);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("hms_nurse_orders", JSON.stringify(updated));
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
   const handleStartProgress = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.orderId === orderId
-          ? { ...o, status: "IN_PROGRESS", assignedNurse: nurseName }
-          : o
-      )
+    const updated = orders.map((o) =>
+      o.orderId === orderId
+        ? { ...o, status: "IN_PROGRESS" as const, assignedNurse: nurseName }
+        : o
     );
+    saveOrders(updated);
     message.info(`Order #${orderId} marked as IN_PROGRESS by ${nurseName}.`);
   };
 
   const handleCompleteOrder = (orderId: string) => {
     const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const targetOrder = orders.find((o) => o.orderId === orderId);
-    
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.orderId === orderId
-          ? {
-              ...o,
-              status: "COMPLETED",
-              completedAt: ts,
-              completedBy: nurseName,
-            }
-          : o
-      )
-    );
 
-    // EMR Timeline Event via useIpdStore
+    const updated = orders.map((o) =>
+      o.orderId === orderId
+        ? {
+            ...o,
+            status: "COMPLETED" as const,
+            completedAt: ts,
+            completedBy: nurseName,
+          }
+        : o
+    );
+    saveOrders(updated);
+
+    // Nurse Activity Logging via useIpdStore addNurseLog without corrupting Doctor Round Note
     if (targetOrder) {
       try {
-        useIpdStore.getState().addRoundNote(
+        useIpdStore.getState().addNurseLog(
           targetOrder.ipdId,
-          `[Doctor Order Executed] ${targetOrder.orderText} - Signed off by ${nurseName} at ${ts}`
+          `[Doctor Order Executed] #${targetOrder.orderId}: ${targetOrder.orderText} - Completed by ${nurseName} at ${ts}`,
+          "ORDER",
+          nurseName
         );
       } catch {
         /* store fallback */
@@ -148,7 +217,7 @@ export const NurseDoctorOrdersWorklist: React.FC = () => {
       });
     }
 
-    message.success(`Doctor Order #${orderId} completed & signed off! EMR timeline updated.`);
+    message.success(`Doctor Order #${orderId} completed & signed off by ${nurseName}. Nurse log updated.`);
   };
 
   const openEscalateModal = (order: NurseDoctorOrder) => {
@@ -162,18 +231,17 @@ export const NurseDoctorOrdersWorklist: React.FC = () => {
     const reasonText = escalationReason.trim() || "Patient condition change or order execution delay";
     const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.orderId === selectedOrder.orderId
-          ? {
-              ...o,
-              status: "ESCALATED",
-              escalatedAt: ts,
-              escalationReason: reasonText,
-            }
-          : o
-      )
+    const updated = orders.map((o) =>
+      o.orderId === selectedOrder.orderId
+        ? {
+            ...o,
+            status: "ESCALATED" as const,
+            escalatedAt: ts,
+            escalationReason: reasonText,
+          }
+        : o
     );
+    saveOrders(updated);
 
     // Create High Priority Clinical Alert Notification
     useNotificationStore.getState().addNotification({
@@ -217,11 +285,19 @@ export const NurseDoctorOrdersWorklist: React.FC = () => {
       key: "patient",
       render: (_: unknown, record: NurseDoctorOrder) => (
         <div>
-          <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">
-            {record.bedNumber}
+          <span
+            onClick={() => setPatient360Modal({ open: true, uhid: record.patientUhid, ipdId: record.ipdId })}
+            className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded cursor-pointer hover:bg-teal-100 transition-colors inline-flex items-center gap-1"
+          >
+            {record.bedNumber} <ExternalLink className="w-3 h-3" />
           </span>
-          <h4 className="font-bold text-slate-900 text-sm mt-1">{record.patientName}</h4>
-          <p className="text-3xs text-slate-400 font-mono">UHID: {record.patientUhid} &bull; {record.ipdId}</p>
+          <h4
+            onClick={() => setPatient360Modal({ open: true, uhid: record.patientUhid, ipdId: record.ipdId })}
+            className="font-bold text-slate-900 text-sm mt-1 cursor-pointer hover:text-teal-600 transition-colors"
+          >
+            {record.patientName}
+          </h4>
+          <p className="text-xs text-slate-400 font-mono">UHID: {record.patientUhid} &bull; {record.ipdId}</p>
         </div>
       ),
     },
@@ -231,11 +307,11 @@ export const NurseDoctorOrdersWorklist: React.FC = () => {
       render: (_: unknown, record: NurseDoctorOrder) => (
         <div>
           <p className="font-semibold text-xs text-slate-900">{record.orderText}</p>
-          <p className="text-3xs text-slate-400 font-mono mt-0.5">
+          <p className="text-xs text-slate-400 font-mono mt-0.5">
             Ordered by: <strong className="text-slate-700">{record.doctorName}</strong> ({record.orderedAt})
           </p>
           {record.escalationReason && (
-            <p className="text-3xs font-semibold text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-100 mt-1">
+            <p className="text-xs font-semibold text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-100 mt-1">
               Escalated: {record.escalationReason}
             </p>
           )}
@@ -248,9 +324,9 @@ export const NurseDoctorOrdersWorklist: React.FC = () => {
       key: "priority",
       render: (p: NurseDoctorOrder["priority"]) => {
         if (p === "URGENT_STAT")
-          return <Tag color="rose" className="font-bold text-3xs"><AlertTriangle className="w-3 h-3 inline mr-1" /> URGENT STAT</Tag>;
-        if (p === "HIGH") return <Tag color="gold" className="font-bold text-3xs">HIGH PRIORITY</Tag>;
-        return <Tag color="blue" className="font-bold text-3xs">ROUTINE</Tag>;
+          return <Tag color="rose" className="font-bold text-xs"><AlertTriangle className="w-3 h-3 inline mr-1" /> URGENT STAT</Tag>;
+        if (p === "HIGH") return <Tag color="gold" className="font-bold text-xs">HIGH PRIORITY</Tag>;
+        return <Tag color="blue" className="font-bold text-xs">ROUTINE</Tag>;
       },
     },
     {
@@ -260,28 +336,28 @@ export const NurseDoctorOrdersWorklist: React.FC = () => {
         if (record.status === "COMPLETED") {
           return (
             <div>
-              <Tag color="emerald" className="font-bold text-3xs"><CheckCircle2 className="w-3 h-3 inline mr-1" /> COMPLETED</Tag>
-              <p className="text-3xs text-slate-400 font-mono mt-0.5">{record.completedAt} by {record.completedBy}</p>
+              <Tag color="emerald" className="font-bold text-xs"><CheckCircle2 className="w-3 h-3 inline mr-1" /> COMPLETED</Tag>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">{record.completedAt} by {record.completedBy}</p>
             </div>
           );
         }
         if (record.status === "IN_PROGRESS") {
           return (
             <div>
-              <Tag color="processing" className="font-bold text-3xs"><Clock className="w-3 h-3 inline mr-1 animate-spin" /> IN PROGRESS</Tag>
-              <p className="text-3xs text-slate-500 font-mono mt-0.5">Nurse: {record.assignedNurse}</p>
+              <Tag color="processing" className="font-bold text-xs"><Clock className="w-3 h-3 inline mr-1 animate-spin" /> IN PROGRESS</Tag>
+              <p className="text-xs text-slate-500 font-mono mt-0.5">Nurse: {record.assignedNurse}</p>
             </div>
           );
         }
         if (record.status === "ESCALATED") {
           return (
             <div>
-              <Tag color="error" className="font-bold text-3xs"><AlertOctagon className="w-3 h-3 inline mr-1" /> ESCALATED</Tag>
-              <p className="text-3xs text-rose-500 font-mono mt-0.5">{record.escalatedAt}</p>
+              <Tag color="error" className="font-bold text-xs"><AlertOctagon className="w-3 h-3 inline mr-1" /> ESCALATED</Tag>
+              <p className="text-xs text-rose-500 font-mono mt-0.5">{record.escalatedAt}</p>
             </div>
           );
         }
-        return <Tag color="orange" className="font-bold text-3xs">PENDING ACTION</Tag>;
+        return <Tag color="orange" className="font-bold text-xs">PENDING ACTION</Tag>;
       },
     },
     {
@@ -351,8 +427,58 @@ export const NurseDoctorOrdersWorklist: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+      {/* Smartphone Mobile Cards */}
+      <div className="block sm:hidden space-y-3">
+        {orders.map((record) => (
+          <div key={record.orderId} className="p-4 bg-white rounded-2xl border border-slate-200 space-y-3 shadow-xs">
+            <div className="flex justify-between items-start">
+              <div>
+                <span
+                  onClick={() => setPatient360Modal({ open: true, uhid: record.patientUhid, ipdId: record.ipdId })}
+                  className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded cursor-pointer"
+                >
+                  {record.bedNumber}
+                </span>
+                <h4
+                  onClick={() => setPatient360Modal({ open: true, uhid: record.patientUhid, ipdId: record.ipdId })}
+                  className="font-bold text-slate-900 text-sm mt-1 cursor-pointer"
+                >
+                  {record.patientName}
+                </h4>
+                <p className="text-xs text-slate-400 font-mono">UHID: {record.patientUhid}</p>
+              </div>
+              <Tag color={record.priority === "URGENT_STAT" ? "rose" : record.priority === "HIGH" ? "gold" : "blue"} className="font-bold text-xs">
+                {record.priority}
+              </Tag>
+            </div>
+            <p className="text-xs text-slate-800 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-100">{record.orderText}</p>
+            <div className="flex justify-between items-center text-xs text-slate-500 font-mono">
+              <span>Dr. {record.doctorName}</span>
+              <span>{record.orderedAt}</span>
+            </div>
+            <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+              <Tag color={record.status === "COMPLETED" ? "emerald" : record.status === "IN_PROGRESS" ? "processing" : record.status === "ESCALATED" ? "error" : "orange"} className="font-bold text-xs">
+                {record.status}
+              </Tag>
+              {record.status === "PENDING" && (
+                <div className="flex gap-2">
+                  <HmsButton size="sm" variant="emerald" onClick={() => handleStartProgress(record.orderId)}>Start</HmsButton>
+                  <HmsButton size="sm" variant="danger" onClick={() => openEscalateModal(record)}>Escalate</HmsButton>
+                </div>
+              )}
+              {record.status === "IN_PROGRESS" && (
+                <div className="flex gap-2">
+                  <HmsButton size="sm" variant="emerald" onClick={() => handleCompleteOrder(record.orderId)}>Complete</HmsButton>
+                  <HmsButton size="sm" variant="danger" onClick={() => openEscalateModal(record)}>Escalate</HmsButton>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop / Tablet Table */}
+      <div className="hidden sm:block bg-white p-6 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
         <Table columns={columns} dataSource={orders} rowKey="orderId" pagination={false} />
       </div>
 
@@ -390,7 +516,16 @@ export const NurseDoctorOrdersWorklist: React.FC = () => {
           </div>
         )}
       </Modal>
+
+      {/* Patient 360 Drawer Modal */}
+      <Patient360DrawerModal
+        open={patient360Modal.open}
+        onClose={() => setPatient360Modal({ open: false })}
+        uhid={patient360Modal.uhid}
+        ipdId={patient360Modal.ipdId}
+      />
     </div>
   );
 };
+
 

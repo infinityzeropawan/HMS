@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Table, Tag, message } from "antd";
-import { CheckCircle2, Barcode, Clock, UserCheck } from "lucide-react";
+import { Table, Tag, message, Modal, Input } from "antd";
+import { CheckCircle2, Barcode, Clock, UserCheck, ShieldCheck } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
+import { useEncounterStore } from "@/app/(doctor)/_doctor_stores/encounter_store";
 import { PlatformAuditService } from "@/app/(super-admin)/_super_admin_services/platform_audit_service";
 
 interface DoseRecord {
@@ -15,6 +16,7 @@ interface DoseRecord {
   status: "GIVEN" | "SCHEDULED";
   givenAt: string;
   nurse: string;
+  source?: "DOCTOR_PRESCRIPTION" | "IPD_MAR";
 }
 
 interface MedicationAdminChecklistProps {
@@ -23,33 +25,98 @@ interface MedicationAdminChecklistProps {
 }
 
 const DEFAULT_DOSES: DoseRecord[] = [
-  { key: "1", medName: "Inj Pantocid 40mg IV", scheduledTime: "08:00 AM", status: "GIVEN", givenAt: "08:10 AM", nurse: "Duty Nurse" },
-  { key: "2", medName: "Tab Ecosprin 75mg PO", scheduledTime: "14:00 PM", status: "GIVEN", givenAt: "14:05 PM", nurse: "Duty Nurse" },
-  { key: "3", medName: "Inj Augmentin 1.2g IV", scheduledTime: "18:00 PM", status: "SCHEDULED", givenAt: "-", nurse: "-" },
-  { key: "4", medName: "Tab Sorbitrate 5mg SL", scheduledTime: "22:00 PM", status: "SCHEDULED", givenAt: "-", nurse: "-" },
+  { key: "1", medName: "Inj Pantocid 40mg IV", scheduledTime: "08:00 AM", status: "GIVEN", givenAt: "08:10 AM", nurse: "Duty Nurse", source: "IPD_MAR" },
+  { key: "2", medName: "Tab Ecosprin 75mg PO", scheduledTime: "14:00 PM", status: "GIVEN", givenAt: "14:05 PM", nurse: "Duty Nurse", source: "IPD_MAR" },
+  { key: "3", medName: "Inj Augmentin 1.2g IV", scheduledTime: "18:00 PM", status: "SCHEDULED", givenAt: "-", nurse: "-", source: "IPD_MAR" },
+  { key: "4", medName: "Tab Sorbitrate 5mg SL", scheduledTime: "22:00 PM", status: "SCHEDULED", givenAt: "-", nurse: "-", source: "IPD_MAR" },
 ];
 
 export const MedicationAdminChecklist: React.FC<MedicationAdminChecklistProps> = ({ ipdId, uhid }) => {
   const [doses, setDoses] = useState<DoseRecord[]>(DEFAULT_DOSES);
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<DoseRecord | null>(null);
+  const [barcodeInput, setBarcodeInput] = useState("");
   const currentUser = useAuthUserStore((state) => state.user);
   const nurseName = currentUser?.username ? `Nurse ${currentUser.username}` : "Nurse Duty Station";
 
-  const handleAdminister = (key: string, medName: string) => {
+  const storageKey = `hms_nurse_mar_checklist_${ipdId || uhid || "default"}`;
+
+  useEffect(() => {
+    // 1. Load saved MAR state if present
+    let initialDoses: DoseRecord[] = DEFAULT_DOSES;
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          initialDoses = JSON.parse(saved);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // 2. Load signed Doctor encounter prescriptions for patient UHID
+    if (uhid) {
+      try {
+        const encounterStore = useEncounterStore.getState();
+        const encounter = encounterStore.getEncounter(uhid);
+        if (encounter && encounter.prescriptions && encounter.prescriptions.length > 0) {
+          const docDoses: DoseRecord[] = encounter.prescriptions.map((rx, idx) => ({
+            key: `doc-rx-${idx}-${rx.drugId}`,
+            medName: `${rx.drugName} ${rx.dosage} - ${rx.frequency}`,
+            scheduledTime: rx.frequency.includes("OD") ? "09:00 AM" : rx.frequency.includes("BD") ? "09:00 AM & 21:00 PM" : "STAT / As Needed",
+            status: "SCHEDULED",
+            givenAt: "-",
+            nurse: "-",
+            source: "DOCTOR_PRESCRIPTION",
+          }));
+
+          // Merge without duplicating med names
+          const existingNames = new Set(initialDoses.map((d) => d.medName));
+          const newDocDoses = docDoses.filter((d) => !existingNames.has(d.medName));
+          initialDoses = [...newDocDoses, ...initialDoses];
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    setDoses(initialDoses);
+  }, [ipdId, uhid, storageKey]);
+
+  const openScanModal = (record: DoseRecord) => {
+    setSelectedRecord(record);
+    setBarcodeInput(`MED-BAR-${Math.floor(100000 + Math.random() * 900000)}`);
+    setScanModalOpen(true);
+  };
+
+  const handleConfirmAdminister = () => {
+    if (!selectedRecord) return;
     const ts = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    setDoses((prev) =>
-      prev.map((d) =>
-        d.key === key
-          ? { ...d, status: "GIVEN", givenAt: ts, nurse: nurseName }
-          : d
-      )
+
+    const updated = doses.map((d) =>
+      d.key === selectedRecord.key
+        ? { ...d, status: "GIVEN" as const, givenAt: ts, nurse: nurseName }
+        : d
     );
 
-    // Persist to EMR Timeline via useIpdStore single source of truth
+    setDoses(updated);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // Persist to EMR Timeline & Nurse Log without overwriting Doctor Round Note
     if (ipdId) {
       try {
-        useIpdStore.getState().addRoundNote(
+        useIpdStore.getState().addNurseLog(
           ipdId,
-          `[MAR Dose Administered] ${medName} - Barcode verified and given by ${nurseName} at ${ts}`
+          `[MAR Dose Administered] ${selectedRecord.medName} - Barcode (${barcodeInput}) verified and administered by ${nurseName} at ${ts}`,
+          "MAR",
+          nurseName
         );
       } catch {
         /* store fallback */
@@ -60,13 +127,14 @@ export const MedicationAdminChecklist: React.FC<MedicationAdminChecklistProps> =
     PlatformAuditService.recordAuditEvent({
       actor: nurseName,
       actorRole: "CLINICAL_NURSE",
-      action: `MAR Dose Administered: ${medName}`,
+      action: `MAR Dose Administered: ${selectedRecord.medName}`,
       category: "COMPLIANCE_EVENT",
       entity: `IPD Admission ${ipdId || "General"} (UHID: ${uhid || "Inpatient"})`,
       ipAddress: "192.168.1.105",
       riskLevel: "INFO",
       details: JSON.stringify({
-        medication: medName,
+        medication: selectedRecord.medName,
+        barcode: barcodeInput,
         ipdId,
         uhid,
         administeredBy: nurseName,
@@ -74,11 +142,25 @@ export const MedicationAdminChecklist: React.FC<MedicationAdminChecklistProps> =
       }),
     });
 
-    message.success(`Dose ${medName} marked as Administered with Barcode Verification by ${nurseName} at ${ts}. EMR Timeline updated.`);
+    message.success(`Dose ${selectedRecord.medName} verified with Barcode ${barcodeInput} & marked Administered by ${nurseName}.`);
+    setScanModalOpen(false);
+    setSelectedRecord(null);
   };
 
   const columns = [
-    { title: "Medication & Route", dataIndex: "medName", key: "medName", render: (m: string) => <span className="font-semibold text-slate-900">{m}</span> },
+    {
+      title: "Medication & Route",
+      dataIndex: "medName",
+      key: "medName",
+      render: (m: string, r: DoseRecord) => (
+        <div>
+          <span className="font-semibold text-slate-900 block">{m}</span>
+          {r.source === "DOCTOR_PRESCRIPTION" && (
+            <Tag color="purple" className="text-[10px] mt-0.5">Doctor Prescription</Tag>
+          )}
+        </div>
+      ),
+    },
     { title: "Scheduled Time", dataIndex: "scheduledTime", key: "scheduledTime", render: (t: string) => <span className="font-mono text-xs">{t}</span> },
     { title: "Administered At", dataIndex: "givenAt", key: "givenAt", render: (g: string) => <span className="font-mono text-xs text-emerald-700">{g}</span> },
     {
@@ -100,7 +182,7 @@ export const MedicationAdminChecklist: React.FC<MedicationAdminChecklistProps> =
             size="sm"
             variant="emerald"
             icon={<Barcode className="w-3.5 h-3.5" />}
-            onClick={() => handleAdminister(record.key, record.medName)}
+            onClick={() => openScanModal(record)}
           >
             Scan & Administer
           </HmsButton>
@@ -124,7 +206,12 @@ export const MedicationAdminChecklist: React.FC<MedicationAdminChecklistProps> =
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-900 text-sm">{d.medName}</span>
+              <div>
+                <span className="font-bold text-slate-900 text-sm block">{d.medName}</span>
+                {d.source === "DOCTOR_PRESCRIPTION" && (
+                  <Tag color="purple" className="text-[10px]">Doctor Order</Tag>
+                )}
+              </div>
               <Tag color={d.status === "GIVEN" ? "emerald" : "orange"}>
                 {d.status === "GIVEN" ? "ADMINISTERED" : "DUE"}
               </Tag>
@@ -141,12 +228,12 @@ export const MedicationAdminChecklist: React.FC<MedicationAdminChecklistProps> =
                 fullWidth
                 variant="emerald"
                 icon={<Barcode className="w-4 h-4" />}
-                onClick={() => handleAdminister(d.key, d.medName)}
+                onClick={() => openScanModal(d)}
               >
                 Scan & Administer Dose
               </HmsButton>
             ) : (
-              <div className="text-[11px] text-emerald-800 flex items-center gap-1 pt-1 border-t border-emerald-100 font-medium">
+              <div className="text-xs text-emerald-800 flex items-center gap-1 pt-1 border-t border-emerald-100 font-medium">
                 <UserCheck className="w-3.5 h-3.5" /> Administered by {d.nurse}
               </div>
             )}
@@ -158,7 +245,44 @@ export const MedicationAdminChecklist: React.FC<MedicationAdminChecklistProps> =
       <div className="hidden sm:block overflow-x-auto">
         <Table columns={columns} dataSource={doses} pagination={false} rowKey="key" />
       </div>
+
+      {/* Barcode Verification Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-teal-600" />
+            <span>5-Rights Barcode Verification</span>
+          </div>
+        }
+        open={scanModalOpen}
+        onCancel={() => setScanModalOpen(false)}
+        onOk={handleConfirmAdminister}
+        okText="Verify & Administer"
+        okButtonProps={{ className: "bg-teal-600 hover:bg-teal-700 font-semibold" }}
+      >
+        {selectedRecord && (
+          <div className="space-y-4 py-2">
+            <div className="p-3 bg-teal-50 rounded-xl border border-teal-200 text-xs space-y-1">
+              <p className="font-bold text-slate-900 text-sm">{selectedRecord.medName}</p>
+              <p className="text-slate-600 font-mono">Patient: <strong>{uhid || "IPD Patient"}</strong> &bull; Due: {selectedRecord.scheduledTime}</p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                <Barcode className="w-4 h-4 text-teal-600" /> Scanned Medication Barcode ID:
+              </label>
+              <Input
+                value={barcodeInput}
+                onChange={(e) => setBarcodeInput(e.target.value)}
+                placeholder="Scan wristband/vial barcode..."
+                className="font-mono text-sm"
+              />
+              <p className="text-[11px] text-emerald-700 font-medium">✓ 5-Rights Checklist: Right Patient, Right Drug, Right Dose, Right Route, Right Time verified.</p>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
+
 

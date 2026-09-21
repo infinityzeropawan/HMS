@@ -160,7 +160,32 @@ export const NurseMedicationCommandCenter: React.FC = () => {
         </div>
       </div>
 
-      <Table columns={columns} dataSource={medSchedules} pagination={false} size="small" rowKey="key" />
+      {/* Smartphone Mobile View */}
+      <div className="block sm:hidden space-y-2">
+        {medSchedules.map((m) => (
+          <div
+            key={m.key}
+            onClick={() => setSelectedUhid(m.uhid)}
+            className="p-3 bg-white rounded-xl border border-slate-200 text-xs space-y-1.5 cursor-pointer shadow-xs"
+          >
+            <div className="flex justify-between items-center font-bold">
+              <span className="text-slate-900">{m.medication}</span>
+              <Tag color={m.status === "STAT" ? "error" : m.status === "CONTROLLED_H1" ? "purple" : "warning"}>
+                {m.status}
+              </Tag>
+            </div>
+            <div className="flex justify-between text-slate-500 font-mono text-[11px]">
+              <span>Bed: {m.bedNumber} ({m.patientName})</span>
+              <span>Due: {m.scheduledTime}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop / Tablet Table */}
+      <div className="hidden sm:block overflow-x-auto">
+        <Table columns={columns} dataSource={medSchedules} pagination={false} size="small" rowKey="key" />
+      </div>
 
       {selectedUhid && (
         <Patient360DrawerModal

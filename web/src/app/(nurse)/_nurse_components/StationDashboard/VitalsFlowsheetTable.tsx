@@ -23,18 +23,25 @@ export const VitalsFlowsheetTable: React.FC = () => {
   const vitalsLogs = useNurseVitalsStore((state) => state.vitalsLogs);
   const [selectedUhid, setSelectedUhid] = useState<string | null>(null);
 
-  const mappedVitals: VitalEntry[] = vitalsLogs.map((log) => ({
-    key: log.id,
-    uhid: log.uhid,
-    time: log.recordedAt.includes(" ") ? log.recordedAt.split(" ")[1] || log.recordedAt : log.recordedAt,
-    bp: `${log.bpSystolic}/${log.bpDiastolic}`,
-    pulse: log.pulseRate,
-    spo2: log.spO2Percent,
-    temp: `${log.temperatureFahrenheit}°F`,
-    gcs: 15,
-    nurse: log.recordedBy,
-    isAbnormal: log.isAbnormal,
-  }));
+  const mappedVitals: VitalEntry[] = vitalsLogs.map((log) => {
+    let displayTime = log.recordedAt;
+    if (log.recordedAt.includes("T")) {
+      const d = new Date(log.recordedAt);
+      displayTime = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    return {
+      key: log.id,
+      uhid: log.uhid,
+      time: displayTime,
+      bp: `${log.bpSystolic}/${log.bpDiastolic}`,
+      pulse: log.pulseRate,
+      spo2: log.spO2Percent,
+      temp: `${log.temperatureFahrenheit}°F`,
+      gcs: 15,
+      nurse: log.recordedBy,
+      isAbnormal: log.isAbnormal,
+    };
+  });
 
   const columns = [
     {

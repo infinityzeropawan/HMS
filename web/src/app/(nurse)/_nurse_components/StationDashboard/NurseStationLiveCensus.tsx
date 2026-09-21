@@ -16,7 +16,20 @@ export const NurseStationLiveCensus: React.FC = () => {
     (a) => a.roundStatus === "CRITICAL" || (a.vitals && a.vitals.spO2 < 94)
   ).length;
   const dueMedicationsCount = admissions.filter((a) => a.roundStatus === "DUE").length;
-  const pendingOrdersCount = 2; // Active STAT/High pending orders
+  let pendingOrdersCount = 2;
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem("hms_nurse_orders");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          pendingOrdersCount = parsed.filter((o: { status: string }) => o.status === "PENDING" || o.status === "IN_PROGRESS").length;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

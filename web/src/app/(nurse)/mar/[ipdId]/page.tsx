@@ -24,7 +24,7 @@ export default function NurseMarPage() {
 
   return (
     <HmsAppShell title="Medication Administration Record" subtitle={`IPD admission ${displayIpdId}`}>
-      <div className="max-w-4xl space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <HmsButton href="/station" icon={<ArrowLeft className="w-4 h-4" />} variant="secondary">
             Back to Nurse Station

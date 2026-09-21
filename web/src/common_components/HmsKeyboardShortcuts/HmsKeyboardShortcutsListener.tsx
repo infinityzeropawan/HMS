@@ -52,10 +52,25 @@ export function HmsKeyboardShortcutsListener() {
               router.push("/dashboard");
             }
             break;
-          case "h":
+          case "n":
             e.preventDefault();
-            toggleHighContrast();
-            message.success("Toggled High Contrast Mode");
+            message.info("Shortcut: Nurse Duty Station (Ctrl+Alt+N)");
+            router.push("/station");
+            break;
+          case "v":
+            e.preventDefault();
+            message.info("Shortcut: Bedside Vitals Console (Ctrl+Alt+V)");
+            router.push("/vitals");
+            break;
+          case "w":
+            e.preventDefault();
+            message.info("Shortcut: Doctor Orders Worklist (Ctrl+Alt+W)");
+            router.push("/worklist");
+            break;
+          case "m":
+            e.preventDefault();
+            message.info("Shortcut: MAR Medication Checklist (Ctrl+Alt+M)");
+            router.push("/mar/IPD-2026-0881");
             break;
           default:
             break;

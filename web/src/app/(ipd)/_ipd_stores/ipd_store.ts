@@ -3,6 +3,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export interface NurseLogEntry {
+  id: string;
+  timestamp: string;
+  category: "MAR" | "ORDER" | "FLUID" | "HANDOVER" | "VITALS" | "GENERAL";
+  note: string;
+  nurseName?: string;
+}
+
 export interface IpdAdmissionRecord {
   id: string;
   admissionNo: string;
@@ -29,6 +37,7 @@ export interface IpdAdmissionRecord {
   lastRoundNote?: string;
   lastRoundTime?: string;
   dischargeReady?: boolean;
+  nurseLogs?: NurseLogEntry[];
 }
 
 interface IpdStoreState {
@@ -40,6 +49,12 @@ interface IpdStoreState {
   updateAdmissionStatus: (admissionNoOrId: string, status: IpdAdmissionRecord["status"]) => void;
   transferPatientBed: (admissionNoOrId: string, newBedNumber: string, newWardName: string) => void;
   addRoundNote: (admissionNoOrId: string, note: string, dischargeReady?: boolean) => void;
+  addNurseLog: (
+    admissionNoOrId: string,
+    note: string,
+    category?: NurseLogEntry["category"],
+    nurseName?: string
+  ) => void;
   updateVitals: (admissionNoOrId: string, vitals: NonNullable<IpdAdmissionRecord["vitals"]>) => void;
   resetToDefaults: () => void;
 }
@@ -66,6 +81,7 @@ const DEFAULT_ADMISSIONS: IpdAdmissionRecord[] = [
     lastRoundNote: "Post-op Day 2. Chest pain subsided. Troponin levels trending down. Continue dual antiplatelet therapy.",
     lastRoundTime: "2026-09-16 09:30 AM",
     dischargeReady: false,
+    nurseLogs: [],
   },
   {
     id: "adm-2",
@@ -88,6 +104,7 @@ const DEFAULT_ADMISSIONS: IpdAdmissionRecord[] = [
     lastRoundNote: "Physiotherapy started. Surgical wound clean and dry. Pain controlled with IV analgesics.",
     lastRoundTime: "2026-09-16 11:15 AM",
     dischargeReady: true,
+    nurseLogs: [],
   },
   {
     id: "adm-3",
@@ -110,6 +127,7 @@ const DEFAULT_ADMISSIONS: IpdAdmissionRecord[] = [
     lastRoundNote: "High grade fever spike. Oxygen supplementation via nasal cannula at 3L/min. Repeat ABG requested.",
     lastRoundTime: "2026-09-16 08:00 AM",
     dischargeReady: false,
+    nurseLogs: [],
   },
 ];
 
@@ -129,12 +147,12 @@ export const useIpdStore = create<IpdStoreState>()(
           vitals: admission.vitals || { bp: "120/80", pulse: 72, spO2: 98, temp: "98.6 °F" },
           roundStatus: "DUE",
           dischargeReady: false,
+          nurseLogs: [],
         };
 
         set((state) => ({ admissions: [newAdmission, ...state.admissions] }));
         return newAdmission;
       },
-
 
       updateAdmissionStatus: (admissionNoOrId, status) =>
         set((state) => ({
@@ -188,6 +206,47 @@ export const useIpdStore = create<IpdStoreState>()(
                 lastRoundNote: note,
                 lastRoundTime: nowStr,
                 dischargeReady: isReady,
+              };
+            }
+            return a;
+          }),
+        })),
+
+      addNurseLog: (admissionNoOrId, note, category = "GENERAL", nurseName) =>
+        set((state) => ({
+          admissions: state.admissions.map((a) => {
+            if (a.admissionNo === admissionNoOrId || a.id === admissionNoOrId || a.uhid === admissionNoOrId) {
+              const nowIso = new Date().toISOString();
+              const logEntry: NurseLogEntry = {
+                id: `nlog-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                timestamp: nowIso,
+                category,
+                note,
+                nurseName: nurseName || a.attendingNurse || "Duty Nurse",
+              };
+
+              // Sync EMR Timeline under Nurse Activity without affecting Doctor Ward Round
+              if (typeof window !== "undefined") {
+                try {
+                  const existingTimeline = JSON.parse(localStorage.getItem(`hms_emr_timeline_${a.uhid}`) || "[]");
+                  existingTimeline.unshift({
+                    id: `time-nurse-${Date.now()}`,
+                    timestamp: nowIso,
+                    category: "CLINICAL",
+                    title: `Nursing Activity Log (${category})`,
+                    subtitle: `Note: ${note}`,
+                    provider: logEntry.nurseName,
+                    status: a.status,
+                  });
+                  localStorage.setItem(`hms_emr_timeline_${a.uhid}`, JSON.stringify(existingTimeline));
+                } catch {
+                  /* ignore */
+                }
+              }
+
+              return {
+                ...a,
+                nurseLogs: [logEntry, ...(a.nurseLogs || [])],
               };
             }
             return a;

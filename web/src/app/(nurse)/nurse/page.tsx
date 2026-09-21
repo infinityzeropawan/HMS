@@ -22,10 +22,8 @@ import {
 import { NurseBedMatrixGrid } from "../_nurse_components/StationDashboard/NurseBedMatrixGrid";
 
 export default function NurseMainDashboard() {
-  redirect("/station");
-
   return (
-    <HmsAppShell title="Nurse Station Dashboard">
+    <HmsAppShell title="Nurse Executive Station Dashboard">
       <div className="max-w-7xl mx-auto space-y-6 pb-8">
         {/* Welcome Header */}
         <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-emerald-950 text-white p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-800">
@@ -35,10 +33,10 @@ export default function NurseMainDashboard() {
                 <BedDouble className="w-3.5 h-3.5" /> Central Nurse Duty Station
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                ICU & Inpatient Nursing Station Dashboard
+                ICU & Inpatient Nursing Executive Console
               </h1>
               <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
-                Nurse Sunita Deshmukh | Morning Shift (07:00 AM - 03:00 PM) | ICU & Ward 3B Active Duty
+                Sr. Kavita R. / Duty Station Nurse | Morning Shift (07:00 AM - 03:00 PM) | ICU & Ward Active Duty
               </p>
             </div>
 
@@ -48,7 +46,7 @@ export default function NurseMainDashboard() {
                   Record Vitals
                 </HmsButton>
               </Link>
-              <Link href="/mar/IPD-8801">
+              <Link href="/mar/IPD-2026-0881">
                 <HmsButton variant="secondary" icon={<Pill className="w-4 h-4" />}>
                   MAR Medication Check
                 </HmsButton>
@@ -138,7 +136,7 @@ export default function NurseMainDashboard() {
             </Link>
 
             <Link
-              href="/mar/IPD-8801"
+              href="/mar/IPD-2026-0881"
               className="p-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all duration-200 group flex flex-col items-center text-center space-y-2"
             >
               <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl group-hover:scale-105 transition-transform">
