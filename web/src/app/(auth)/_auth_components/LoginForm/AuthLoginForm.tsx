@@ -1,15 +1,51 @@
 "use client";
 
 import React, { useState } from "react";
-import { Form, Input, Alert } from "antd";
-import { Lock, User, Building2, Shield, Info, Key } from "lucide-react";
+import { Form, Input, Alert, Select } from "antd";
+import { Lock, User, Building2, Shield, Info, Key, CheckCircle2 } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { useAuthLoginForm } from "./useAuthLoginForm";
 import { AuthLoginInput } from "../../_auth_schemas/auth_login_schema";
 
+const DEMO_ACCOUNTS_MAP: Record<string, { username: string; password: string; tenantId: string; label: string }> = {
+  doctor: { username: "doctor", password: "doctor123", tenantId: "TENANT-001", label: "Doctor" },
+  reception: { username: "reception", password: "rec123", tenantId: "TENANT-001", label: "Reception" },
+  nurse: { username: "nurse", password: "nurse123", tenantId: "TENANT-001", label: "Nurse" },
+  billing: { username: "billing", password: "bill123", tenantId: "TENANT-001", label: "Billing" },
+  superadmin: { username: "superadmin", password: "super123", tenantId: "PLATFORM-SUPER-ADMIN", label: "Super Admin" },
+  hospitaladmin: { username: "hospitaladmin", password: "hospital123", tenantId: "TENANT-001", label: "Hospital Admin" },
+  admin: { username: "admin", password: "admin123", tenantId: "TENANT-001", label: "System Admin" },
+};
+
 export const AuthLoginForm: React.FC = () => {
   const { loading, errorMessage, handleLoginSubmit } = useAuthLoginForm();
-  const [showDemo, setShowDemo] = useState(false);
+  const [showDemo, setShowDemo] = useState(true);
+  const [selectedRole, setSelectedRole] = useState("doctor");
+  const [form] = Form.useForm<AuthLoginInput>();
+
+  const selectDemoAccount = (roleKey: string) => {
+    const acc = DEMO_ACCOUNTS_MAP[roleKey];
+    if (acc) {
+      setSelectedRole(roleKey);
+      form.setFieldsValue({
+        username: acc.username,
+        password: acc.password,
+        tenantId: acc.tenantId,
+      });
+    }
+  };
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.toLowerCase().trim();
+    const matched = DEMO_ACCOUNTS_MAP[val];
+    if (matched) {
+      setSelectedRole(val);
+      form.setFieldsValue({
+        password: matched.password,
+        tenantId: matched.tenantId,
+      });
+    }
+  };
 
   return (
     <div className="w-full bg-white p-5 sm:p-7 rounded-2xl shadow-xl border border-slate-200 animate-fade-in my-auto">
@@ -38,11 +74,44 @@ export const AuthLoginForm: React.FC = () => {
         />
       )}
 
+      {/* Quick Role Selector Buttons */}
+      <div className="mb-4">
+        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+          Select Role (Auto-fills Credentials)
+        </label>
+        <div className="grid grid-cols-4 gap-1.5 text-xs font-semibold">
+          {[
+            { key: "doctor", label: "Doctor", color: "hover:border-teal-500 hover:text-teal-700" },
+            { key: "nurse", label: "Nurse", color: "hover:border-purple-500 hover:text-purple-700" },
+            { key: "reception", label: "Reception", color: "hover:border-blue-500 hover:text-blue-700" },
+            { key: "billing", label: "Billing", color: "hover:border-emerald-500 hover:text-emerald-700" },
+          ].map((r) => (
+            <button
+              key={r.key}
+              type="button"
+              onClick={() => selectDemoAccount(r.key)}
+              className={`px-2 py-1.5 rounded-lg border text-[11px] transition-all cursor-pointer font-bold ${
+                selectedRole === r.key
+                  ? "bg-teal-50 border-teal-600 text-teal-800 shadow-xs"
+                  : "bg-slate-50 border-slate-200 text-slate-600 " + r.color
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Form */}
       <Form<AuthLoginInput>
+        form={form}
         layout="vertical"
         onFinish={handleLoginSubmit}
-        initialValues={{ tenantId: "TENANT-001" }}
+        initialValues={{
+          tenantId: "TENANT-001",
+          username: "doctor",
+          password: "doctor123",
+        }}
         size="large"
         className="space-y-3.5"
       >
@@ -57,7 +126,7 @@ export const AuthLoginForm: React.FC = () => {
             prefix={<Building2 className="w-4 h-4 text-slate-400 mr-1" />}
             placeholder="e.g., TENANT-001"
             size="large"
-            className="rounded-lg text-sm"
+            className="rounded-lg text-sm font-mono"
             allowClear
           />
         </Form.Item>
@@ -71,16 +140,24 @@ export const AuthLoginForm: React.FC = () => {
         >
           <Input
             prefix={<User className="w-4 h-4 text-slate-400 mr-1" />}
-            placeholder="doctor, reception, admin, etc."
+            placeholder="doctor, reception, nurse, superadmin, etc."
             size="large"
-            className="rounded-lg text-sm"
+            className="rounded-lg text-sm font-medium"
+            onChange={handleUsernameChange}
             allowClear
           />
         </Form.Item>
 
         {/* Password Field */}
         <Form.Item
-          label={<span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</span>}
+          label={
+            <div className="flex justify-between items-center w-full">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</span>
+              <span className="text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Auto-filled for {selectedRole}
+              </span>
+            </div>
+          }
           name="password"
           rules={[{ required: true, message: "Password is required" }]}
           className="mb-0"
@@ -89,7 +166,7 @@ export const AuthLoginForm: React.FC = () => {
             prefix={<Lock className="w-4 h-4 text-slate-400 mr-1" />}
             placeholder="Enter password"
             size="large"
-            className="rounded-lg text-sm"
+            className="rounded-lg text-sm font-mono"
           />
         </Form.Item>
 
@@ -117,37 +194,77 @@ export const AuthLoginForm: React.FC = () => {
           className="flex items-center justify-between w-full text-xs font-semibold text-slate-600 hover:text-primary-teal transition-colors py-1 cursor-pointer"
         >
           <span className="flex items-center gap-1.5">
-            <Key className="w-3.5 h-3.5 text-primary-teal" /> Demo Accounts Quick Reference
+            <Key className="w-3.5 h-3.5 text-primary-teal" /> 1-Click Demo Account Autofill
           </span>
           <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-mono">
-            {showDemo ? "Hide ▲" : "Show Demo Logins ▼"}
+            {showDemo ? "Hide ▲" : "Show All Demo Logins ▼"}
           </span>
         </button>
 
         {showDemo && (
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2 animate-fade-in">
             <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="p-2 bg-white rounded border border-slate-200">
-                <span className="font-semibold text-primary-teal block text-[11px]">Super Admin</span>
-                <code className="text-[10px] text-slate-700 font-mono">superadmin / super123</code>
-              </div>
-              <div className="p-2 bg-white rounded border border-slate-200">
-                <span className="font-semibold text-primary-teal block text-[11px]">Doctor</span>
-                <code className="text-[10px] text-slate-700 font-mono">doctor / doctor123</code>
-              </div>
+              <button
+                type="button"
+                onClick={() => selectDemoAccount("doctor")}
+                className="p-2 bg-white rounded border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 transition-all text-left cursor-pointer"
+              >
+                <span className="font-semibold text-teal-800 block text-[11px]">Doctor</span>
+                <code className="text-[10px] text-slate-600 font-mono">doctor / doctor123</code>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectDemoAccount("reception")}
+                className="p-2 bg-white rounded border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 transition-all text-left cursor-pointer"
+              >
+                <span className="font-semibold text-blue-800 block text-[11px]">Reception</span>
+                <code className="text-[10px] text-slate-600 font-mono">reception / rec123</code>
+              </button>
             </div>
+
             <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="p-2 bg-white rounded border border-slate-200">
-                <span className="font-semibold text-blue-600 block text-[11px]">Reception</span>
-                <code className="text-[10px] text-slate-700 font-mono">reception / rec123</code>
-              </div>
-              <div className="p-2 bg-white rounded border border-slate-200">
-                <span className="font-semibold text-slate-700 block text-[11px]">Hospital Admin</span>
-                <code className="text-[10px] text-slate-700 font-mono">hospitaladmin / hospital123</code>
-              </div>
+              <button
+                type="button"
+                onClick={() => selectDemoAccount("nurse")}
+                className="p-2 bg-white rounded border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition-all text-left cursor-pointer"
+              >
+                <span className="font-semibold text-purple-800 block text-[11px]">Nurse</span>
+                <code className="text-[10px] text-slate-600 font-mono">nurse / nurse123</code>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectDemoAccount("billing")}
+                className="p-2 bg-white rounded border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition-all text-left cursor-pointer"
+              >
+                <span className="font-semibold text-emerald-800 block text-[11px]">Billing</span>
+                <code className="text-[10px] text-slate-600 font-mono">billing / bill123</code>
+              </button>
             </div>
+
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <button
+                type="button"
+                onClick={() => selectDemoAccount("superadmin")}
+                className="p-2 bg-white rounded border border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 transition-all text-left cursor-pointer"
+              >
+                <span className="font-semibold text-amber-800 block text-[11px]">Super Admin</span>
+                <code className="text-[10px] text-slate-600 font-mono">superadmin / super123</code>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => selectDemoAccount("hospitaladmin")}
+                className="p-2 bg-white rounded border border-slate-200 hover:border-slate-500 hover:bg-slate-100 transition-all text-left cursor-pointer"
+              >
+                <span className="font-semibold text-slate-800 block text-[11px]">Hospital Admin</span>
+                <code className="text-[10px] text-slate-600 font-mono">hospitaladmin / hospital123</code>
+              </button>
+            </div>
+
             <div className="text-[10px] text-slate-500 text-center pt-1 border-t border-slate-200/60">
-              Other logins: <code className="font-mono text-slate-700">nurse/nurse123</code> &bull; <code className="font-mono text-slate-700">billing/bill123</code> &bull; <code className="font-mono text-slate-700">admin/admin123</code>
+              Click any role box to pre-fill credentials & sign in instantly.
             </div>
           </div>
         )}
