@@ -143,7 +143,7 @@ export class EmrService {
       }
     }
 
-    if (labResults.length === 0) {
+    if (labResults.length === 0 && uhid === "P-2026-1049") {
       labResults = [
         {
           id: "lab-102",

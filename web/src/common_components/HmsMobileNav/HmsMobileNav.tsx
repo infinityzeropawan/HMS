@@ -81,7 +81,7 @@ export const HmsMobileNav: React.FC<HmsMobileNavProps> = ({
       { id: "station", label: "Nurse Station", icon: ClipboardCheck, path: "/station", role: ["NURSE"], badge: 5 },
       { id: "vitals", label: "Bedside Vitals", icon: HeartPulse, path: "/vitals", role: ["NURSE"] },
       { id: "worklist", label: "Doctor Orders Worklist", icon: ClipboardList, path: "/worklist", role: ["NURSE"] },
-      { id: "mar", label: "MAR Checklist", icon: Pill, path: "/mar/IPD-2026-0881", role: ["NURSE"] },
+      { id: "mar", label: "MAR Checklist", icon: Pill, path: "/station", role: ["NURSE"] },
       { id: "fluid-chart", label: "Fluid I/O Chart", icon: Droplet, path: "/fluid-chart", role: ["NURSE"] },
       { id: "handover", label: "Shift Handover", icon: FileText, path: "/handover", role: ["NURSE"] },
     ],

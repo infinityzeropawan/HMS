@@ -9,6 +9,8 @@ import {
   PatientDocumentItem,
 } from "../_patient_types/patient_profile_types";
 
+import { PatientRegistryService } from "@/app/(reception)/_reception_services/patient_registry_service";
+
 const SEED_PATIENTS: Record<string, UnifiedPatientProfile> = {
   "P-2026-1049": {
     uhid: "P-2026-1049",
@@ -87,7 +89,7 @@ interface PatientStoreState {
   patients: Record<string, UnifiedPatientProfile>;
   activeUhid: string;
 
-  getPatient: (uhid: string) => UnifiedPatientProfile | undefined;
+  getPatient: (uhid: string) => UnifiedPatientProfile;
   registerPatient: (profile: Partial<UnifiedPatientProfile>) => UnifiedPatientProfile;
   updatePatientProfile: (uhid: string, updates: Partial<UnifiedPatientProfile>) => void;
   updatePatientFlags: (uhid: string, flags: Partial<PatientClinicalFlags>) => void;
@@ -106,7 +108,72 @@ export const usePatientStore = create<PatientStoreState>()(
 
       getPatient: (uhid) => {
         const state = get();
-        return state.patients[uhid] || SEED_PATIENTS["P-2026-1049"];
+        if (state.patients[uhid]) return state.patients[uhid];
+
+        // 1. Try resolving from PatientRegistryService (reception index)
+        const registryRecord = PatientRegistryService.findByUhid(uhid);
+        if (registryRecord) {
+          const age = PatientRegistryService.computeAge(registryRecord.dob);
+          const mappedProfile: UnifiedPatientProfile = {
+            uhid: registryRecord.uhid,
+            mrn: PatientRegistryService.mrnFor(registryRecord.uhid),
+            abhaId: registryRecord.abhaId || `${registryRecord.fullName.toLowerCase().replace(/\s+/g, ".")}@abdm`,
+            fullName: registryRecord.fullName,
+            gender: (registryRecord.gender as "MALE" | "FEMALE" | "OTHER") || "OTHER",
+            dob: registryRecord.dob,
+            age: age > 0 ? age : 30,
+            bloodGroup: (registryRecord.bloodGroup as any) || "O_POSITIVE",
+            phone: registryRecord.phone,
+            email: registryRecord.email,
+            address: registryRecord.address,
+            emergencyContact: registryRecord.emergencyContact || registryRecord.phone,
+            insuranceDetails: registryRecord.insuranceProvider
+              ? {
+                  providerName: registryRecord.insuranceProvider,
+                  policyNumber: registryRecord.policyNumber || "POL-2026-0000",
+                }
+              : undefined,
+            registeredAt: registryRecord.registeredAt || new Date().toISOString(),
+            status: "ACTIVE",
+            relationships: [],
+            flags: {
+              highRisk: false,
+              fallRisk: false,
+              allergyAlert: false,
+              vipPatient: false,
+              medicoLegalCase: false,
+            },
+            documents: [],
+          };
+          set((s) => ({ patients: { ...s.patients, [uhid]: mappedProfile } }));
+          return mappedProfile;
+        }
+
+        // 2. Clean fallback profile for unknown UHID (NEVER fall back to Sunil Verma)
+        const dynamicProfile: UnifiedPatientProfile = {
+          uhid,
+          mrn: `MRN-${uhid.replace(/\D/g, "").slice(-4) || "0000"}`,
+          fullName: `Patient ${uhid}`,
+          gender: "OTHER",
+          dob: "1996-01-01",
+          age: 30,
+          bloodGroup: "O_POSITIVE",
+          phone: "+91 90000 00000",
+          address: "Local Area",
+          emergencyContact: "+91 90000 00000",
+          registeredAt: new Date().toISOString(),
+          status: "ACTIVE",
+          relationships: [],
+          flags: {
+            highRisk: false,
+            fallRisk: false,
+            allergyAlert: false,
+            vipPatient: false,
+            medicoLegalCase: false,
+          },
+          documents: [],
+        };
+        return dynamicProfile;
       },
 
       registerPatient: (profileData) => {

@@ -208,12 +208,12 @@ export const useEmrStore = create<EmrStoreState>()(
       // Problem List
       getProblems: (uhid) => {
         const state = get();
-        return state.problemsByUhid[uhid] || INITIAL_PROBLEMS["P-2026-1049"] || [];
+        return state.problemsByUhid[uhid] || (uhid === "P-2026-1049" ? INITIAL_PROBLEMS["P-2026-1049"] : []);
       },
 
       addProblem: (uhid, problem) => {
         set((state) => {
-          const current = state.problemsByUhid[uhid] || INITIAL_PROBLEMS["P-2026-1049"] || [];
+          const current = state.problemsByUhid[uhid] || (uhid === "P-2026-1049" ? INITIAL_PROBLEMS["P-2026-1049"] : []);
           const newProblem: ProblemItem = {
             ...problem,
             id: `prob-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -264,7 +264,7 @@ export const useEmrStore = create<EmrStoreState>()(
       // Allergy Registry
       getAllergies: (uhid) => {
         const state = get();
-        return state.allergiesByUhid[uhid] || INITIAL_ALLERGIES["P-2026-1049"] || [];
+        return state.allergiesByUhid[uhid] || (uhid === "P-2026-1049" ? INITIAL_ALLERGIES["P-2026-1049"] : []);
       },
 
       addAllergy: (uhid, allergy) => {
@@ -277,7 +277,7 @@ export const useEmrStore = create<EmrStoreState>()(
         }
 
         const state = get();
-        const current = state.allergiesByUhid[uhid] || INITIAL_ALLERGIES["P-2026-1049"] || [];
+        const current = state.allergiesByUhid[uhid] || (uhid === "P-2026-1049" ? INITIAL_ALLERGIES["P-2026-1049"] : []);
 
         // 2. Prevent Duplicate Active Allergies
         const isDuplicate = current.some(
@@ -343,12 +343,12 @@ export const useEmrStore = create<EmrStoreState>()(
       // Medication Reconciliation
       getMedications: (uhid) => {
         const state = get();
-        return state.medicationsByUhid[uhid] || INITIAL_MEDICATIONS["P-2026-1049"] || [];
+        return state.medicationsByUhid[uhid] || (uhid === "P-2026-1049" ? INITIAL_MEDICATIONS["P-2026-1049"] : []);
       },
 
       addMedication: (uhid, med) => {
         set((state) => {
-          const current = state.medicationsByUhid[uhid] || INITIAL_MEDICATIONS["P-2026-1049"] || [];
+          const current = state.medicationsByUhid[uhid] || (uhid === "P-2026-1049" ? INITIAL_MEDICATIONS["P-2026-1049"] : []);
           const newMed: MedicationHistoryItem = {
             ...med,
             id: `med-${Date.now()}-${Math.floor(Math.random() * 1000)}`,

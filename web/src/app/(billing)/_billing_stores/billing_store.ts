@@ -307,6 +307,10 @@ export const useBillingStore = create<BillingStoreState>()(
             return inv;
           });
 
+          if (typeof window !== "undefined") {
+            localStorage.setItem("hms_invoices", JSON.stringify(updatedInvoices));
+          }
+
           return {
             creditNotes: [newCn, ...state.creditNotes],
             invoices: updatedInvoices,
@@ -351,6 +355,24 @@ export const useBillingStore = create<BillingStoreState>()(
             return due;
           });
 
+          const updatedInvoices = state.invoices.map((inv) => {
+            if (inv.invoiceNumber === invoiceNumber) {
+              const newPaid = inv.paidAmount + amount;
+              const newBal = Math.max(0, inv.totalAmount - newPaid);
+              return {
+                ...inv,
+                paidAmount: newPaid,
+                balanceDue: newBal,
+                status: (newBal === 0 ? "PAID" : "PARTIALLY_PAID") as any,
+              };
+            }
+            return inv;
+          });
+
+          if (typeof window !== "undefined") {
+            localStorage.setItem("hms_invoices", JSON.stringify(updatedInvoices));
+          }
+
           const newPayment: PaymentReceipt = {
             id: `pay-${Date.now()}`,
             receiptNo: `REC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -365,6 +387,7 @@ export const useBillingStore = create<BillingStoreState>()(
 
           return {
             outstandingDues: updatedDues,
+            invoices: updatedInvoices,
             payments: [newPayment, ...state.payments],
           };
         });

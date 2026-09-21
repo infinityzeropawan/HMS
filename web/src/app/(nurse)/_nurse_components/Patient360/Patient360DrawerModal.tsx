@@ -17,17 +17,17 @@ interface Patient360DrawerModalProps {
 export const Patient360DrawerModal: React.FC<Patient360DrawerModalProps> = ({
   open,
   onClose,
-  uhid = "P-2026-9912",
+  uhid,
   ipdId,
 }) => {
   const admissions = useIpdStore((state) => state.admissions);
   const surgeries = useOtStore((state) => state.surgeries);
 
   const activeAdmission = admissions.find(
-    (a) => (ipdId && (a.admissionNo === ipdId || a.id === ipdId)) || a.uhid === uhid
-  ) || admissions[0];
+    (a) => (ipdId && (a.admissionNo === ipdId || a.id === ipdId)) || (uhid && a.uhid === uhid)
+  );
 
-  const targetUhid = activeAdmission?.uhid || uhid;
+  const targetUhid = uhid || activeAdmission?.uhid || "P-2026-1049";
   const profile = EmrService.getPatientEmrProfile(targetUhid);
   const demographics = profile.demographics;
 

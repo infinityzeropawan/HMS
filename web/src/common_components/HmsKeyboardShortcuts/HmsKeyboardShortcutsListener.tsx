@@ -5,6 +5,7 @@ import { message } from "antd";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/i18n/_i18n_context/I18nContext";
 import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
 
 export function HmsKeyboardShortcutsListener() {
   const { toggleHighContrast } = useI18n();
@@ -70,7 +71,10 @@ export function HmsKeyboardShortcutsListener() {
           case "m":
             e.preventDefault();
             message.info("Shortcut: MAR Medication Checklist (Ctrl+Alt+M)");
-            router.push("/mar/IPD-2026-0881");
+            {
+              const activeIpd = useIpdStore.getState().admissions[0]?.admissionNo || "IPD-2026-0881";
+              router.push(`/mar/${activeIpd}`);
+            }
             break;
           default:
             break;

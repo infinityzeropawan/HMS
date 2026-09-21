@@ -44,12 +44,27 @@ export const AbdmDischargeSummaryForm: React.FC<{ ipdNo: string }> = ({ ipdNo })
         dailyRate = TariffService.resolveBedRate(matchingBed.category);
       }
 
-      // 4. Calculate stay duration & auto-generate room charge invoice
+      // 4. Calculate stay duration & auto-generate room charge invoice with deposit settlement
       try {
         const admDate = new Date(admission.admissionDate || "2026-09-14").getTime();
         const now = new Date().getTime();
         const diffDays = Math.max(1, Math.ceil((now - admDate) / (1000 * 60 * 60 * 24)));
         const totalRoomTariff = diffDays * dailyRate;
+
+        // Apply any active advance deposit
+        const advanceDeposits = useBillingStore.getState().advanceDeposits || [];
+        const patientDeposit = advanceDeposits.find((d) => d.patientUhid === admission.uhid);
+        const depositApplied = patientDeposit ? Math.min(totalRoomTariff, patientDeposit.currentBalance || 0) : 0;
+        const isInsurance = Boolean(admission.tpaCashlessApproved);
+
+        const paidAmount = isInsurance ? 0 : depositApplied;
+        const status = isInsurance
+          ? "CLAIM_SUBMITTED"
+          : depositApplied >= totalRoomTariff
+          ? "PAID"
+          : depositApplied > 0
+          ? "PARTIALLY_PAID"
+          : "UNPAID";
 
         useBillingStore.getState().addInvoice({
           invoiceNumber: `INV-IPD-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -66,13 +81,13 @@ export const AbdmDischargeSummaryForm: React.FC<{ ipdNo: string }> = ({ ipdNo })
               gstRate: 0,
             },
           ],
-          paymentMode: admission.tpaCashlessApproved ? "INSURANCE_TPA" : "CASH",
+          paymentMode: isInsurance ? "INSURANCE_TPA" : "CASH",
           subtotal: totalRoomTariff,
           cgstAmount: 0,
           sgstAmount: 0,
           totalAmount: totalRoomTariff,
-          paidAmount: admission.tpaCashlessApproved ? 0 : totalRoomTariff,
-          status: admission.tpaCashlessApproved ? "CLAIM_SUBMITTED" : "PAID",
+          paidAmount,
+          status,
         });
       } catch {
         /* non-blocking */

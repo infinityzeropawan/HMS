@@ -79,22 +79,44 @@ export class EncounterService {
       if (encounter.prescriptions.length > 0) {
         try {
           const rxId = `RX-${Math.floor(9000 + Math.random() * 1000)}`;
-          const rxRecord = {
+          const fullRxRecord = {
+            key: `rx-rec-${Date.now()}`,
             rxId,
             uhid: encounter.uhid,
             patientName: encounter.patientName,
-            meds: encounter.prescriptions.map((p) => `${p.drugName} (${p.dosage} ${p.frequency})`).join(", "),
+            doctorName: encounter.doctorName || "Dr. Duty Doctor",
+            department: encounter.departmentName || "General OPD",
+            diagnosis: encounter.icd10Diagnoses?.length ? encounter.icd10Diagnoses.join(", ") : "OPD Clinical Consultation",
+            allergies: "No known drug allergies (NKDA)",
             status: "PENDING",
+            items: encounter.prescriptions.map((p) => {
+              const days = p.durationDays || 5;
+              const freqMultiplier = p.frequency?.includes("1-1-1") ? 3 : p.frequency?.includes("1-0-1") ? 2 : 1;
+              const qty = days * freqMultiplier;
+              const unitPrice = 12;
+              return {
+                name: p.drugName,
+                dosage: p.dosage || "As directed",
+                frequency: p.frequency || "1-0-1",
+                duration: `${days} days`,
+                qty: qty > 0 ? qty : 10,
+                unitPrice,
+                batchNo: `BT-${(p.drugName || "DRUG").substring(0, 3).toUpperCase()}-${Math.floor(10 + Math.random() * 89)}`,
+              };
+            }),
+            totalAmount: Math.max(100, encounter.prescriptions.length * 150),
             createdAt: new Date().toISOString(),
           };
           const existingDispense = JSON.parse(localStorage.getItem("hms_pharmacy_dispense") || "[]");
-          existingDispense.unshift(rxRecord);
+          existingDispense.unshift(fullRxRecord);
           localStorage.setItem("hms_pharmacy_dispense", JSON.stringify(existingDispense));
-          
+
           const existingRx = JSON.parse(localStorage.getItem("hms_pharmacy_queue") || "[]");
-          existingRx.unshift(rxRecord);
+          existingRx.unshift(fullRxRecord);
           localStorage.setItem("hms_pharmacy_queue", JSON.stringify(existingRx));
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       // 3. Lab Orders are created & dispatched solely by DoctorOrderService.createLabOrder() to prevent duplicate queue entries.

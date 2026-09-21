@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Form, InputNumber, Alert, message, Modal } from "antd";
+import React, { useState, useEffect } from "react";
+import { Form, InputNumber, Alert, message, Modal, Select } from "antd";
 import { FlaskConical, Send, MessageSquare } from "lucide-react";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { useLabStore } from "../../_lab_stores/lab_store";
@@ -16,8 +16,34 @@ export const LabResultForm: React.FC = () => {
   const currentUser = useAuthUserStore((state) => state.user);
   const pathologistName = currentUser?.username ? `Dr. ${currentUser.username} (Pathologist)` : "Pathologist Duty Desk";
 
-  const [selectedAdmissionNo, setSelectedAdmissionNo] = useState<string>(admissions[0]?.admissionNo || "IPD-2026-0881");
-  const activeAdmission = admissions.find((a) => a.admissionNo === selectedAdmissionNo || a.id === selectedAdmissionNo) || admissions[0];
+  const [storedLabOrders, setStoredLabOrders] = useState<any[]>([]);
+  const [selectedOrderKey, setSelectedOrderKey] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = JSON.parse(localStorage.getItem("hms_lab_orders") || "[]");
+        setStoredLabOrders(stored);
+        if (stored.length > 0) {
+          setSelectedOrderKey(`lab-${stored[0].id || stored[0].orderNo}`);
+        } else if (admissions.length > 0) {
+          setSelectedOrderKey(`ipd-${admissions[0].admissionNo}`);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [admissions]);
+
+  // Combined options: OPD Lab Orders + IPD Admissions
+  const selectedOrder = storedLabOrders.find((o) => `lab-${o.id || o.orderNo}` === selectedOrderKey);
+  const selectedAdmission = admissions.find((a) => `ipd-${a.admissionNo}` === selectedOrderKey || `ipd-${a.id}` === selectedOrderKey) || admissions[0];
+
+  const patientName = selectedOrder?.patientName || selectedAdmission?.patientName || "Walk-In Patient";
+  const patientUhid = selectedOrder?.uhid || selectedAdmission?.uhid || "P-2026-9912";
+  const displayOrderNo = selectedOrder?.orderNo || `LAB-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+  const ipdId = selectedAdmission?.admissionNo || "IPD-2026-0881";
+  const orderId = selectedOrder?.id || displayOrderNo;
 
   const [panicAlert, setPanicAlert] = useState(false);
   const [hemoglobin, setHemoglobin] = useState<number | null>(13.5);
@@ -51,18 +77,14 @@ export const LabResultForm: React.FC = () => {
   };
 
   const handleSubmit = () => {
-    const orderId = `LAB-${Math.floor(Math.random() * 9000 + 1000)}`;
-    const patientName = activeAdmission?.patientName || "Inpatient";
-    const patientUhid = activeAdmission?.uhid || "P-2026-9912";
-    const ipdId = activeAdmission?.admissionNo || "IPD-2026-0881";
-
+    const finalStatus = panicAlert ? "CRITICAL_PANIC" : "VERIFIED";
     const reportData = {
-      id: `lab-res-${Date.now()}`,
-      orderId,
+      id: orderId,
+      orderNo: displayOrderNo,
       uhid: patientUhid,
-      ipdId,
       patientName,
-      testName: "Complete Blood Count & Electrolytes",
+      testName: selectedOrder?.testName || "Complete Blood Count & Electrolytes",
+      category: selectedOrder?.category || "PATHOLOGY",
       hemoglobin,
       potassium,
       tlc,
@@ -72,15 +94,26 @@ export const LabResultForm: React.FC = () => {
       resultValue: `Hb: ${hemoglobin} g/dL | K+: ${potassium} mmol/L | FBS: ${fbs} mg/dL`,
       normalRange: "Hb: 12-16.5 | K: 3.5-5.1 | FBS: 70-110",
       orderDate: new Date().toLocaleString(),
-      status: panicAlert ? "CRITICAL_PANIC" : "PENDING_DOCTOR_REVIEW",
-      timestamp: new Date().toISOString(),
+      status: finalStatus,
+      verifiedAt: new Date().toISOString(),
+      pathologistName,
     };
 
-    // Save to localStorage lab results inbox
+    // Save/Update in localStorage hms_lab_orders so Doctor Review Inbox receives status VERIFIED
     if (typeof window !== "undefined") {
-      const existing = JSON.parse(localStorage.getItem("hms_lab_orders") || "[]");
-      existing.unshift(reportData);
-      localStorage.setItem("hms_lab_orders", JSON.stringify(existing));
+      try {
+        const existing = JSON.parse(localStorage.getItem("hms_lab_orders") || "[]");
+        const matchIndex = existing.findIndex((o: any) => o.id === selectedOrder?.id || o.orderNo === displayOrderNo || o.uhid === patientUhid);
+        if (matchIndex >= 0) {
+          existing[matchIndex] = { ...existing[matchIndex], ...reportData };
+        } else {
+          existing.unshift(reportData);
+        }
+        localStorage.setItem("hms_lab_orders", JSON.stringify(existing));
+        setStoredLabOrders(existing);
+      } catch {
+        /* ignore */
+      }
     }
 
     // 1. EMR Timeline event via useIpdStore
@@ -142,12 +175,13 @@ export const LabResultForm: React.FC = () => {
         ? `Serum Potassium hyperkalemia (${potassium} mmol/L > 6.0 threshold)`
         : `Blood Glucose severe hyperglycemia (${fbs} mg/dL > 400 threshold)`;
 
-      const smsText = `CRITICAL PANIC ALERT — Patient ${patientName} (${patientUhid}) Bed ${activeAdmission?.bedNumber}: ${panicReason}. Immediate physician review required.`;
+      const bedLabel = selectedAdmission?.bedNumber ? `Bed ${selectedAdmission.bedNumber}` : "OPD Walk-In";
+      const smsText = `CRITICAL PANIC ALERT — Patient ${patientName} (${patientUhid}) ${bedLabel}: ${panicReason}. Immediate physician review required.`;
       setSimulatedSms(smsText);
 
       useNotificationStore.getState().addNotification({
         title: `CRITICAL LAB PANIC: ${patientName}`,
-        body: `Bed ${activeAdmission?.bedNumber}: ${panicReason}`,
+        body: `${bedLabel}: ${panicReason}`,
         channel: "system",
         category: "LAB_PANIC",
         priority: "critical",
@@ -186,9 +220,27 @@ export const LabResultForm: React.FC = () => {
         <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
           <FlaskConical className="w-6 h-6" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">Lab Result Verification & Entry</h2>
-          <p className="text-xs text-slate-500">Order #LAB-8849 &bull; Patient: Sunil Verma (P-2026-1049)</p>
+          <p className="text-xs text-slate-500 mb-2">Order #{displayOrderNo} &bull; Patient: <strong className="text-slate-800">{patientName}</strong> ({patientUhid})</p>
+          <div className="w-full sm:w-72">
+            <Select
+              className="w-full text-xs"
+              value={selectedOrderKey}
+              onChange={(val) => setSelectedOrderKey(val)}
+              options={[
+                ...storedLabOrders.map((o) => ({
+                  value: `lab-${o.id || o.orderNo}`,
+                  label: `[OPD/Doctor Order] ${o.orderNo} — ${o.patientName} (${o.testName})`,
+                })),
+                ...admissions.map((a) => ({
+                  value: `ipd-${a.admissionNo}`,
+                  label: `[IPD Admission] ${a.admissionNo} — ${a.patientName} (Bed ${a.bedNumber})`,
+                })),
+              ]}
+              placeholder="Select Patient / Order"
+            />
+          </div>
         </div>
       </div>
 

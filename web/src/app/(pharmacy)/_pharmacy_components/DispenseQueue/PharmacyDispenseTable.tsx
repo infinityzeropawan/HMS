@@ -128,9 +128,13 @@ export const PharmacyDispenseTable: React.FC = () => {
         try {
           const list = JSON.parse(saved);
           if (Array.isArray(list) && list.length > 0) {
-            setPrescriptions(list);
+            const validCustom = list.filter((p: PrescriptionRecord) => p.rxId && Array.isArray(p.items));
+            const merged = [...validCustom, ...INITIAL_PRESCRIPTIONS.filter((init) => !validCustom.some((c: PrescriptionRecord) => c.rxId === init.rxId))];
+            setPrescriptions(merged);
           }
-        } catch { /* use initial */ }
+        } catch {
+          /* use initial */
+        }
       }
     }
   }, []);

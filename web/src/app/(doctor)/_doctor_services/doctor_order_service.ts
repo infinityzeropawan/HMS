@@ -9,6 +9,8 @@ import { useEmrStore } from "@/app/(patient)/_patient_stores/emr_store";
 import { PatientProfileService } from "@/app/(patient)/_patient_services/patient_profile_service";
 import { RadiologyOrderInput, LabOrderInput } from "../_doctor_types/encounter_types";
 
+import { PatientRegistryService } from "@/app/(reception)/_reception_services/patient_registry_service";
+
 export interface LabOrderRequest {
   testName: "CBC" | "LFT" | "RFT" | "Lipid Profile" | "HbA1c" | "Troponin" | string;
   category?: string;
@@ -62,7 +64,9 @@ export class DoctorOrderService {
     uhid: string,
     request: LabOrderRequest
   ): { success: boolean; orderId: string; invoiceNumber?: string } {
+    const regRecord = PatientRegistryService.findByUhid(uhid);
     const profile = PatientProfileService.getPatientProfile(uhid);
+    const patientName = regRecord?.fullName || profile.fullName || `Patient ${uhid}`;
     const orderId = `lab-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const orderNo = `LAB-2026-${Math.floor(1000 + Math.random() * 9000)}`;
     const price = request.price || this.PRICE_MAP[request.testName] || 650;
@@ -74,14 +78,14 @@ export class DoctorOrderService {
         existingLabs.unshift({
           id: orderId,
           orderNo,
-          patientName: profile.fullName,
-          uhid: profile.uhid,
+          patientName,
+          uhid,
           testName: request.testName,
           category: request.category || "PATHOLOGY",
           resultValue: "Awaiting Processing",
           normalRange: "Pending",
           orderDate: new Date().toISOString().split("T")[0],
-          status: "PENDING_DOCTOR_REVIEW",
+          status: "PENDING_LAB_PROCESSING",
           urgency: request.urgency || "ROUTINE",
           notes: request.clinicalNotes,
         });
