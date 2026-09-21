@@ -39,7 +39,7 @@ export const DoctorClinicalAlertsPanel: React.FC<DoctorClinicalAlertsPanelProps>
       </div>
 
       {/* Polypharmacy Risk Alert */}
-      {alerts.polypharmacyAlert.isAlert && (
+      {alerts?.polypharmacyAlert?.isAlert && (
         <Alert
           message="POLYPHARMACY RISK WARNING"
           description={alerts.polypharmacyAlert.message}
@@ -57,13 +57,13 @@ export const DoctorClinicalAlertsPanel: React.FC<DoctorClinicalAlertsPanelProps>
           <div className="font-bold text-rose-900 flex items-center justify-between text-xs">
             <span className="flex items-center gap-1.5">
               <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>ACTIVE ALLERGIES ({alerts.allAllergies.length})</span>
+              <span>ACTIVE ALLERGIES ({(alerts?.allAllergies || []).length})</span>
             </span>
             <Tag color="error" className="text-3xs py-0 px-1 font-bold">EMR REGISTRY</Tag>
           </div>
           <div className="flex flex-wrap gap-1 pt-1">
-            {alerts.allAllergies.length > 0 ? (
-              alerts.allAllergies.map((alg, idx) => (
+            {(alerts?.allAllergies || []).length > 0 ? (
+              (alerts?.allAllergies || []).map((alg, idx) => (
                 <Tag
                   color={alg.severity === "ANAPHYLAXIS" || alg.severity === "SEVERE" ? "error" : "warning"}
                   key={idx}
@@ -83,13 +83,13 @@ export const DoctorClinicalAlertsPanel: React.FC<DoctorClinicalAlertsPanelProps>
           <div className="font-bold text-teal-900 flex items-center justify-between text-xs">
             <span className="flex items-center gap-1.5">
               <Stethoscope className="w-4 h-4 text-teal-600 shrink-0" />
-              <span>ACTIVE PROBLEM LIST ({alerts.activeProblems.length})</span>
+              <span>ACTIVE PROBLEM LIST ({(alerts?.activeProblems || []).length})</span>
             </span>
             <Tag color="teal" className="text-3xs py-0 px-1 font-bold">ICD-10</Tag>
           </div>
           <div className="flex flex-wrap gap-1 pt-1">
-            {alerts.activeProblems.length > 0 ? (
-              alerts.activeProblems.map((prob, idx) => (
+            {(alerts?.activeProblems || []).length > 0 ? (
+              (alerts?.activeProblems || []).map((prob, idx) => (
                 <Tag color="cyan" key={idx} className="font-medium text-3xs py-0.5 px-1.5">
                   {prob.conditionName} ({prob.icd10Code})
                 </Tag>
@@ -109,8 +109,8 @@ export const DoctorClinicalAlertsPanel: React.FC<DoctorClinicalAlertsPanelProps>
             <span>CLINICAL HIGH RISK FLAGS</span>
           </div>
           <div className="flex flex-wrap gap-1 pt-1">
-            {alerts.highRiskFlags.length > 0 ? (
-              alerts.highRiskFlags.map((flag, idx) => (
+            {(alerts?.highRiskFlags || []).length > 0 ? (
+              (alerts?.highRiskFlags || []).map((flag, idx) => (
                 <Tag color="warning" key={idx} className="font-bold text-3xs">
                   {flag}
                 </Tag>
@@ -126,7 +126,7 @@ export const DoctorClinicalAlertsPanel: React.FC<DoctorClinicalAlertsPanelProps>
             <DollarSign className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>OUTSTANDING BALANCE</span>
           </div>
-          <div className="text-sm font-bold text-amber-700 mt-1">{alerts.outstandingBalanceText}</div>
+          <div className="text-sm font-bold text-amber-700 mt-1">{alerts?.outstandingBalanceText || "₹0"}</div>
           <p className="text-[10px] text-slate-400">Unbilled / Pending Cashier Receipts</p>
         </div>
       </div>
@@ -139,8 +139,8 @@ export const DoctorClinicalAlertsPanel: React.FC<DoctorClinicalAlertsPanelProps>
             <TestTube className="w-3.5 h-3.5 text-teal-600" />
             <span>Recent Lab Findings</span>
           </div>
-          {alerts.criticalLabResults.length > 0 ? (
-            alerts.criticalLabResults.map((lab, i) => (
+          {(alerts?.criticalLabResults || []).length > 0 ? (
+            (alerts?.criticalLabResults || []).map((lab, i) => (
               <div key={i} className="text-[11px] text-slate-700 flex justify-between pt-0.5 border-b border-slate-100 last:border-0 pb-1">
                 <span className="font-medium truncate max-w-[140px]">{lab.testName}:</span>
                 <span className="font-mono text-teal-700 font-bold">{lab.resultValue}</span>
@@ -157,8 +157,8 @@ export const DoctorClinicalAlertsPanel: React.FC<DoctorClinicalAlertsPanelProps>
             <Eye className="w-3.5 h-3.5 text-purple-600" />
             <span>Recent PACS Radiology Findings</span>
           </div>
-          {alerts.abnormalRadiology.length > 0 ? (
-            alerts.abnormalRadiology.map((rad, i) => (
+          {(alerts?.abnormalRadiology || []).length > 0 ? (
+            (alerts?.abnormalRadiology || []).map((rad, i) => (
               <div key={i} className="text-[11px] text-slate-700 space-y-0.5 pt-0.5 border-b border-slate-100 last:border-0 pb-1">
                 <div className="flex justify-between font-medium">
                   <span className="text-purple-900 font-semibold">{rad.modality} ({rad.bodyPart})</span>

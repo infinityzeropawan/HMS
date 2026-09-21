@@ -17,7 +17,7 @@ interface DiagnosisPaneProps {
 export const DiagnosisPane: React.FC<DiagnosisPaneProps> = ({ patientUhid = "P-2026-1049" }) => {
   const [selectedDiagnoses, setSelectedDiagnoses] = useState<string[]>(() => {
     const enc = useEncounterStore.getState().getEncounter(patientUhid);
-    return enc && enc.icd10Diagnoses.length > 0
+    return enc && enc.icd10Diagnoses && enc.icd10Diagnoses.length > 0
       ? enc.icd10Diagnoses
       : ["I20.9 - Angina pectoris, unspecified"];
   });

@@ -38,8 +38,8 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
 
   // Determine CDSS recommended revisit interval based on patient diagnosis / problems
   const cdssRecommendation = useMemo(() => {
-    const problems = wsCtx.alerts.activeProblems.map((p) => p.conditionName.toLowerCase() + " " + p.icd10Code.toLowerCase());
-    const complaints = (wsCtx.activeEncounter.chiefComplaints || "").toLowerCase();
+    const problems = (wsCtx?.alerts?.activeProblems || []).map((p) => (p.conditionName || "").toLowerCase() + " " + (p.icd10Code || "").toLowerCase());
+    const complaints = (wsCtx?.activeEncounter?.chiefComplaints || "").toLowerCase();
     const combined = problems.join(" ") + " " + complaints;
 
     if (combined.includes("angina") || combined.includes("i20") || combined.includes("chest pain") || combined.includes("acute")) {

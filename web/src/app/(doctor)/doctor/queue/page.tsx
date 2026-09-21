@@ -162,8 +162,12 @@ export default function DoctorQueuePage() {
             </div>
 
             <div className="mt-5 pt-4 border-t border-slate-100">
-              <Link href={`/encounter/${activePatientUhid}`} className="w-full h-11 bg-primary-teal hover:bg-primary-dark-teal text-white rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs">
-                <Stethoscope className="w-4 h-4" /> Open Active Encounter
+              <Link
+                href={`/encounter/${activePatientUhid}`}
+                className="w-full h-11 bg-teal-700 hover:bg-teal-800 text-white font-bold text-sm rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg border border-teal-800 px-4 py-2"
+              >
+                <Stethoscope className="w-4 h-4 text-white shrink-0" />
+                <span className="text-white font-bold text-sm tracking-wide">Open Active Encounter</span>
               </Link>
             </div>
           </div>

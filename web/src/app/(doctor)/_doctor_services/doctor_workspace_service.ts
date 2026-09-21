@@ -46,33 +46,35 @@ export class DoctorWorkspaceService {
     );
 
     // Compile Clinical Allergies
-    const allAllergies = snapshot.allergies.map((a) => ({
-      allergen: a.allergen,
-      type: a.type,
-      severity: a.severity,
-      reaction: a.reaction,
+    const rawAllergies = snapshot?.allergies || [];
+    const allAllergies = rawAllergies.map((a) => ({
+      allergen: a.allergen || "Unknown",
+      type: a.type || "DRUG",
+      severity: a.severity || "MILD",
+      reaction: a.reaction || "Rash",
     }));
 
-    const severeAllergies = snapshot.allergies
+    const severeAllergies = rawAllergies
       .filter((a) => a.severity === "ANAPHYLAXIS" || a.severity === "SEVERE")
       .map((a) => `${a.allergen} (${a.reaction})`);
 
     // Active Problems List
-    const activeProblems = snapshot.activeProblems.map((p) => ({
-      icd10Code: p.icd10Code,
-      conditionName: p.conditionName,
-      onsetDate: p.onsetDate,
+    const activeProblems = (snapshot?.activeProblems || []).map((p) => ({
+      icd10Code: p.icd10Code || "R69",
+      conditionName: p.conditionName || "Unspecified condition",
+      onsetDate: p.onsetDate || new Date().toISOString().split("T")[0],
     }));
 
     // High Risk Flags
     const highRiskFlags: string[] = [];
-    if (patient360.flags.highRisk) highRiskFlags.push("HIGH RISK PATIENT");
-    if (patient360.flags.fallRisk) highRiskFlags.push("FALL RISK PRECAUTION");
-    if (patient360.flags.medicoLegalCase) highRiskFlags.push("MEDICO-LEGAL CASE (MLC)");
-    if (patient360.flags.vipPatient) highRiskFlags.push("VIP PATIENT");
+    if (patient360?.flags?.highRisk) highRiskFlags.push("HIGH RISK PATIENT");
+    if (patient360?.flags?.fallRisk) highRiskFlags.push("FALL RISK PRECAUTION");
+    if (patient360?.flags?.medicoLegalCase) highRiskFlags.push("MEDICO-LEGAL CASE (MLC)");
+    if (patient360?.flags?.vipPatient) highRiskFlags.push("VIP PATIENT");
 
     // Polypharmacy Alert (>= 5 concurrent active medications)
-    const activeMedCount = snapshot.currentMedications.filter((m) => m.status === "ACTIVE").length;
+    const activeMeds = snapshot?.currentMedications || [];
+    const activeMedCount = activeMeds.filter((m) => m.status === "ACTIVE").length;
     const polypharmacyAlert = {
       isAlert: activeMedCount >= 5,
       activeMedCount,
@@ -82,12 +84,12 @@ export class DoctorWorkspaceService {
     };
 
     // Critical / Abnormal Labs
-    const criticalLabResults = emrProfile.labResults
+    const criticalLabResults = (emrProfile?.labResults || [])
       .slice(0, 3)
       .map((l) => ({ testName: l.testName, resultValue: l.resultValue, orderDate: l.orderDate }));
 
     // Abnormal Radiology Findings
-    const abnormalRadiology = emrProfile.radiologyStudies
+    const abnormalRadiology = (emrProfile?.radiologyStudies || [])
       .slice(0, 2)
       .map((r) => ({
         studyId: r.studyId,
@@ -97,11 +99,13 @@ export class DoctorWorkspaceService {
         date: r.date,
       }));
 
-    const recentAdmissions = emrProfile.admissions.slice(0, 2).map((a) => ({
+    const recentAdmissions = (emrProfile?.admissions || []).slice(0, 2).map((a) => ({
       admissionNo: a.admissionNo,
       ward: a.admittedWard,
       date: a.admissionDate,
     }));
+
+    const balanceVal = typeof snapshot?.outstandingBalances === "number" ? snapshot.outstandingBalances : 0;
 
     const alerts: ClinicalAlertsBundle = {
       severeAllergies,
@@ -109,7 +113,7 @@ export class DoctorWorkspaceService {
       activeProblems,
       highRiskFlags,
       polypharmacyAlert,
-      outstandingBalanceText: `₹${snapshot.outstandingBalances.toLocaleString()}`,
+      outstandingBalanceText: `₹${balanceVal.toLocaleString()}`,
       criticalLabResults,
       abnormalRadiology,
       recentAdmissions,

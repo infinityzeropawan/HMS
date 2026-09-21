@@ -162,12 +162,12 @@ export const PrescriptionPane: React.FC<PrescriptionPaneProps> = ({ patientUhid 
 
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>(() => {
     const enc = useEncounterStore.getState().getEncounter(patientUhid);
-    return enc && enc.prescriptions.length > 0 ? enc.prescriptions : [];
+    return enc && enc.prescriptions && enc.prescriptions.length > 0 ? enc.prescriptions : [];
   });
 
   useEffect(() => {
     const enc = useEncounterStore.getState().getEncounter(patientUhid);
-    if (enc && enc.prescriptions.length > 0) {
+    if (enc && enc.prescriptions && enc.prescriptions.length > 0) {
       setPrescriptions(enc.prescriptions);
     }
   }, [patientUhid]);
@@ -179,7 +179,8 @@ export const PrescriptionPane: React.FC<PrescriptionPaneProps> = ({ patientUhid 
 
   // Real-time active drug interaction check across all current prescriptions + patient allergies + active meds
   const activeAlerts = useMemo(() => {
-    const medHistoryItems: MedicationHistoryItem[] = prescriptions.map((p, idx) => ({
+    const safeRxList = prescriptions || [];
+    const medHistoryItems: MedicationHistoryItem[] = safeRxList.map((p, idx) => ({
       id: `rx-${idx}`,
       drugName: p.drugName,
       dosage: p.dosage,
@@ -191,8 +192,8 @@ export const PrescriptionPane: React.FC<PrescriptionPaneProps> = ({ patientUhid 
     }));
 
     return CdssService.checkDrugInteractions(
-      [...wsCtx.snapshot.currentMedications, ...medHistoryItems],
-      wsCtx.snapshot.allergies
+      [...(wsCtx?.snapshot?.currentMedications || []), ...medHistoryItems],
+      wsCtx?.snapshot?.allergies || []
     );
   }, [prescriptions, wsCtx]);
 
@@ -264,8 +265,8 @@ export const PrescriptionPane: React.FC<PrescriptionPaneProps> = ({ patientUhid 
 
     // Candidate medication list
     const candidateMeds: MedicationHistoryItem[] = [
-      ...wsCtx.snapshot.currentMedications,
-      ...prescriptions.map((p, idx) => ({
+      ...(wsCtx?.snapshot?.currentMedications || []),
+      ...(prescriptions || []).map((p, idx) => ({
         id: `rx-${idx}`,
         drugName: p.drugName,
         dosage: p.dosage,
@@ -290,7 +291,7 @@ export const PrescriptionPane: React.FC<PrescriptionPaneProps> = ({ patientUhid 
     // Check drug interactions against Patient360 & EMR allergies
     const candidateAlerts = CdssService.checkDrugInteractions(
       candidateMeds,
-      wsCtx.snapshot.allergies
+      wsCtx?.snapshot?.allergies || []
     );
 
     const criticalAlert = candidateAlerts.find((a) => a.severity === "CRITICAL");
