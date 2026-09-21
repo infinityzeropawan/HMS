@@ -57,10 +57,21 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
   const getFutureDateStr = (days: number): string => {
     const d = new Date();
     d.setDate(d.getDate() + days);
-    return d.toISOString().split("T")[0];
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   };
 
-  const [selectedDate, setSelectedDate] = useState(getFutureDateStr(cdssRecommendation.days));
+  const [selectedDate, setSelectedDate] = useState(() => getFutureDateStr(cdssRecommendation.days));
+
+  React.useEffect(() => {
+    if (open) {
+      const initialDate = getFutureDateStr(cdssRecommendation.days);
+      setSelectedDate(initialDate);
+      form.setFieldsValue({ revisitDate: initialDate });
+    }
+  }, [open, cdssRecommendation, form]);
 
   const handleSelectDays = (days: number) => {
     const dt = getFutureDateStr(days);
@@ -70,9 +81,17 @@ export const FollowUpModal: React.FC<FollowUpModalProps> = ({
 
   const handleFinish = (values: { revisitDate: string; instructions?: string }) => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const target = new Date(values.revisitDate);
-    const diffTime = Math.abs(target.getTime() - today.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    target.setHours(0, 0, 0, 0);
+
+    if (target.getTime() < today.getTime()) {
+      message.warning("Please select a future date for follow-up consultation.");
+      return;
+    }
+
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
     EncounterService.setFollowUp(patientUhid, {
       revisitDays: diffDays,

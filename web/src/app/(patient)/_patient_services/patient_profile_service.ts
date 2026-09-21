@@ -8,6 +8,7 @@ import { useEncounterStore } from "@/app/(doctor)/_doctor_stores/encounter_store
 import { useIpdStore } from "@/app/(ipd)/_ipd_stores/ipd_store";
 import { useBillingStore } from "@/app/(billing)/_billing_stores/billing_store";
 import { usePacsStore } from "@/app/(pacs)/_pacs_stores/pacs_store";
+import { PatientRegistryService } from "@/app/(reception)/_reception_services/patient_registry_service";
 import {
   UnifiedPatientProfile,
   Patient360Summary,
@@ -18,10 +19,40 @@ export class PatientProfileService {
    * Retrieves the unified patient profile for a UHID
    */
   static getPatientProfile(uhid: string): UnifiedPatientProfile {
-    return usePatientStore.getState().getPatient(uhid) || {
-      uhid,
-      mrn: "MRN-2026-1049",
-      fullName: "Sunil Verma",
+    const fromStore = usePatientStore.getState().getPatient(uhid);
+    if (fromStore) return fromStore;
+
+    const fromRegistry = PatientRegistryService.findByUhid(uhid);
+    if (fromRegistry) {
+      return {
+        uhid: fromRegistry.uhid,
+        mrn: PatientRegistryService.mrnFor(fromRegistry.uhid),
+        fullName: fromRegistry.fullName,
+        gender: fromRegistry.gender as "MALE" | "FEMALE" | "OTHER",
+        dob: fromRegistry.dob || "1985-01-01",
+        age: PatientRegistryService.computeAge(fromRegistry.dob),
+        bloodGroup: fromRegistry.bloodGroup || "O_POSITIVE",
+        phone: fromRegistry.phone,
+        address: fromRegistry.address || "Main Street, Hospital City",
+        emergencyContact: fromRegistry.emergencyContact || fromRegistry.phone,
+        registeredAt: fromRegistry.registeredAt || new Date().toISOString(),
+        status: "ACTIVE",
+        relationships: [],
+        flags: {
+          highRisk: false,
+          fallRisk: false,
+          allergyAlert: false,
+          vipPatient: false,
+          medicoLegalCase: false,
+        },
+        documents: [],
+      };
+    }
+
+    return {
+      uhid: uhid || "P-2026-1049",
+      mrn: `MRN-${(uhid || "1049").replace(/\D/g, "")}`,
+      fullName: uhid ? `Patient (${uhid})` : "Sunil Verma",
       gender: "MALE",
       dob: "1981-05-14",
       age: 45,
@@ -33,9 +64,9 @@ export class PatientProfileService {
       status: "ACTIVE",
       relationships: [],
       flags: {
-        highRisk: true,
+        highRisk: false,
         fallRisk: false,
-        allergyAlert: true,
+        allergyAlert: false,
         vipPatient: false,
         medicoLegalCase: false,
       },
@@ -59,7 +90,7 @@ export class PatientProfileService {
     const appointments = useAppointmentStore
       .getState()
       .appointments.filter((a) => a.uhid === uhid);
-    const totalOpdVisits = appointments.length > 0 ? appointments.length : 3;
+    const totalOpdVisits = appointments.length;
 
     // 3. Encounters & Last Encounter
     const encounters = emrProfile.encounters;
@@ -69,7 +100,7 @@ export class PatientProfileService {
     const admissions = useIpdStore
       .getState()
       .admissions.filter((a) => a.uhid === uhid);
-    const totalIpdAdmissions = admissions.length > 0 ? admissions.length : 1;
+    const totalIpdAdmissions = admissions.length;
     const lastAdmission = admissions.length > 0 ? admissions[0] : emrProfile.snapshot.lastAdmission;
 
     // 5. Billing & Outstanding Balances
@@ -78,7 +109,7 @@ export class PatientProfileService {
       .invoices.filter((i) => i.patientUhid === uhid);
     const outstandingBalance = invoices
       .filter((i) => i.status === "UNPAID" || i.status === "PARTIALLY_PAID")
-      .reduce((sum, inv) => sum + (inv.balanceDue || inv.totalAmount || 0), 0) || 1450;
+      .reduce((sum, inv) => sum + (inv.balanceDue || inv.totalAmount || 0), 0);
 
     // 6. Last Lab Order
     const labResults = emrProfile.labResults;

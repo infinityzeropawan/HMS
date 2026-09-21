@@ -57,7 +57,7 @@ export function useDoctorIpdStore() {
   };
 }
 
-(useDoctorIpdStore as any).getState = () => {
+useDoctorIpdStore.getState = () => {
   const state = useIpdStore.getState();
   return {
     inpatients: state.admissions.map(mapIpdToDoctorRecord),
@@ -66,4 +66,3 @@ export function useDoctorIpdStore() {
     resetToDefaults: state.resetToDefaults,
   };
 };
-

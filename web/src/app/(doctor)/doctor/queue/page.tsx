@@ -1,24 +1,43 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { DoctorQueueTable } from "../../_doctor_components/OpdQueue/DoctorQueueTable";
 import { HmsPremiumCard, HmsCardGrid } from "@/common_components/HmsPremiumCard/HmsPremiumCard";
 import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { Stethoscope, Clock, CheckCircle2, Users, Calendar } from "lucide-react";
 import Link from "next/link";
-
-const SCHEDULE = [
-  { time: "10:00 AM", patient: "Sunil Verma",   type: "Follow-up",   status: "done"    },
-  { time: "10:30 AM", patient: "Anjali Gupta",   type: "New OPD",     status: "done"    },
-  { time: "11:00 AM", patient: "Ramesh Kumar",   type: "Follow-up",   status: "current" },
-  { time: "11:30 AM", patient: "Priya Mehta",    type: "New OPD",     status: "pending" },
-  { time: "12:00 PM", patient: "Dinesh Bhatia",  type: "Review",      status: "pending" },
-  { time: "02:00 PM", patient: "Kavita Singh",   type: "Follow-up",   status: "pending" },
-];
+import { useAppointmentStore } from "@/app/(reception)/_reception_stores/appointment_store";
+import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
+import { todayLocalDate } from "@/app/(reception)/_reception_utils/date_utils";
 
 export default function DoctorQueuePage() {
   const [waiting, setWaiting] = useState(5);
   const [completed, setCompleted] = useState(18);
+  const appointments = useAppointmentStore((s) => s.appointments);
+  const user = useAuthUserStore((s) => s.user);
+
+  const doctorName = user?.username || "Dr. Rajesh Sharma";
+
+  const todayStr = todayLocalDate();
+  const todayAppointments = useMemo(() => {
+    const list = appointments.filter((a) => !a.date || a.date === todayStr);
+    return list.length > 0 ? list : appointments;
+  }, [appointments, todayStr]);
+
+  const scheduleItems = useMemo(() => {
+    return todayAppointments.map((a) => ({
+      time: a.slot || "10:00 AM",
+      patient: a.patientName,
+      uhid: a.uhid,
+      type: a.status === "COMPLETED" ? "Consultation Complete" : a.status === "IN_CONSULTATION" ? "In Consultation" : "OPD Token",
+      status: a.status === "IN_CONSULTATION" ? "current" : a.status === "COMPLETED" ? "done" : "pending",
+    }));
+  }, [todayAppointments]);
+
+  const activePatientUhid = useMemo(() => {
+    const activeApp = todayAppointments.find((a) => a.status === "IN_CONSULTATION" || a.status === "WAITING");
+    return activeApp?.uhid || "P-2026-1049";
+  }, [todayAppointments]);
 
   const currentDateString = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
@@ -44,7 +63,7 @@ export default function DoctorQueuePage() {
                 <Stethoscope className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">Dr. Rajesh Sharma</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 leading-tight">{doctorName}</h2>
                 <p className="text-xs sm:text-sm text-slate-500 flex items-center gap-2 mt-0.5">
                   <span>Cardiology OPD • Clinic 3</span>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-light text-emerald-green">
@@ -124,7 +143,7 @@ export default function DoctorQueuePage() {
             </div>
 
             <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
-              {SCHEDULE.map((s, i) => (
+              {scheduleItems.map((s, i) => (
                 <div key={i} className={`p-3 rounded-lg border text-xs flex items-start gap-3 transition-colors ${
                   s.status === "current" ? "bg-primary-light-teal border-primary-teal text-slate-900" :
                   s.status === "done"    ? "bg-slate-50 border-slate-200 text-slate-500 opacity-70" :
@@ -143,7 +162,7 @@ export default function DoctorQueuePage() {
             </div>
 
             <div className="mt-5 pt-4 border-t border-slate-100">
-              <Link href="/encounter/P-2026-1049" className="w-full h-11 bg-primary-teal hover:bg-primary-dark-teal text-white rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs">
+              <Link href={`/encounter/${activePatientUhid}`} className="w-full h-11 bg-primary-teal hover:bg-primary-dark-teal text-white rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs">
                 <Stethoscope className="w-4 h-4" /> Open Active Encounter
               </Link>
             </div>
