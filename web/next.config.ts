@@ -7,7 +7,12 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  serverExternalPackages: ["source-map"],
+  outputFileTracingIncludes: {
+    "/*": [
+      "./node_modules/next/dist/compiled/source-map/**/*",
+      "./node_modules/source-map/**/*",
+    ],
+  },
 };
 
 export default nextConfig;
