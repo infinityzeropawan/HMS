@@ -7,6 +7,8 @@ import { Pill, CheckSquare, FileText, DollarSign, AlertCircle } from "lucide-rea
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { FefoBatchModal } from "../FefoBatchSelector/FefoBatchModal";
 import { PharmacyService } from "../../_pharmacy_services/pharmacy_service";
+import { Patient360DrawerModal } from "@/app/(nurse)/_nurse_components/Patient360/Patient360DrawerModal";
+import { useEmrStore } from "@/app/(patient)/_patient_stores/emr_store";
 
 interface PrescribedItem {
   name: string;
@@ -121,6 +123,10 @@ export const PharmacyDispenseTable: React.FC = () => {
   const [dispenseModalOpen, setDispenseModalOpen] = useState(false);
   const [paymentMode, setPaymentMode] = useState("UPI");
 
+  // Patient 360 Modal State
+  const [p360Open, setP360Open] = useState(false);
+  const [selectedP360Uhid, setSelectedP360Uhid] = useState("");
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("hms_pharmacy_dispense");
@@ -217,12 +223,31 @@ export const PharmacyDispenseTable: React.FC = () => {
     {
       title: "Patient UHID & Name",
       key: "patient",
-      render: (_: unknown, record: PrescriptionRecord) => (
-        <div>
-          <span className="font-bold text-slate-900 block">{record.patientName}</span>
-          <span className="text-xs font-mono text-slate-500">{record.uhid}</span>
-        </div>
-      ),
+      render: (_: unknown, record: PrescriptionRecord) => {
+        const emrAllergies = useEmrStore.getState().getAllergies(record.uhid);
+        const hasAllergyAlert =
+          (record.allergies && !record.allergies.toLowerCase().includes("nkda") && !record.allergies.toLowerCase().includes("no known")) ||
+          emrAllergies.length > 0;
+
+        return (
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedP360Uhid(record.uhid);
+                setP360Open(true);
+              }}
+              className="font-bold text-slate-900 hover:text-purple-700 hover:underline cursor-pointer block text-left"
+            >
+              {record.patientName}
+            </button>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-xs font-mono text-slate-500">{record.uhid}</span>
+              {hasAllergyAlert && <Tag color="error" className="text-[10px] py-0 px-1 font-bold">⚠ ALLERGY ALERT</Tag>}
+            </div>
+          </div>
+        );
+      },
     },
     {
       title: "Prescribing Doctor",
@@ -591,6 +616,12 @@ export const PharmacyDispenseTable: React.FC = () => {
           </div>
         </Modal>
       )}
+      {/* Patient 360 Drawer */}
+      <Patient360DrawerModal
+        open={p360Open}
+        onClose={() => setP360Open(false)}
+        uhid={selectedP360Uhid}
+      />
     </div>
   );
 };

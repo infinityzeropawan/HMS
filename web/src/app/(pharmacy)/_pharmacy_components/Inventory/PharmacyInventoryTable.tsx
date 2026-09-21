@@ -177,7 +177,7 @@ export const PharmacyInventoryTable: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
         <Table columns={columns} dataSource={filteredInventory} rowKey="id" pagination={{ pageSize: 8 }} />
       </div>
 

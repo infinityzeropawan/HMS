@@ -5,6 +5,7 @@ import { Table, Tag, Modal, Form, Input, Select, InputNumber, message } from "an
 import { Building2, Plus, Phone, Mail, FileText, CheckCircle, Search, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { usePharmacyStore, PharmacyVendor } from "../_pharmacy_stores/pharmacy_store";
 
 export default function PharmacyVendorsPage() {
@@ -98,7 +99,8 @@ export default function PharmacyVendorsPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+    <HmsAppShell title="Supplier & Vendor Directory" subtitle="Manage GSTIN vendors, distributor terms & credit days">
+      <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4">
         <div>
@@ -138,7 +140,7 @@ export default function PharmacyVendorsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <Table columns={columns} dataSource={filteredVendors} rowKey="id" pagination={{ pageSize: 8 }} />
       </div>
 
@@ -226,5 +228,6 @@ export default function PharmacyVendorsPage() {
         </Form>
       </Modal>
     </div>
+    </HmsAppShell>
   );
 }

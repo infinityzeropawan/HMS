@@ -5,6 +5,7 @@ import { Table, Tag, Modal, Form, Input, Select, InputNumber, message, Drawer } 
 import { ShoppingCart, Plus, ArrowLeft, FileCheck, AlertCircle, Building2, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { usePharmacyStore, PurchaseOrder } from "../_pharmacy_stores/pharmacy_store";
 
@@ -119,7 +120,7 @@ function PurchaseOrdersContent() {
       </div>
 
       {/* PO Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <Table columns={columns} dataSource={purchaseOrders} rowKey="id" pagination={{ pageSize: 8 }} />
       </div>
 
@@ -213,14 +214,16 @@ function PurchaseOrdersContent() {
  */
 export default function PurchaseOrdersPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="p-6 max-w-7xl mx-auto">
-          <p className="text-sm font-medium text-slate-500">Loading purchase orders…</p>
-        </div>
-      }
-    >
-      <PurchaseOrdersContent />
-    </Suspense>
+    <HmsAppShell title="Pharmacy Purchase Orders" subtitle="Create, approve & track POs for drug inventory replenishment">
+      <Suspense
+        fallback={
+          <div className="p-6 max-w-7xl mx-auto">
+            <p className="text-sm font-medium text-slate-500">Loading purchase orders…</p>
+          </div>
+        }
+      >
+        <PurchaseOrdersContent />
+      </Suspense>
+    </HmsAppShell>
   );
 }

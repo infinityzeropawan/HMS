@@ -5,6 +5,8 @@ import { Modal, Table, Tag, message } from "antd";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
 import { AlertTriangle, CheckCircle2, Calendar, Package } from "lucide-react";
 
+import { usePharmacyStore } from "../../_pharmacy_stores/pharmacy_store";
+
 interface BatchItem {
   key: string;
   batchNo: string;
@@ -33,11 +35,28 @@ export const FefoBatchModal: React.FC<FefoBatchModalProps> = ({
   customBatches,
   onSelectBatch,
 }) => {
+  const inventory = usePharmacyStore((s) => s.inventory);
+
   // Sort by earliest expiry date first (FEFO Algorithm)
   const sortedBatches = useMemo(() => {
-    const list = customBatches && customBatches.length > 0 ? customBatches : DEFAULT_BATCHES;
-    return [...list].sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
-  }, [customBatches]);
+    if (customBatches && customBatches.length > 0) {
+      return [...customBatches].sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+    }
+    const matching = inventory.filter((i) =>
+      i.name.toLowerCase().includes(drugName.toLowerCase()) ||
+      (i.drugName && i.drugName.toLowerCase().includes(drugName.toLowerCase()))
+    );
+    if (matching.length > 0) {
+      const list = matching.map((i, idx) => ({
+        key: i.id || String(idx),
+        batchNo: i.batchNumber || "B-2025-01",
+        expiryDate: i.expiryDate || "2027-06-30",
+        stock: i.stockQuantity,
+      }));
+      return list.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+    }
+    return [...DEFAULT_BATCHES].sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+  }, [customBatches, drugName, inventory]);
 
   const handleSelect = (record: BatchItem, isFefo: boolean) => {
     if (onSelectBatch) {

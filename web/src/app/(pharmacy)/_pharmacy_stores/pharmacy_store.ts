@@ -462,21 +462,46 @@ export const usePharmacyStore = create<PharmacyStoreState>()(
       deductStock: (drugNameOrCode, qty) => {
         let success = false;
         set((state) => {
-          const updated = state.inventory.map((item): DrugStockItem => {
-            const matches =
+          // 1. Find matching drug stock items
+          const matchingItems = state.inventory.filter(
+            (item) =>
               item.name.toLowerCase().includes(drugNameOrCode.toLowerCase()) ||
-              item.drugCode.toLowerCase() === drugNameOrCode.toLowerCase();
-            if (matches && !success) {
-              const newQty = Math.max(0, item.stockQuantity - qty);
-              success = true;
+              (item.drugName && item.drugName.toLowerCase().includes(drugNameOrCode.toLowerCase())) ||
+              item.drugCode.toLowerCase() === drugNameOrCode.toLowerCase()
+          );
+
+          if (matchingItems.length === 0) return { inventory: state.inventory };
+
+          // 2. FEFO order: sort by earliest expiry date first
+          const fefoSorted = [...matchingItems].sort(
+            (a, b) => new Date(a.expiryDate || "2099-12-31").getTime() - new Date(b.expiryDate || "2099-12-31").getTime()
+          );
+
+          let remainingNeeded = qty;
+          const deductedMap = new Map<string, number>();
+
+          for (const item of fefoSorted) {
+            if (remainingNeeded <= 0) break;
+            const take = Math.min(item.stockQuantity, remainingNeeded);
+            deductedMap.set(item.id, take);
+            remainingNeeded -= take;
+          }
+
+          if (deductedMap.size > 0) success = true;
+
+          const updated = state.inventory.map((item): DrugStockItem => {
+            const qtyToDeduct = deductedMap.get(item.id) || 0;
+            if (qtyToDeduct > 0) {
+              const newQty = Math.max(0, item.stockQuantity - qtyToDeduct);
               return {
                 ...item,
                 stockQuantity: newQty,
-                status: (newQty <= item.reorderLevel ? "LOW_STOCK" : "IN_STOCK") as "LOW_STOCK" | "IN_STOCK",
+                status: (newQty <= item.reorderLevel ? "LOW_STOCK" : "IN_STOCK") as any,
               };
             }
             return item;
           });
+
           return { inventory: updated };
         });
         return success;

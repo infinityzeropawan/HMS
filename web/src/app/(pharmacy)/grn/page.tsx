@@ -5,6 +5,7 @@ import { Table, Tag, Modal, Form, Input, Select, InputNumber, DatePicker, messag
 import { FileCheck, Plus, ArrowLeft, Building2, Package, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { HmsButton } from "@/common_components/HmsButton/HmsButton";
+import { HmsAppShell } from "@/common_components/HmsAppShell/HmsAppShell";
 import { usePharmacyStore, GRNRecord } from "../_pharmacy_stores/pharmacy_store";
 
 export default function GRNPage() {
@@ -94,7 +95,8 @@ export default function GRNPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+    <HmsAppShell title="Goods Received Note (GRN) Inward Entry">
+      <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4">
         <div>
@@ -119,7 +121,7 @@ export default function GRNPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <Table columns={columns} dataSource={grnRecords} rowKey="id" pagination={{ pageSize: 8 }} />
       </div>
 
@@ -205,5 +207,6 @@ export default function GRNPage() {
         </Form>
       </Modal>
     </div>
+    </HmsAppShell>
   );
 }
