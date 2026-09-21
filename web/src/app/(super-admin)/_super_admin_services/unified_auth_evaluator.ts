@@ -8,6 +8,7 @@ import {
   FEATURE_ID_ALIAS_MAP,
   normalizeToCanonicalFeatureId,
 } from "./feature_catalog_service";
+import { useFeatureControlStore } from "../_super_admin_stores/feature_control_store";
 
 export { FEATURE_ID_ALIAS_MAP, normalizeToCanonicalFeatureId };
 
