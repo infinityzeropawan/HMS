@@ -8,9 +8,8 @@ import { useAuthUserStore } from "@/app/(auth)/_auth_stores/auth_user_store";
 
 
 export const DoctorScheduleView: React.FC = () => {
-  const doctorShifts = useRosterStore((state) =>
-    state.rosters.filter((r) => r.role === "DOCTOR")
-  );
+  const rosters = useRosterStore((state) => state.rosters);
+  const doctorShifts = (rosters || []).filter((r) => r.role === "DOCTOR");
   const blockedSlots = useRosterStore((state) => state.blockedSlots) || {};
   const toggleStoreSlotBlock = useRosterStore((state) => state.toggleSlotBlock);
 
